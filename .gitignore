@@ -1,0 +1,41 @@
+# ==========================
+# AGTPS Portal
+# ==========================
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Docker
+docker/.env
+docker/.env.*
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Node
+node_modules/
+.next/
+dist/
+coverage/
+
+# Laravel
+vendor/
+bootstrap/cache/*
+storage/*.key
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+*.swp
