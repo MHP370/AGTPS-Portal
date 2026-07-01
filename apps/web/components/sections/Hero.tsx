@@ -1,4 +1,4 @@
-import GlassCard from "@/components/ui/GlassCard";
+import MapContainer from "@/components/map/MapContainer";
 
 export default function Hero() {
   return (
@@ -12,11 +12,7 @@ export default function Hero() {
         نقطه شروع تمام سامانه‌های سازمان
       </p>
 
-      <GlassCard className="mt-12 flex h-[340px] w-full items-center justify-center">
-        <h2 className="text-3xl font-bold text-gray-400">
-          🗺️ نقشه تعاملی ایران (بزودی)
-        </h2>
-      </GlassCard>
+      <MapContainer />
 
     </section>
   );
