@@ -1,46 +1,55 @@
+import Logo from "./Logo";
+import Container from "../ui/Container";
 import { Bell, Search, User } from "lucide-react";
 
 export default function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-black/20 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-
+      <Container className="flex h-20 items-center justify-between">
         {/* Logo */}
-        <div>
-          <h1 className="text-xl font-bold text-emerald-400">
-            AGTPS Portal
-          </h1>
-
-          <p className="text-xs text-gray-400">
-            Assaluyeh Gas Turbine Power Station
-          </p>
-        </div>
+        <Logo />
 
         {/* Search */}
-        <div className="hidden w-full max-w-md items-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 md:flex">
-          <Search size={18} className="mr-2 text-gray-400" />
+        <div className="hidden w-full max-w-xl items-center rounded-xl border border-white/10 bg-white/5 px-4 py-3 md:flex">
+
+          <Search
+            size={18}
+            className="mr-3 text-gray-400"
+          />
 
           <input
             className="w-full bg-transparent text-sm outline-none placeholder:text-gray-500"
             placeholder="جستجو در سامانه‌ها..."
           />
+
+          <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-gray-400">
+            Ctrl + K
+          </span>
+
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-4">
+        {/* Right */}
+        <div className="flex items-center gap-5">
 
-          <Bell
-            size={20}
-            className="cursor-pointer text-gray-300 transition hover:text-white"
-          />
+          <button className="relative">
+            <Bell
+              size={22}
+              className="text-gray-300"
+            />
 
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500">
-            <User size={18} />
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-xs">
+              3
+            </span>
+
+          </button>
+
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500">
+            <User size={20} />
           </div>
 
         </div>
 
-      </div>
+      </Container>
     </header>
   );
 }
