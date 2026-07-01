@@ -9,7 +9,6 @@ datasource db {
 
 model User {
   id          String   @id @default(cuid())
-
   username    String   @unique
   email       String   @unique
   password    String
@@ -19,64 +18,121 @@ model User {
 
   isActive    Boolean  @default(true)
 
-  roles       UserRole[]
+  roles        UserRole[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
 model Role {
-
   id          String   @id @default(cuid())
-
   name        String   @unique
-
   title       String
 
   users       UserRole[]
-
   permissions RolePermission[]
 
   createdAt   DateTime @default(now())
-
 }
 
 model Permission {
-
   id          String   @id @default(cuid())
-
   name        String   @unique
-
   title       String
 
   roles       RolePermission[]
-
 }
 
 model UserRole {
+  userId String
+  roleId String
 
-  userId      String
-
-  roleId      String
-
-  user User @relation(fields:[userId], references:[id], onDelete: Cascade)
-
-  role Role @relation(fields:[roleId], references:[id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
-
 }
 
 model RolePermission {
+  roleId       String
+  permissionId String
 
-  roleId          String
-
-  permissionId    String
-
-  role Role @relation(fields:[roleId], references:[id], onDelete: Cascade)
-
-  permission Permission @relation(fields:[permissionId], references:[id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
+}
 
+model Site {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true)
+
+  applications Application[]
+  news         News[]
+}
+
+model Application {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  url         String
+  icon        String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  siteId      String
+  site        Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+}
+
+model News {
+  id          String   @id @default(cuid())
+  title       String
+  body        String   @db.Text
+  image       String?
+  published   Boolean  @default(true)
+
+  siteId      String
+  site        Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String   @db.Text
+
+  startDate   DateTime
+  endDate     DateTime?
+
+  priority    Int      @default(1)
+
+  published   Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+}
+
+model Slider {
+  id          String   @id @default(cuid())
+
+  title       String
+  image       String
+  url         String?
+
+  sortOrder   Int      @default(0)
+
+  isActive    Boolean  @default(true)
+}
+
+model Setting {
+  id          Int      @id @default(1)
+
+  companyName String
+  logo        String?
+
+  primaryColor String?
+
+  footerText  String?
 }
