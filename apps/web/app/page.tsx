@@ -1,9 +1,8 @@
-import IranMap from "@/components/map/IranMap";
 import Header from "@/components/layout/Header";
 import Container from "@/components/ui/Container";
 
-import Hero from "@/components/sections/Hero";
-import StatusGrid from "@/components/sections/StatusGrid";
+import QuickStats from "@/components/sections/QuickStats";
+import MapContainer from "@/components/map/MapContainer";
 import AppGrid from "@/components/sections/AppGrid";
 
 export default function Home() {
@@ -12,11 +11,13 @@ export default function Home() {
       <Header />
 
       <Container>
-        <Hero />
+        <section className="py-10">
+          <QuickStats />
 
-        <StatusGrid />
+          <MapContainer />
 
-        <AppGrid />
+          <AppGrid />
+        </section>
       </Container>
     </main>
   );
