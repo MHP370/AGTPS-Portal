@@ -63,14 +63,45 @@ model RolePermission {
   @@id([roleId, permissionId])
 }
 
+
 model Site {
-  id        String   @id @default(cuid())
-  name      String
-  code      String   @unique
-  isActive  Boolean  @default(true)
+
+  id          String   @id @default(cuid())
+
+  code        String   @unique
+
+  name        String
+
+  description String?
+
+  address     String?
+
+  phone       String?
+
+  email       String?
+
+  latitude    Float?
+
+  longitude   Float?
+
+  logo        String?
+
+  image       String?
+
+  color       String?
+
+  sortOrder   Int      @default(0)
+
+  isActive    Boolean  @default(true)
 
   applications Application[]
+
   news         News[]
+
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
+
 }
 
 model Application {
