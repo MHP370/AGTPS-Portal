@@ -12,12 +12,17 @@ interface Props {
   application: Application | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  categories?: {
+    id: string;
+    name: string;
+  }[];
 }
 
 export function EditApplicationDialog({
   application,
   open,
   onOpenChange,
+  categories = [],
 }: Props) {
   const updateApplication =
     useUpdateApplication();
@@ -41,6 +46,7 @@ export function EditApplicationDialog({
     >
       <ApplicationForm
         application={application}
+        categories={categories}
         loading={updateApplication.isPending}
         onSubmit={handleSubmit}
       />
