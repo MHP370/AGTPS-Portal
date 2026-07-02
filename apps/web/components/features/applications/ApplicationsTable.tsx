@@ -9,27 +9,21 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 import { Application } from "@/lib/applications";
 
-import { CreateApplicationDialog } from "./CreateApplicationDialog";
-import { EditApplicationDialog } from "./EditApplicationDialog";
-
 import { useDeleteApplication } from "@/hooks/useApplications";
 
 interface Props {
   applications: Application[];
+  onCreate: () => void;
+  onEdit: (application: Application) => void;
 }
 
 export function ApplicationsTable({
   applications,
+  onCreate,
+  onEdit,
 }: Props) {
   const [search, setSearch] = useState("");
 
-  const [openCreate, setOpenCreate] = useState(false);
-
-  const [openEdit, setOpenEdit] = useState(false);
-  const [selectedApplication, setSelectedApplication] =
-    useState<Application | null>(null);
-
-  // 🟢 DELETE STATE
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -67,7 +61,7 @@ export function ApplicationsTable({
             placeholder="جستجوی سامانه..."
           />
 
-          <Button onClick={() => setOpenCreate(true)}>
+          <Button onClick={onCreate}>
             افزودن سامانه
           </Button>
         </div>
@@ -127,10 +121,7 @@ export function ApplicationsTable({
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => {
-                      setSelectedApplication(app);
-                      setOpenEdit(true);
-                    }}
+                    onClick={() => onEdit(app)}
                   >
                     ویرایش
                   </Button>
@@ -152,23 +143,6 @@ export function ApplicationsTable({
         />
       </div>
 
-      {/* CREATE */}
-      <CreateApplicationDialog
-        open={openCreate}
-        onOpenChange={setOpenCreate}
-      />
-
-      {/* EDIT */}
-      <EditApplicationDialog
-        application={selectedApplication}
-        open={openEdit}
-        onOpenChange={(open) => {
-          setOpenEdit(open);
-          if (!open) setSelectedApplication(null);
-        }}
-      />
-
-      {/* DELETE CONFIRM */}
       <ConfirmDialog
         open={openDelete}
         onOpenChange={setOpenDelete}
