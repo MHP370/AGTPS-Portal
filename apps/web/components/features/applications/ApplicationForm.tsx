@@ -34,24 +34,31 @@ export function ApplicationForm({
   const [slug, setSlug] = useState("");
   const [categoryId, setCategoryId] = useState("");
 
-  // ✅ وقتی edit هست
-useEffect(() => {
-  if (!application) return;
-
-  setTitle(application.title);
-  setKey(application.key);
-  setSlug(application.slug);
-  setCategoryId(application.category.id);
-}, [application]);
-  // ✅ وقتی create هست (auto select)
   useEffect(() => {
-    if (!application && categories.length > 0) {
+    if (!application) {
+      setTitle("");
+      setKey("");
+      setSlug("");
+      setCategoryId(categories[0]?.id ?? "");
+      return;
+    }
+
+    setTitle(application.title);
+    setKey(application.key);
+    setSlug(application.slug);
+    setCategoryId(application.category.id);
+  }, [application, categories]);
+
+  useEffect(() => {
+    if (!application && !categoryId && categories.length > 0) {
       setCategoryId(categories[0].id);
     }
-  }, [categories, application]);
+  }, [categories, application, categoryId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!categoryId) return;
 
     await onSubmit({
       title,
@@ -63,7 +70,6 @@ useEffect(() => {
 
   return (
     <form onSubmit={submit} className="space-y-5">
-
       <FormField label="عنوان" required>
         <Input value={title} onChange={(e) => setTitle(e.target.value)} />
       </FormField>
@@ -76,12 +82,12 @@ useEffect(() => {
         <Input value={slug} onChange={(e) => setSlug(e.target.value)} />
       </FormField>
 
-      {/* CATEGORY */}
       <FormField label="دسته‌بندی" required>
         <select
           value={categoryId || ""}
           onChange={(e) => setCategoryId(e.target.value)}
           className="w-full rounded-lg bg-slate-800 p-2"
+          disabled={loading || categories.length === 0}
         >
           <option value="">انتخاب دسته‌بندی</option>
 
@@ -98,7 +104,10 @@ useEffect(() => {
       </FormField>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={loading}>
+        <Button
+          type="submit"
+          disabled={loading || !categoryId}
+        >
           {loading
             ? "در حال ذخیره..."
             : application
