@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ApplicationStatus {
+  ACTIVE
+  MAINTENANCE
+  OFFLINE
+  DISABLED
+}
+
+enum NetworkType {
+  INTERNET
+  INTRANET
+  VPN
+}
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -63,32 +76,43 @@ model RolePermission {
   @@id([roleId, permissionId])
 }
 
-
 model Site {
-
   id          String   @id @default(cuid())
-
   code        String   @unique
-
   name        String
 
   description String?
-
   address     String?
-
   phone       String?
-
   email       String?
 
   latitude    Float?
-
   longitude   Float?
 
   logo        String?
-
   image       String?
-
   color       String?
+
+  sortOrder   Int      @default(0)
+
+  isActive    Boolean  @default(true)
+
+  applicationSites ApplicationSite[]
+  news             News[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ApplicationCategory {
+  id          String   @id @default(cuid())
+
+  name        String
+  slug        String   @unique
+
+  icon        String?
+  color       String?
+  description String?
 
   sortOrder   Int      @default(0)
 
@@ -96,25 +120,72 @@ model Site {
 
   applications Application[]
 
-  news         News[]
-
   createdAt   DateTime @default(now())
-
   updatedAt   DateTime @updatedAt
-
 }
 
 model Application {
   id          String   @id @default(cuid())
+
+  key         String   @unique
+  slug        String   @unique
+
   title       String
   description String?
-  url         String
-  icon        String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
 
-  siteId      String
-  site        Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  icon        String?
+
+  color       String?
+
+  status      ApplicationStatus @default(ACTIVE)
+
+  networkType NetworkType @default(INTRANET)
+
+  version     String?
+
+  owner       String?
+
+  supportDepartment String?
+
+  guideUrl    String?
+
+  isFeatured  Boolean @default(false)
+
+  isNew       Boolean @default(false)
+
+  openInNewTab Boolean @default(true)
+
+  sortOrder   Int @default(0)
+
+  isActive    Boolean @default(true)
+
+  categoryId  String
+  category    ApplicationCategory @relation(fields: [categoryId], references: [id])
+
+  sites       ApplicationSite[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ApplicationSite {
+  id            String @id @default(cuid())
+
+  applicationId String
+  siteId        String
+
+  url           String
+
+  isActive      Boolean @default(true)
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  site          Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([applicationId, siteId])
 }
 
 model News {
@@ -158,12 +229,13 @@ model Slider {
 }
 
 model Setting {
-  id          Int      @id @default(1)
+  id           Int    @id @default(1)
 
-  companyName String
-  logo        String?
+  companyName  String
+
+  logo         String?
 
   primaryColor String?
 
-  footerText  String?
+  footerText   String?
 }

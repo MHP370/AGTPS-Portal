@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SitesModule } from './sites/sites.module';
+import { ApplicationsModule } from './applications/applications.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SitesModule } from './sites/sites.module';
     AuthModule,
     UsersModule,
     SitesModule,
+    ApplicationsModule,
   ],
 
   controllers: [AppController],
