@@ -13,12 +13,10 @@ import { Application } from "@/lib/applications";
 
 export default function ApplicationsPage() {
   const { data = [], isLoading: appsLoading } = useApplications();
-  const { data: categories, isLoading: catLoading } = useCategories();
-
-  const safeCategories = categories ?? [];
-
-  console.log("CATEGORIES:", safeCategories);
-  console.log("APPLICATIONS:", data);
+  const {
+    data: categories = [],
+    isLoading: catLoading,
+  } = useCategories();
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
@@ -36,28 +34,36 @@ export default function ApplicationsPage() {
 
   return (
     <div className="space-y-6">
-
       <div>
         <h1 className="text-3xl font-bold">
           مدیریت سامانه‌ها
         </h1>
       </div>
 
-      <ApplicationsTable applications={data} />
+      <ApplicationsTable
+        applications={data}
+        onCreate={() => setOpenCreate(true)}
+        onEdit={(application) => {
+          setSelectedApplication(application);
+          setOpenEdit(true);
+        }}
+      />
 
       <CreateApplicationDialog
         open={openCreate}
         onOpenChange={setOpenCreate}
-        categories={safeCategories}
+        categories={categories}
       />
 
       <EditApplicationDialog
         open={openEdit}
-        onOpenChange={setOpenEdit}
+        onOpenChange={(open) => {
+          setOpenEdit(open);
+          if (!open) setSelectedApplication(null);
+        }}
         application={selectedApplication}
-        categories={safeCategories}
+        categories={categories}
       />
-
     </div>
   );
 }
