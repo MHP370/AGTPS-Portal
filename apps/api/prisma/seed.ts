@@ -20,6 +20,69 @@ async function main() {
       lastName: 'Administrator',
     },
   });
+  
+  // Roles
+const adminRole = await prisma.role.upsert({
+  where: {
+    name: 'admin',
+  },
+  update: {},
+  create: {
+    name: 'admin',
+    title: 'Administrator',
+  },
+});
+
+// Permissions
+const manageApplications = await prisma.permission.upsert({
+  where: {
+    name: 'applications.manage',
+  },
+  update: {},
+  create: {
+    name: 'applications.manage',
+    title: 'Manage Applications',
+  },
+});
+
+// Assign role to admin
+await prisma.userRole.upsert({
+  where: {
+    userId_roleId: {
+      userId: (
+        await prisma.user.findUniqueOrThrow({
+          where: { username: 'admin' },
+        })
+      ).id,
+      roleId: adminRole.id,
+    },
+  },
+  update: {},
+  create: {
+    userId: (
+      await prisma.user.findUniqueOrThrow({
+        where: { username: 'admin' },
+      })
+    ).id,
+    roleId: adminRole.id,
+  },
+});
+
+// Assign permission to role
+await prisma.rolePermission.upsert({
+  where: {
+    roleId_permissionId: {
+      roleId: adminRole.id,
+      permissionId: manageApplications.id,
+    },
+  },
+  update: {},
+  create: {
+    roleId: adminRole.id,
+    permissionId: manageApplications.id,
+  },
+});
+
 
   // Sites
   const tehran = await prisma.site.upsert({

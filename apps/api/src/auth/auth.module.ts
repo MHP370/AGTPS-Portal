@@ -6,9 +6,24 @@ import { AuthService } from './auth.service';
 
 import { UsersModule } from '../users/users.module';
 
+import { PassportModule } from '@nestjs/passport';
+
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
+
+import { Reflector } from '@nestjs/core';
+import { RolesGuard } from './guards/roles.guard';
+
+import { PrismaModule } from '../prisma/prisma.module';
+
+import { PermissionsGuard } from './guards/permissions.guard';
+
 @Module({
   imports: [
     UsersModule,
+    PassportModule,
+    PrismaModule,
 
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'AGTPS_SECRET_KEY_CHANGE_ME',
@@ -20,7 +35,14 @@ import { UsersModule } from '../users/users.module';
 
   controllers: [AuthController],
 
-  providers: [AuthService],
+  providers: [
+  AuthService,
+  JwtStrategy,
+  JwtAuthGuard,
+  RolesGuard,
+  Reflector,
+  PermissionsGuard,
+],
 
   exports: [AuthService],
 })

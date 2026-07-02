@@ -16,6 +16,10 @@ import { UpdateApplicationDto } from './dto/update-application.dto';
 import { CreateApplicationSiteDto } from './dto/create-application-site.dto';
 import { UpdateApplicationSiteDto } from './dto/update-application-site.dto';
 
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+@UseGuards(JwtAuthGuard)
 @Controller('applications')
 export class ApplicationsController {
   constructor(

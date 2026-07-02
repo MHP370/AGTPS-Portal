@@ -20,13 +20,20 @@ export class AuthService {
     const user = await this.usersService.findByUsername(username);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException(
+        'Invalid username or password',
+      );
     }
 
-    const valid = await bcrypt.compare(password, user.password);
+    const valid = await bcrypt.compare(
+      password,
+      user.password,
+    );
 
     if (!valid) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException(
+        'Invalid username or password',
+      );
     }
 
     const payload = {
@@ -34,8 +41,22 @@ export class AuthService {
       username: user.username,
     };
 
+    const access_token =
+      await this.jwtService.signAsync(payload);
+
     return {
-      access_token: await this.jwtService.signAsync(payload),
+      access_token,
+
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+
+        firstName: user.firstName,
+        lastName: user.lastName,
+
+        isActive: user.isActive,
+      },
     };
   }
 }
