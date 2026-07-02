@@ -7,15 +7,24 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+
 import { ApplicationsService } from './applications.service';
+
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
+
+import { CreateApplicationSiteDto } from './dto/create-application-site.dto';
+import { UpdateApplicationSiteDto } from './dto/update-application-site.dto';
 
 @Controller('applications')
 export class ApplicationsController {
   constructor(
     private readonly applicationsService: ApplicationsService,
   ) {}
+
+  // =========================
+  // Applications
+  // =========================
 
   @Get()
   findAll() {
@@ -28,20 +37,42 @@ export class ApplicationsController {
   }
 
   @Post()
-  create(@Body() createApplicationDto: CreateApplicationDto) {
-    return this.applicationsService.create(createApplicationDto);
+  create(@Body() dto: CreateApplicationDto) {
+    return this.applicationsService.create(dto);
   }
 
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() updateApplicationDto: UpdateApplicationDto,
+    @Body() dto: UpdateApplicationDto,
   ) {
-    return this.applicationsService.update(id, updateApplicationDto);
+    return this.applicationsService.update(id, dto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.applicationsService.remove(id);
+  }
+
+  // =========================
+  // Application Sites
+  // =========================
+
+  @Post('sites')
+  createSite(@Body() dto: CreateApplicationSiteDto) {
+    return this.applicationsService.createSite(dto);
+  }
+
+  @Put('sites/:id')
+  updateSite(
+    @Param('id') id: string,
+    @Body() dto: UpdateApplicationSiteDto,
+  ) {
+    return this.applicationsService.updateSite(id, dto);
+  }
+
+  @Delete('sites/:id')
+  removeSite(@Param('id') id: string) {
+    return this.applicationsService.removeSite(id);
   }
 }
