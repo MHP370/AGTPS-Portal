@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+
 import { useCreateApplication } from "@/hooks/useApplications";
+import { type Category, type CreateApplicationDto } from "@/lib/applications";
 
 import { Dialog } from "@/components/ui/Dialog";
 
@@ -9,36 +12,47 @@ import { ApplicationForm } from "./ApplicationForm";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-
-  // 🔥 اضافه شد
-  categories?: {
-    id: string;
-    name: string;
-  }[];
+  categories?: Category[];
 }
 
 export function CreateApplicationDialog({
   open,
   onOpenChange,
-  categories = [], // 🔥 مهم
+  categories = [],
 }: Props) {
+  const [error, setError] = useState("");
   const createApplication = useCreateApplication();
 
-  async function handleSubmit(dto: any) {
-    await createApplication.mutateAsync(dto);
+  function handleOpenChange(nextOpen: boolean) {
+    onOpenChange(nextOpen);
+    if (!nextOpen) setError("");
+  }
 
-    onOpenChange(false);
+  async function handleSubmit(dto: CreateApplicationDto) {
+    setError("");
+
+    try {
+      await createApplication.mutateAsync(dto);
+      handleOpenChange(false);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "ایجاد سامانه انجام نشد.",
+      );
+    }
   }
 
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       title="افزودن سامانه"
     >
       <ApplicationForm
-        categories={categories}   // ✅ حالا درست شد
+        categories={categories}
         loading={createApplication.isPending}
+        error={error}
         onSubmit={handleSubmit}
       />
     </Dialog>

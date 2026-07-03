@@ -9,29 +9,24 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 import { Application } from "@/lib/applications";
 
-import { CreateApplicationDialog } from "./CreateApplicationDialog";
-import { EditApplicationDialog } from "./EditApplicationDialog";
-
 import { useDeleteApplication } from "@/hooks/useApplications";
 
 interface Props {
   applications: Application[];
+  onCreate: () => void;
+  onEdit: (application: Application) => void;
 }
 
 export function ApplicationsTable({
   applications,
+  onCreate,
+  onEdit,
 }: Props) {
   const [search, setSearch] = useState("");
 
-  const [openCreate, setOpenCreate] = useState(false);
-
-  const [openEdit, setOpenEdit] = useState(false);
-  const [selectedApplication, setSelectedApplication] =
-    useState<Application | null>(null);
-
-  // 🟢 DELETE STATE
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
   const deleteApplication = useDeleteApplication();
 
@@ -41,7 +36,7 @@ export function ApplicationsTable({
     if (!keyword) return applications;
 
     return applications.filter((app) =>
-      [app.title, app.key, app.category.name]
+      [app.title, app.key, app.category?.name ?? ""]
         .join(" ")
         .toLowerCase()
         .includes(keyword),
@@ -51,15 +46,30 @@ export function ApplicationsTable({
   async function handleDelete() {
     if (!selectedId) return;
 
-    await deleteApplication.mutateAsync(selectedId);
+    setDeleteError("");
 
-    setOpenDelete(false);
-    setSelectedId(null);
+    try {
+      await deleteApplication.mutateAsync(selectedId);
+      setOpenDelete(false);
+      setSelectedId(null);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error
+          ? err.message
+          : "حذف سامانه انجام نشد.",
+      );
+    }
   }
 
   return (
     <>
       <div className="space-y-5">
+        {deleteError && (
+          <div className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200">
+            {deleteError}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-4">
           <SearchBox
             value={search}
@@ -67,7 +77,7 @@ export function ApplicationsTable({
             placeholder="جستجوی سامانه..."
           />
 
-          <Button onClick={() => setOpenCreate(true)}>
+          <Button onClick={onCreate}>
             افزودن سامانه
           </Button>
         </div>
@@ -93,7 +103,8 @@ export function ApplicationsTable({
             {
               key: "category",
               title: "دسته‌بندی",
-              render: (app) => app.category.name,
+              render: (app) =>
+                app.category?.name ?? "بدون دسته‌بندی",
             },
             {
               key: "network",
@@ -127,10 +138,7 @@ export function ApplicationsTable({
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => {
-                      setSelectedApplication(app);
-                      setOpenEdit(true);
-                    }}
+                    onClick={() => onEdit(app)}
                   >
                     ویرایش
                   </Button>
@@ -138,7 +146,9 @@ export function ApplicationsTable({
                   <Button
                     size="sm"
                     variant="danger"
+                    disabled={deleteApplication.isPending}
                     onClick={() => {
+                      setDeleteError("");
                       setSelectedId(app.id);
                       setOpenDelete(true);
                     }}
@@ -152,26 +162,12 @@ export function ApplicationsTable({
         />
       </div>
 
-      {/* CREATE */}
-      <CreateApplicationDialog
-        open={openCreate}
-        onOpenChange={setOpenCreate}
-      />
-
-      {/* EDIT */}
-      <EditApplicationDialog
-        application={selectedApplication}
-        open={openEdit}
-        onOpenChange={(open) => {
-          setOpenEdit(open);
-          if (!open) setSelectedApplication(null);
-        }}
-      />
-
-      {/* DELETE CONFIRM */}
       <ConfirmDialog
         open={openDelete}
-        onOpenChange={setOpenDelete}
+        onOpenChange={(open) => {
+          setOpenDelete(open);
+          if (!open) setSelectedId(null);
+        }}
         title="حذف سامانه"
         description="آیا از حذف این سامانه مطمئن هستید؟"
         loading={deleteApplication.isPending}

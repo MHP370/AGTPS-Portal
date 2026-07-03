@@ -1,6 +1,12 @@
 "use client";
 
-import { Application } from "@/lib/applications";
+import { useState } from "react";
+
+import {
+  Application,
+  type Category,
+  type CreateApplicationDto,
+} from "@/lib/applications";
 
 import { useUpdateApplication } from "@/hooks/useApplications";
 
@@ -12,36 +18,56 @@ interface Props {
   application: Application | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  categories?: Category[];
 }
 
 export function EditApplicationDialog({
   application,
   open,
   onOpenChange,
+  categories = [],
 }: Props) {
-  const updateApplication =
-    useUpdateApplication();
+  const [error, setError] = useState("");
+  const updateApplication = useUpdateApplication();
+
+  function handleOpenChange(nextOpen: boolean) {
+    onOpenChange(nextOpen);
+    if (!nextOpen) setError("");
+  }
 
   if (!open || !application) return null;
 
-  async function handleSubmit(dto: any) {
-    await updateApplication.mutateAsync({
-      id: application.id,
-      dto,
-    });
+  const currentApplication = application;
 
-    onOpenChange(false);
+  async function handleSubmit(dto: CreateApplicationDto) {
+    setError("");
+
+    try {
+      await updateApplication.mutateAsync({
+        id: currentApplication.id,
+        dto,
+      });
+      handleOpenChange(false);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "ویرایش سامانه انجام نشد.",
+      );
+    }
   }
 
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       title="ویرایش سامانه"
     >
       <ApplicationForm
-        application={application}
+        application={currentApplication}
+        categories={categories}
         loading={updateApplication.isPending}
+        error={error}
         onSubmit={handleSubmit}
       />
     </Dialog>
