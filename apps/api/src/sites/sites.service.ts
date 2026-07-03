@@ -10,9 +10,14 @@ export class SitesService {
 
   findAll() {
     return this.prisma.site.findMany({
-      orderBy: {
-        sortOrder: 'asc',
-      },
+      orderBy: [
+        {
+          sortOrder: 'asc',
+        },
+        {
+          name: 'asc',
+        },
+      ],
     });
   }
 
@@ -50,3 +55,4 @@ export class SitesService {
     });
   }
 }
+

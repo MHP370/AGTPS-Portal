@@ -82,6 +82,8 @@ model Site {
   name        String
 
   description String?
+  baseUrl     String?
+  ipRange     String?
   address     String?
   phone       String?
   email       String?
@@ -239,3 +241,4 @@ model Setting {
 
   footerText   String?
 }
+

@@ -20,6 +20,14 @@ export class CreateSiteDto {
 
   @IsOptional()
   @IsString()
+  baseUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  ipRange?: string;
+
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @IsOptional()
@@ -59,3 +67,4 @@ export class CreateSiteDto {
   @IsBoolean()
   isActive?: boolean;
 }
+

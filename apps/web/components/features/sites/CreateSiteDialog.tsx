@@ -2,43 +2,39 @@
 
 import { useState } from "react";
 
-import { useCreateApplication } from "@/hooks/useApplications";
-import { type Category, type CreateApplicationDto } from "@/lib/applications";
-
 import { Dialog } from "@/components/ui/Dialog";
-
-import { ApplicationForm } from "./ApplicationForm";
+import { useCreateSite } from "@/hooks/useSites";
+import type { CreateSiteDto } from "@/lib/sites";
+import { SiteForm } from "./SiteForm";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  categories?: Category[];
 }
 
-export function CreateApplicationDialog({
+export function CreateSiteDialog({
   open,
   onOpenChange,
-  categories = [],
 }: Props) {
   const [error, setError] = useState("");
-  const createApplication = useCreateApplication();
+  const createSite = useCreateSite();
 
   function handleOpenChange(nextOpen: boolean) {
     onOpenChange(nextOpen);
     if (!nextOpen) setError("");
   }
 
-  async function handleSubmit(dto: CreateApplicationDto) {
+  async function handleSubmit(dto: CreateSiteDto) {
     setError("");
 
     try {
-      await createApplication.mutateAsync(dto);
+      await createSite.mutateAsync(dto);
       handleOpenChange(false);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "ایجاد سامانه انجام نشد.",
+          : "ایجاد سایت انجام نشد.",
       );
     }
   }
@@ -47,11 +43,10 @@ export function CreateApplicationDialog({
     <Dialog
       open={open}
       onOpenChange={handleOpenChange}
-      title="افزودن سامانه"
+      title="افزودن سایت"
     >
-      <ApplicationForm
-        categories={categories}
-        loading={createApplication.isPending}
+      <SiteForm
+        loading={createSite.isPending}
         error={error}
         onSubmit={handleSubmit}
       />
