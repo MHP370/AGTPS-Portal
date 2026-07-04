@@ -7,18 +7,21 @@ import {
   type Category,
   type CreateApplicationDto,
 } from "@/lib/applications";
+import type { Site } from "@/lib/sites";
 
 import { useUpdateApplication } from "@/hooks/useApplications";
 
 import { Dialog } from "@/components/ui/Dialog";
 
 import { ApplicationForm } from "./ApplicationForm";
+import { ApplicationSiteUrls } from "./ApplicationSiteUrls";
 
 interface Props {
   application: Application | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories?: Category[];
+  sites?: Site[];
 }
 
 export function EditApplicationDialog({
@@ -26,6 +29,7 @@ export function EditApplicationDialog({
   open,
   onOpenChange,
   categories = [],
+  sites = [],
 }: Props) {
   const [error, setError] = useState("");
   const updateApplication = useUpdateApplication();
@@ -70,6 +74,13 @@ export function EditApplicationDialog({
         error={error}
         onSubmit={handleSubmit}
       />
+
+      <div className="mt-6">
+        <ApplicationSiteUrls
+          application={selectedApplication}
+          sites={sites}
+        />
+      </div>
     </Dialog>
   );
 }

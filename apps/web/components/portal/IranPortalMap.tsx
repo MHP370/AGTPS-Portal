@@ -7,6 +7,7 @@ import { useSites } from "@/hooks/useSites";
 import type { Site } from "@/lib/sites";
 
 type MapSite = {
+  id: string;
   title: string;
   subtitle: string;
   x: string;
@@ -73,6 +74,7 @@ function coordinateToPosition(site: Site, index: number) {
 
 function toMapSite(site: Site, index: number): MapSite {
   return {
+    id: site.id,
     title: site.name,
     subtitle: site.description || site.code,
     color: site.color || (index % 2 === 0 ? "#22d3ee" : "#fbbf24"),
@@ -80,14 +82,27 @@ function toMapSite(site: Site, index: number): MapSite {
   };
 }
 
-export default function IranPortalMap() {
+interface IranPortalMapProps {
+  selectedSiteId?: string | null;
+  onSiteSelect?: (siteId: string) => void;
+}
+
+export default function IranPortalMap({
+  selectedSiteId,
+  onSiteSelect,
+}: IranPortalMapProps) {
   const { data: sites = [], isLoading, isError } = useSites();
   const mapSites = useMemo(() => {
     const activeSites = sites
       .filter((site) => site.isActive)
       .map(toMapSite);
 
-    return activeSites.length > 0 ? activeSites : portalSites;
+    return activeSites.length > 0
+      ? activeSites
+      : portalSites.map((site) => ({
+          id: site.title,
+          ...site,
+        }));
   }, [sites]);
 
   return (
@@ -124,9 +139,21 @@ export default function IranPortalMap() {
       </div>
 
       {mapSites.map((site) => (
-        <div key={site.title} className="absolute z-20 -translate-x-1/2 -translate-y-1/2" style={{ left: site.x, top: site.y }}>
+        <button
+          key={site.title}
+          type="button"
+          className="absolute z-20 -translate-x-1/2 -translate-y-1/2 text-right outline-none"
+          style={{ left: site.x, top: site.y }}
+          onClick={() => onSiteSelect?.(site.id)}
+          disabled={!onSiteSelect}
+          aria-pressed={selectedSiteId === site.id}
+        >
           <div
-            className="relative grid size-16 place-items-center rounded-full bg-current/20 ring-2"
+            className={`relative grid size-16 place-items-center rounded-full bg-current/20 ring-2 transition ${
+              selectedSiteId === site.id
+                ? "scale-110 ring-4 ring-white"
+                : ""
+            }`}
             style={{
               color: site.color,
               boxShadow: `0 0 34px ${site.color}`,
@@ -141,7 +168,7 @@ export default function IranPortalMap() {
               {site.subtitle}
             </span>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );

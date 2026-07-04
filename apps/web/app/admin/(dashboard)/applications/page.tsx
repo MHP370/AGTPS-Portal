@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useApplications } from "@/hooks/useApplications";
 import { useCategories } from "@/hooks/useCategories";
+import { useSites } from "@/hooks/useSites";
 
 import { ApplicationsTable } from "@/components/features/applications/ApplicationsTable";
 import { CreateApplicationDialog } from "@/components/features/applications/CreateApplicationDialog";
@@ -29,13 +30,21 @@ export default function ApplicationsPage() {
     refetch: refetchCategories,
   } = useCategories();
 
+  const {
+    data: sites = [],
+    isLoading: sitesLoading,
+    isError: sitesError,
+    error: sitesLoadError,
+    refetch: refetchSites,
+  } = useSites();
+
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
 
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
 
-  if (appsLoading || catLoading) {
+  if (appsLoading || catLoading || sitesLoading) {
     return (
       <div className="py-10 text-center">
         در حال بارگذاری...
@@ -43,7 +52,7 @@ export default function ApplicationsPage() {
     );
   }
 
-  if (appsError || categoriesError) {
+  if (appsError || categoriesError || sitesError) {
     return (
       <div className="space-y-4 rounded-xl border border-red-900/60 bg-red-950/30 p-5 text-red-200">
         <h1 className="text-xl font-semibold">
@@ -53,6 +62,7 @@ export default function ApplicationsPage() {
         <p className="text-sm text-red-200/80">
           {(applicationsError as Error | undefined)?.message ||
             (categoryError as Error | undefined)?.message ||
+            (sitesLoadError as Error | undefined)?.message ||
             "ارتباط با سرویس برقرار نشد."}
         </p>
 
@@ -61,6 +71,7 @@ export default function ApplicationsPage() {
           onClick={() => {
             void refetchApplications();
             void refetchCategories();
+            void refetchSites();
           }}
         >
           تلاش دوباره
@@ -100,6 +111,7 @@ export default function ApplicationsPage() {
         }}
         application={selectedApplication}
         categories={categories}
+        sites={sites}
       />
     </div>
   );

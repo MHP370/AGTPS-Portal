@@ -13,6 +13,16 @@ export interface ApplicationSite {
   site: Site;
 }
 
+export interface CreateApplicationSiteDto {
+  applicationId: string;
+  siteId: string;
+  url: string;
+  isActive?: boolean;
+}
+
+export type UpdateApplicationSiteDto =
+  Partial<CreateApplicationSiteDto>;
+
 export interface Category {
   id: string;
   name: string;
@@ -85,6 +95,10 @@ export async function getApplications() {
   return api.get<Application[]>("/applications");
 }
 
+export async function getPortalApplications() {
+  return api.get<Application[]>("/portal/applications");
+}
+
 export async function getApplication(id: string) {
   return api.get<Application>(`/applications/${id}`);
 }
@@ -110,6 +124,36 @@ export async function deleteApplication(id: string) {
     `/applications/${id}`,
   );
 }
+
+export async function createApplicationSite(
+  dto: CreateApplicationSiteDto,
+) {
+  return api.post<ApplicationSite>(
+    "/applications/sites",
+    dto,
+  );
+}
+
+export async function updateApplicationSite(
+  id: string,
+  dto: UpdateApplicationSiteDto,
+) {
+  return api.put<ApplicationSite>(
+    `/applications/sites/${id}`,
+    dto,
+  );
+}
+
+export async function deleteApplicationSite(id: string) {
+  return api.delete<void>(
+    `/applications/sites/${id}`,
+  );
+}
+
 export const applicationQueryKey = [
   "applications",
+];
+
+export const portalApplicationQueryKey = [
+  "portal-applications",
 ];

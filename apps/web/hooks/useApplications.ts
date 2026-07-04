@@ -9,16 +9,30 @@ import {
 import {
   applicationQueryKey,
   createApplication,
+  createApplicationSite,
   deleteApplication,
+  deleteApplicationSite,
   getApplications,
+  getPortalApplications,
+  portalApplicationQueryKey,
   updateApplication,
+  updateApplicationSite,
+  type CreateApplicationSiteDto,
   type CreateApplicationDto,
+  type UpdateApplicationSiteDto,
 } from "@/lib/applications";
 
 export function useApplications() {
   return useQuery({
     queryKey: applicationQueryKey,
     queryFn: getApplications,
+  });
+}
+
+export function usePortalApplications() {
+  return useQuery({
+    queryKey: portalApplicationQueryKey,
+    queryFn: getPortalApplications,
   });
 }
 
@@ -67,6 +81,65 @@ export function useDeleteApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: applicationQueryKey,
+      });
+    },
+  });
+}
+
+export function useCreateApplicationSite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: CreateApplicationSiteDto) =>
+      createApplicationSite(dto),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: applicationQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
+      });
+    },
+  });
+}
+
+export function useUpdateApplicationSite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: string;
+      dto: UpdateApplicationSiteDto;
+    }) => updateApplicationSite(id, dto),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: applicationQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
+      });
+    },
+  });
+}
+
+export function useDeleteApplicationSite() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      deleteApplicationSite(id),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: applicationQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
       });
     },
   });

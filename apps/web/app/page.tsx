@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import {
   ChevronLeft,
   CloudDownload,
@@ -9,11 +12,11 @@ import {
 import Logo from "@/components/layout/Logo";
 import PersianClock from "@/components/portal/PersianClock";
 import IranPortalMap from "@/components/portal/IranPortalMap";
+import PortalApplicationsGrid from "@/components/portal/PortalApplicationsGrid";
 import {
   hrNotices,
   iranCalendarEvents,
   managementNotices,
-  portalApps,
   portalDownloads,
   portalMeetings,
   portalNavItems,
@@ -40,6 +43,7 @@ function GlassPanel({ children, className = "", id }: { children: React.ReactNod
 }
 
 export default function Home() {
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const weekDays = ["یکشنبه", "دوشنبه", "امروز", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
   const monthDays = ["۸", "۹", "۱۰", "۱۱", "۱۲", "۱۳", "۱۴"];
 
@@ -120,22 +124,16 @@ export default function Home() {
               </div>
             </GlassPanel>
 
-            <IranPortalMap />
+            <IranPortalMap
+              selectedSiteId={selectedSiteId}
+              onSiteSelect={setSelectedSiteId}
+            />
 
             <GlassPanel id="systems" className="!p-4">
-              <h2 className="mb-4 text-lg font-black text-cyan-200">دسترسی سریع به سامانه ها</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                {portalApps.map((app) => {
-                  const Icon = app.icon;
-                  return (
-                    <Link key={app.title} href="#" className={`rounded-2xl border border-white/10 bg-gradient-to-br ${app.color} p-4 text-center transition hover:-translate-y-1 hover:border-cyan-200/40`}>
-                      <Icon className="mx-auto mb-2 text-cyan-100" size={34} />
-                      <h3 className="font-black">{app.title}</h3>
-                      <p className="mt-1 text-xs leading-5 text-slate-300">{app.description}</p>
-                    </Link>
-                  );
-                })}
-              </div>
+              <PortalApplicationsGrid
+                selectedSiteId={selectedSiteId}
+                onSiteSelect={setSelectedSiteId}
+              />
             </GlassPanel>
           </section>
 
