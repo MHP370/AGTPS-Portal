@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { login } from "@/lib/auth";
+import { hasAuthSession, login, setAuthSession } from "@/lib/auth";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -12,12 +12,25 @@ import { Input } from "@/components/ui/Input";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedNextPath = searchParams.get("next");
+  const nextPath =
+    requestedNextPath?.startsWith("/admin/") &&
+    !requestedNextPath.startsWith("/admin/login")
+      ? requestedNextPath
+      : "/admin/dashboard";
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (hasAuthSession()) {
+      router.replace(nextPath);
+    }
+  }, [nextPath, router]);
 
   async function handleSubmit(
     e: React.FormEvent<HTMLFormElement>,
@@ -33,17 +46,9 @@ export default function AdminLoginPage() {
         password,
       });
 
-      localStorage.setItem(
-        "access_token",
-        result.access_token,
-      );
+      setAuthSession(result);
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify(result.user),
-      );
-
-      router.push("/admin/dashboard");
+      router.push(nextPath);
       router.refresh();
     } catch (err: any) {
       setError(

@@ -1,6 +1,19 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002/api";
 
+const ACCESS_TOKEN_KEY = "access_token";
+const AUTH_USER_KEY = "user";
+
+function clearBrowserAuthSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+  document.cookie = `${ACCESS_TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax`;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -30,17 +43,17 @@ async function request<T>(
     headers,
     ...rest
   } = options;
-  
+
   let authToken = token;
 
-if (
-  !authToken &&
-  typeof window !== "undefined"
-) {
-  authToken =
-    localStorage.getItem("access_token") ?? undefined;
-}
- 
+  if (
+    !authToken &&
+    typeof window !== "undefined"
+  ) {
+    authToken =
+      localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     cache: "no-store",
@@ -65,6 +78,17 @@ if (
 
     ...rest,
   });
+
+  if (response.status === 401) {
+    clearBrowserAuthSession();
+
+    if (typeof window !== "undefined") {
+      const next = encodeURIComponent(
+        `${window.location.pathname}${window.location.search}`,
+      );
+      window.location.assign(`/admin/login?next=${next}`);
+    }
+  }
 
   if (!response.ok) {
     let message = response.statusText;
