@@ -67,7 +67,7 @@ export type PortalSite = {
   subtitle: string;
   x: string;
   y: string;
-  color: "cyan" | "amber";
+  color: string;
 };
 
 export const portalNavItems: PortalNavItem[] = [
@@ -130,8 +130,8 @@ export const portalApps: PortalApp[] = [
 ];
 
 export const portalSites: PortalSite[] = [
-  { title: "دفتر تهران", subtitle: "دفتر مرکزی", x: "48%", y: "42%", color: "cyan" },
-  { title: "سایت عسلویه", subtitle: "سایت عملیاتی", x: "55%", y: "72%", color: "amber" },
+  { title: "دفتر تهران", subtitle: "دفتر مرکزی", x: "48%", y: "42%", color: "#22d3ee" },
+  { title: "سایت عسلویه", subtitle: "سایت عملیاتی", x: "55%", y: "72%", color: "#fbbf24" },
 ];
 
 export const iranCalendarEvents = ["روز ملی فناوری اطلاعات", "هفته بهره‌وری سازمانی", "یادآوری جلسات ماهانه"];

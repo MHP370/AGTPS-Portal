@@ -1,7 +1,95 @@
+"use client";
+
+import { useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { portalSites } from "@/lib/portal";
+import { useSites } from "@/hooks/useSites";
+import type { Site } from "@/lib/sites";
+
+type MapSite = {
+  title: string;
+  subtitle: string;
+  x: string;
+  y: string;
+  color: string;
+};
+
+const knownSitePositions: Record<string, Pick<MapSite, "x" | "y">> = {
+  teh: {
+    x: "48%",
+    y: "42%",
+  },
+  tehran: {
+    x: "48%",
+    y: "42%",
+  },
+  asl: {
+    x: "55%",
+    y: "72%",
+  },
+  asaluyeh: {
+    x: "55%",
+    y: "72%",
+  },
+  assaluyeh: {
+    x: "55%",
+    y: "72%",
+  },
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function coordinateToPosition(site: Site, index: number) {
+  if (
+    typeof site.latitude === "number" &&
+    typeof site.longitude === "number"
+  ) {
+    const longitudeRatio = (site.longitude - 44) / (64 - 44);
+    const latitudeRatio = (40 - site.latitude) / (40 - 25);
+
+    return {
+      x: `${clamp(18 + longitudeRatio * 64, 18, 82).toFixed(1)}%`,
+      y: `${clamp(20 + latitudeRatio * 58, 20, 78).toFixed(1)}%`,
+    };
+  }
+
+  const normalizedCode = site.code.trim().toLowerCase();
+  const normalizedName = site.name.trim().toLowerCase();
+  const knownPosition =
+    knownSitePositions[normalizedCode] ??
+    knownSitePositions[normalizedName];
+
+  if (knownPosition) {
+    return knownPosition;
+  }
+
+  return {
+    x: `${38 + (index % 4) * 8}%`,
+    y: `${36 + Math.floor(index / 4) * 10}%`,
+  };
+}
+
+function toMapSite(site: Site, index: number): MapSite {
+  return {
+    title: site.name,
+    subtitle: site.description || site.code,
+    color: site.color || (index % 2 === 0 ? "#22d3ee" : "#fbbf24"),
+    ...coordinateToPosition(site, index),
+  };
+}
 
 export default function IranPortalMap() {
+  const { data: sites = [], isLoading, isError } = useSites();
+  const mapSites = useMemo(() => {
+    const activeSites = sites
+      .filter((site) => site.isActive)
+      .map(toMapSite);
+
+    return activeSites.length > 0 ? activeSites : portalSites;
+  }, [sites]);
+
   return (
     <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] border border-cyan-300/10 bg-slate-950/20 p-4 md:min-h-[560px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.18),transparent_35%),linear-gradient(rgba(56,189,248,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.07)_1px,transparent_1px)] bg-[size:100%_100%,56px_56px,56px_56px]" />
@@ -27,14 +115,31 @@ export default function IranPortalMap() {
         <path d="M224 128 L250 220 L144 180 M316 120 L330 220 L250 220 L210 300 M385 86 L430 190 L330 220 M480 116 L465 245 L540 300 M610 148 L540 300 L642 350 M118 274 L210 300 L172 388 M312 454 L350 340 L438 474 M525 504 L520 390 L586 446" fill="none" stroke="#bae6fd" strokeOpacity="0.35" strokeWidth="1.5" />
       </svg>
 
-      {portalSites.map((site) => (
+      <div className="absolute right-5 top-5 z-20 rounded-full border border-white/15 bg-slate-950/70 px-4 py-2 text-xs font-bold text-slate-200 backdrop-blur-xl">
+        {isLoading
+          ? "در حال دریافت سایت‌ها..."
+          : isError
+            ? "نمایش داده پیش‌فرض"
+            : `${mapSites.length} سایت فعال`}
+      </div>
+
+      {mapSites.map((site) => (
         <div key={site.title} className="absolute z-20 -translate-x-1/2 -translate-y-1/2" style={{ left: site.x, top: site.y }}>
-          <div className={`relative grid size-16 place-items-center rounded-full ${site.color === "cyan" ? "bg-cyan-400/20 text-cyan-200 ring-cyan-300/70" : "bg-amber-400/20 text-amber-200 ring-amber-300/70"} ring-2 shadow-[0_0_34px_currentColor]`}>
+          <div
+            className="relative grid size-16 place-items-center rounded-full bg-current/20 ring-2"
+            style={{
+              color: site.color,
+              boxShadow: `0 0 34px ${site.color}`,
+            }}
+          >
             <span className="absolute size-24 animate-ping rounded-full bg-current opacity-20" />
             <MapPin size={34} fill="currentColor" className="relative z-10" />
           </div>
           <div className="absolute right-12 top-5 whitespace-nowrap rounded-xl border border-white/20 bg-slate-950/75 px-5 py-2 text-sm font-bold text-white shadow-2xl backdrop-blur-xl">
-            {site.title}
+            <span>{site.title}</span>
+            <span className="mt-1 block text-[11px] font-medium text-slate-400">
+              {site.subtitle}
+            </span>
           </div>
         </div>
       ))}

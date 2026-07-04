@@ -7,6 +7,12 @@ export interface Site {
   description?: string;
   baseUrl?: string;
   ipRange?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  latitude?: number;
+  longitude?: number;
+  color?: string;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -19,6 +25,12 @@ export interface CreateSiteDto {
   description?: string;
   baseUrl?: string;
   ipRange?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  latitude?: number;
+  longitude?: number;
+  color?: string;
   sortOrder?: number;
   isActive?: boolean;
 }

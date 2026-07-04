@@ -152,6 +152,26 @@ export default function SitesPage() {
             ),
           },
           {
+            key: "location",
+            title: "موقعیت نقشه",
+            render: (site) => (
+              <div className="flex items-center gap-2 text-xs text-slate-300">
+                <span
+                  className="size-3 rounded-full"
+                  style={{
+                    backgroundColor: site.color || "#22d3ee",
+                  }}
+                />
+                <span>
+                  {site.latitude !== undefined &&
+                  site.longitude !== undefined
+                    ? `${site.latitude}, ${site.longitude}`
+                    : "پیش‌فرض"}
+                </span>
+              </div>
+            ),
+          },
+          {
             key: "status",
             title: "وضعیت",
             render: (site) => (
