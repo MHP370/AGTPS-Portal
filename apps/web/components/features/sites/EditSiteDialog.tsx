@@ -28,12 +28,14 @@ export function EditSiteDialog({
 
   if (!open || !site) return null;
 
+  const selectedSite = site;
+
   async function handleSubmit(dto: CreateSiteDto) {
     setError("");
 
     try {
       await updateSite.mutateAsync({
-        id: site.id,
+        id: selectedSite.id,
         dto,
       });
       handleOpenChange(false);
@@ -53,7 +55,7 @@ export function EditSiteDialog({
       title="ویرایش سایت"
     >
       <SiteForm
-        site={site}
+        site={selectedSite}
         loading={updateSite.isPending}
         error={error}
         onSubmit={handleSubmit}

@@ -37,12 +37,14 @@ export function EditApplicationDialog({
 
   if (!open || !application) return null;
 
+  const selectedApplication = application;
+
   async function handleSubmit(dto: CreateApplicationDto) {
     setError("");
 
     try {
       await updateApplication.mutateAsync({
-        id: application.id,
+        id: selectedApplication.id,
         dto,
       });
       handleOpenChange(false);
@@ -62,7 +64,7 @@ export function EditApplicationDialog({
       title="ویرایش سامانه"
     >
       <ApplicationForm
-        application={application}
+        application={selectedApplication}
         categories={categories}
         loading={updateApplication.isPending}
         error={error}

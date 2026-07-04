@@ -36,11 +36,13 @@ export function EditCategoryDialog({
 
   if (!category) return null;
 
+  const selectedCategory = category;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
 
     await updateCategory.mutateAsync({
-      id: category.id,
+      id: selectedCategory.id,
       dto: {
         name,
         slug,

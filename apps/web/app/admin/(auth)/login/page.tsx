@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { hasAuthSession, login, setAuthSession } from "@/lib/auth";
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedNextPath = searchParams.get("next");
@@ -123,5 +123,13 @@ export default function AdminLoginPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginForm />
+    </Suspense>
   );
 }
