@@ -12,6 +12,11 @@ export interface PortalNotification {
   createdAt: string;
 }
 
+export interface PushConfig {
+  enabled: boolean;
+  publicKey: string | null;
+}
+
 export const notificationsQueryKey = ["notifications"];
 
 export function getNotifications() {
@@ -20,4 +25,20 @@ export function getNotifications() {
 
 export function markNotificationRead(id: string) {
   return api.put<PortalNotification>(`/notifications/${id}/read`);
+}
+
+export function getPushConfig() {
+  return api.get<PushConfig>("/notifications/push/config");
+}
+
+export function subscribeToPushNotifications(
+  subscription: PushSubscriptionJSON,
+) {
+  return api.post("/notifications/push/subscribe", {
+    ...subscription,
+    userAgent:
+      typeof navigator !== "undefined"
+        ? navigator.userAgent
+        : undefined,
+  });
 }
