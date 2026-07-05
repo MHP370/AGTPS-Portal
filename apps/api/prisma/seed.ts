@@ -77,6 +77,10 @@ const permissionDefinitions = [
     name: 'users.manage',
     title: 'Manage Users',
   },
+  {
+    name: 'downloads.manage',
+    title: 'Manage Downloads',
+  },
 ];
 
 const permissions = await Promise.all(
@@ -221,6 +225,60 @@ await Promise.all(
       url: 'http://erp.agtps.net',
     },
   });
+
+  const downloadSeeds = [
+    {
+      title: 'Google Chrome',
+      version: 'نسخه سازمانی',
+      fileUrl: 'https://www.google.com/chrome/',
+      category: 'مرورگر',
+      icon: 'Globe',
+      color: 'text-emerald-300',
+      sortOrder: 1,
+    },
+    {
+      title: 'AnyDesk',
+      version: 'نسخه پشتیبانی',
+      fileUrl: 'https://anydesk.com/',
+      category: 'پشتیبانی',
+      icon: 'Plane',
+      color: 'text-rose-300',
+      sortOrder: 2,
+    },
+    {
+      title: 'FortiClient VPN',
+      version: 'VPN',
+      fileUrl: 'https://www.fortinet.com/support/product-downloads',
+      category: 'شبکه',
+      icon: 'ShieldCheck',
+      color: 'text-sky-300',
+      sortOrder: 3,
+    },
+    {
+      title: 'Microsoft Office',
+      version: 'نسخه 2021',
+      fileUrl: 'https://www.office.com/',
+      category: 'اداری',
+      icon: 'BriefcaseBusiness',
+      color: 'text-orange-300',
+      sortOrder: 4,
+    },
+  ];
+
+  await Promise.all(
+    downloadSeeds.map((download) =>
+      prisma.portalDownload.upsert({
+        where: {
+          id: download.title,
+        },
+        update: download,
+        create: {
+          id: download.title,
+          ...download,
+        },
+      }),
+    ),
+  );
 
   console.log('✅ Seed completed.');
 }

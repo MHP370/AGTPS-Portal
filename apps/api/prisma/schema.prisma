@@ -66,6 +66,7 @@ model User {
   notes        PortalNote[]
   reminders    PortalReminder[]
   tasks        PortalTask[]
+  downloads    PortalDownload[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -427,6 +428,25 @@ model PortalTask {
   status      TaskStatus @default(TODO)
   priority    Int @default(1)
 
+  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PortalDownload {
+  id          String @id @default(cuid())
+  title       String
+  description String? @db.Text
+  version     String?
+  fileUrl     String
+  category    String?
+  icon        String?
+  color       String?
+  sortOrder   Int @default(0)
+  isActive    Boolean @default(true)
+
+  ownerId     String?
   owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
   createdAt   DateTime @default(now())

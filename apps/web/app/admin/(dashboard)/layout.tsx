@@ -69,6 +69,13 @@ export default function AdminLayout({
             </Link>
 
             <Link
+              href="/admin/downloads"
+              className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
+            >
+              دانلودها
+            </Link>
+
+            <Link
               href="/admin/directory"
               className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
             >

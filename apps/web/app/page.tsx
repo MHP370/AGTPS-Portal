@@ -9,7 +9,13 @@ import {
   Download,
   Plus,
   Settings,
+  Globe,
+  Plane,
+  ShieldCheck,
+  BriefcaseBusiness,
+  FileText,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import Logo from "@/components/layout/Logo";
 import PersianClock from "@/components/portal/PersianClock";
@@ -20,6 +26,7 @@ import { Input } from "@/components/ui/Input";
 import { PersianDateInput } from "@/components/ui/PersianDateInput";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
+import { useDownloads } from "@/hooks/useDownloads";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useNews } from "@/hooks/useNews";
 import {
@@ -37,13 +44,27 @@ import {
 } from "@/hooks/useWorkspace";
 import {
   hrNotices,
-  iranCalendarEvents,
   managementNotices,
   portalDownloads,
-  portalMeetings,
   portalNavItems,
   systemStatuses,
 } from "@/lib/portal";
+import { getIranCalendarEvents, iranFixedCalendarEvents } from "@/lib/iran-calendar-events";
+import {
+  getJalaliMonthLength,
+  gregorianToJalali,
+  jalaliMonthNames,
+  jalaliToGregorian,
+} from "@/lib/jalali";
+
+const downloadIconMap: Record<string, LucideIcon> = {
+  CloudDownload,
+  Globe,
+  Plane,
+  ShieldCheck,
+  BriefcaseBusiness,
+  FileText,
+};
 
 type PortalContentItem = {
   title: string;
@@ -53,6 +74,56 @@ type PortalContentItem = {
 };
 
 type QuickAction = "note" | "reminder" | "task";
+type CalendarView = "day" | "month" | "year";
+
+function pad(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function toLocalDateKey(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}`;
+}
+
+function fromLocalDateKey(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, amount: number) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
+}
+
+function isSameLocalDay(date: Date, value?: string | null) {
+  if (!value) return false;
+  return toLocalDateKey(date) === toLocalDateKey(new Date(value));
+}
+
+function getWeekdayName(date: Date) {
+  return new Intl.DateTimeFormat("fa-IR", { weekday: "long" }).format(date);
+}
+
+function getPersianTime(value: string) {
+  return new Date(value).toLocaleTimeString("fa-IR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getJalaliParts(date: Date) {
+  return gregorianToJalali(toLocalDateKey(date));
+}
+
+function formatJalaliDate(date: Date) {
+  const jalali = getJalaliParts(date);
+  if (!jalali) return "";
+  return `${jalali.jd} ${jalaliMonthNames[jalali.jm - 1]} ${jalali.jy}`;
+}
 
 function isAnnouncementVisible({
   published,
@@ -112,6 +183,11 @@ function GlassPanel({ children, className = "", id }: { children: React.ReactNod
 
 export default function Home() {
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
+    startOfLocalDay(new Date()),
+  );
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarView, setCalendarView] = useState<CalendarView>("day");
   const [selectedContent, setSelectedContent] =
     useState<PortalContentItem | null>(null);
   const [listModal, setListModal] = useState<"announcements" | "news" | null>(
@@ -122,13 +198,14 @@ export default function Home() {
   const [quickTitle, setQuickTitle] = useState("");
   const [quickBody, setQuickBody] = useState("");
   const [quickDate, setQuickDate] = useState(
-    new Date().toISOString().slice(0, 10),
+    toLocalDateKey(new Date()),
   );
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const { data: settings } = useSettings();
   const { data: announcements = [] } = useAnnouncements();
   const { data: news = [] } = useNews();
+  const { data: downloads = [] } = useDownloads();
   const { data: meetings = [] } = useMeetings();
   const { data: notes = [] } = useNotes();
   const { data: reminders = [] } = useReminders();
@@ -139,8 +216,6 @@ export default function Home() {
   const createNote = useCreateNote();
   const createReminder = useCreateReminder();
   const createTask = useCreateTask();
-  const weekDays = ["یکشنبه", "دوشنبه", "امروز", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
-  const monthDays = ["۸", "۹", "۱۰", "۱۱", "۱۲", "۱۳", "۱۴"];
   const backgroundImageUrl =
     settings?.portalBackgroundImageUrl || "/images/logo/apgt-logo.png";
   const overlayColor =
@@ -176,14 +251,99 @@ export default function Home() {
           body: item.description,
           meta: item.time,
         }));
-  const upcomingMeetings = meetings
+  const todayKey = toLocalDateKey(new Date());
+  const selectedDateKey = toLocalDateKey(selectedCalendarDate);
+  const selectedJalaliDate = getJalaliParts(selectedCalendarDate);
+  const selectedDateLabel = formatJalaliDate(selectedCalendarDate);
+  const calendarDays = Array.from({ length: 7 }, (_, index) =>
+    addDays(selectedCalendarDate, index - 3),
+  );
+  const selectedMeetings = meetings
     .filter(
       (meeting) =>
         meeting.isPublished &&
         meeting.status === "SCHEDULED" &&
-        new Date(meeting.startAt) >= new Date(Date.now() - 60 * 60 * 1000),
+        isSameLocalDay(selectedCalendarDate, meeting.startAt),
     )
-    .slice(0, 4);
+    .sort(
+      (first, second) =>
+        new Date(first.startAt).getTime() - new Date(second.startAt).getTime(),
+    );
+  const selectedReminders = reminders
+    .filter((reminder) => isSameLocalDay(selectedCalendarDate, reminder.remindAt))
+    .sort(
+      (first, second) =>
+        new Date(first.remindAt).getTime() -
+        new Date(second.remindAt).getTime(),
+    );
+  const selectedTasks = tasks.filter((task) =>
+    isSameLocalDay(selectedCalendarDate, task.dueDate),
+  );
+  const selectedNotes = notes.filter(
+    (note) =>
+      isSameLocalDay(selectedCalendarDate, note.updatedAt) ||
+      isSameLocalDay(selectedCalendarDate, note.createdAt),
+  );
+  const selectedOccasions = selectedJalaliDate
+    ? getIranCalendarEvents(selectedJalaliDate.jm, selectedJalaliDate.jd)
+    : [];
+  const selectedDayHasItems =
+    selectedMeetings.length > 0 ||
+    selectedReminders.length > 0 ||
+    selectedTasks.length > 0 ||
+    selectedNotes.length > 0 ||
+    selectedOccasions.length > 0;
+  const selectedMonthDays = selectedJalaliDate
+    ? Array.from(
+        {
+          length: getJalaliMonthLength(
+            selectedJalaliDate.jy,
+            selectedJalaliDate.jm,
+          ),
+        },
+        (_, index) => {
+          const jalaliDay = index + 1;
+          return {
+            jalaliDay,
+            gregorianDate: fromLocalDateKey(
+              jalaliToGregorian(
+                selectedJalaliDate.jy,
+                selectedJalaliDate.jm,
+                jalaliDay,
+              ),
+            ),
+            occasions: getIranCalendarEvents(
+              selectedJalaliDate.jm,
+              jalaliDay,
+            ),
+          };
+        },
+      )
+    : [];
+  const selectedYearMonths = selectedJalaliDate
+    ? jalaliMonthNames.map((monthName, index) => {
+        const month = index + 1;
+        const eventsCount = iranFixedCalendarEvents.filter(
+          (event) => event.month === month,
+        ).length;
+        const meetingsCount = meetings.filter((meeting) => {
+          const jalali = getJalaliParts(new Date(meeting.startAt));
+          return (
+            meeting.isPublished &&
+            meeting.status === "SCHEDULED" &&
+            jalali?.jy === selectedJalaliDate.jy &&
+            jalali?.jm === month
+          );
+        }).length;
+
+        return {
+          month,
+          monthName,
+          eventsCount,
+          meetingsCount,
+        };
+      })
+    : [];
   const visibleNotes = notes.slice(0, 2);
   const visibleReminders = reminders
     .filter((reminder) => !reminder.completed)
@@ -194,12 +354,29 @@ export default function Home() {
   const unreadNotifications = notifications.filter(
     (notification) => !notification.readAt,
   );
+  const visibleDownloads =
+    downloads.length > 0
+      ? downloads
+      : portalDownloads.map((item) => ({
+          id: item.title,
+          title: item.title,
+          version: item.version,
+          description: null,
+          category: null,
+          fileUrl: "#",
+          icon: item.icon.name,
+          color: item.color,
+          isActive: true,
+          sortOrder: 0,
+          createdAt: "",
+          updatedAt: "",
+        }));
 
   function openQuickAction(action: QuickAction) {
     setQuickAction(action);
     setQuickTitle("");
     setQuickBody("");
-    setQuickDate(new Date().toISOString().slice(0, 10));
+    setQuickDate(toLocalDateKey(selectedCalendarDate));
     setQuickTime("09:00");
     setQuickNotifyBefore("0");
   }
@@ -472,19 +649,112 @@ export default function Home() {
             </GlassPanel>
 
             <GlassPanel id="calendar">
-              <SectionHeader title="تقویم جلسات" />
+              <SectionHeader
+                title="تقویم جلسات"
+                onViewAll={() => setCalendarModalOpen(true)}
+              />
+              <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedCalendarDate((date) => addDays(date, -7))
+                  }
+                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
+                >
+                  هفته قبل
+                </button>
+                <div className="text-center">
+                  <p className="text-xs text-slate-400">روز انتخاب‌شده</p>
+                  <p className="mt-1 text-sm font-black text-cyan-100">
+                    {selectedDateLabel}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedCalendarDate((date) => addDays(date, 7))
+                  }
+                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
+                >
+                  هفته بعد
+                </button>
+              </div>
               <div className="mb-4 grid grid-cols-7 gap-2">
-                {weekDays.map((day, index) => (
-                  <div key={day} className={`rounded-2xl border p-3 text-center ${day === "امروز" ? "border-cyan-300 bg-cyan-400/20" : "border-white/10 bg-white/[0.04]"}`}>
-                    <p className="text-[11px] text-slate-400">{day}</p>
-                    <p className="mt-1 text-xl font-black">{monthDays[index]}</p>
-                  </div>
-                ))}
+                {calendarDays.map((date) => {
+                  const jalali = getJalaliParts(date);
+                  const dateKey = toLocalDateKey(date);
+                  const isSelected = dateKey === selectedDateKey;
+                  const isToday = dateKey === todayKey;
+                  const dayOccasions = jalali
+                    ? getIranCalendarEvents(jalali.jm, jalali.jd)
+                    : [];
+                  const isHoliday = dayOccasions.some(
+                    (event) => event.isHoliday,
+                  );
+
+                  return (
+                    <button
+                      key={dateKey}
+                      type="button"
+                      onClick={() => setSelectedCalendarDate(date)}
+                      className={`min-w-0 rounded-2xl border p-2 text-center transition ${
+                        isSelected
+                          ? "border-cyan-300 bg-cyan-400/20 shadow-[0_0_22px_rgba(34,211,238,0.18)]"
+                          : "border-white/10 bg-white/[0.04] hover:border-cyan-300/30"
+                      }`}
+                    >
+                      <p
+                        className={`truncate text-[10px] ${
+                          isHoliday ? "text-rose-300" : "text-slate-400"
+                        }`}
+                      >
+                        {isToday ? "امروز" : getWeekdayName(date)}
+                      </p>
+                      <p
+                        className={`mt-1 text-lg font-black ${
+                          isHoliday ? "text-rose-200" : "text-white"
+                        }`}
+                      >
+                        {jalali?.jd ?? "-"}
+                      </p>
+                      {(dayOccasions.length > 0 ||
+                        meetings.some((meeting) =>
+                          isSameLocalDay(date, meeting.startAt),
+                        ) ||
+                        tasks.some((task) =>
+                          isSameLocalDay(date, task.dueDate),
+                        ) ||
+                        reminders.some((reminder) =>
+                          isSameLocalDay(date, reminder.remindAt),
+                        )) && (
+                        <span className="mx-auto mt-1 block size-1.5 rounded-full bg-cyan-300" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               <div className="space-y-3">
-                {upcomingMeetings.length > 0
-                  ? upcomingMeetings.map((meeting) => (
-                      <div key={meeting.id} className="flex items-center justify-between rounded-2xl border-r-2 border-cyan-400 bg-white/[0.04] p-4">
+                {selectedOccasions.map((event) => (
+                  <div
+                    key={event.id}
+                    className={`rounded-2xl border p-4 ${
+                      event.isHoliday
+                        ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
+                        : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                    }`}
+                  >
+                    <h3 className="font-bold">{event.title}</h3>
+                    <p className="mt-1 text-xs opacity-80">
+                      {event.isHoliday ? "تعطیل رسمی" : "مناسبت تقویم ایران"}
+                    </p>
+                  </div>
+                ))}
+
+                {selectedMeetings.map((meeting) => (
+                  <div
+                    key={meeting.id}
+                    className="flex items-center justify-between rounded-2xl border-r-2 border-cyan-400 bg-white/[0.04] p-4"
+                  >
                         <div>
                           <h3 className="font-bold">{meeting.title}</h3>
                           <p className="mt-1 text-xs text-slate-400">
@@ -492,21 +762,74 @@ export default function Home() {
                           </p>
                         </div>
                         <span className="font-mono text-lg">
-                          {new Date(meeting.startAt).toLocaleTimeString("fa-IR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {getPersianTime(meeting.startAt)}
                         </span>
-                      </div>
-                    ))
-                  : portalMeetings.map((meeting) => (
-                      <div key={meeting.title} className={`flex items-center justify-between border-r-2 ${meeting.color} rounded-2xl bg-white/[0.04] p-4`}>
-                        <div><h3 className="font-bold">{meeting.title}</h3><p className="mt-1 text-xs text-slate-400">{meeting.location}</p></div>
-                        <span className="font-mono text-lg">{meeting.time}</span>
-                      </div>
-                    ))}
+                  </div>
+                ))}
+
+                {selectedReminders.map((reminder) => (
+                  <div
+                    key={reminder.id}
+                    className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4"
+                  >
+                    <h3 className="font-bold text-amber-100">
+                      {reminder.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-amber-100/75">
+                      یادآوری در {getPersianTime(reminder.remindAt)}
+                    </p>
+                  </div>
+                ))}
+
+                {selectedTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4"
+                  >
+                    <h3 className="font-bold text-emerald-100">
+                      {task.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-emerald-100/75">
+                      اولویت {task.priority}
+                    </p>
+                  </div>
+                ))}
+
+                {selectedNotes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4"
+                  >
+                    <h3 className="font-bold text-violet-100">{note.title}</h3>
+                    <p className="mt-1 line-clamp-2 text-xs leading-6 text-violet-100/75">
+                      {note.body}
+                    </p>
+                  </div>
+                ))}
+
+                {!selectedDayHasItems && (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300">
+                    برای این روز جلسه، مناسبت، یادآوری، تسک یا یادداشتی ثبت
+                    نشده است.
+                  </div>
+                )}
               </div>
-              <div className="mt-4 rounded-2xl bg-cyan-400/10 p-3 text-xs leading-6 text-cyan-100">مناسبت‌ها: {iranCalendarEvents.join("، ")}</div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => openQuickAction("reminder")}
+                  className="rounded-xl bg-amber-400/15 px-3 py-2 text-xs font-bold text-amber-100 hover:bg-amber-400/25"
+                >
+                  افزودن یادآوری
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openQuickAction("task")}
+                  className="rounded-xl bg-emerald-400/15 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-400/25"
+                >
+                  افزودن تسک
+                </button>
+              </div>
             </GlassPanel>
 
             <GlassPanel id="workspace">
@@ -587,11 +910,13 @@ export default function Home() {
             <GlassPanel id="downloads">
               <SectionHeader title="دانلود نرم افزارها" />
               <div className="grid grid-cols-2 gap-3">
-                {portalDownloads.map((item) => {
-                  const Icon = item.icon;
+                {visibleDownloads.map((item) => {
+                  const Icon =
+                    downloadIconMap[item.icon || "CloudDownload"] ??
+                    CloudDownload;
                   return (
-                    <Link key={item.title} href="#" className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.05] p-4 hover:bg-white/10">
-                      <div className="flex items-center gap-3"><Icon size={30} className={item.color} /><div><h3 className="text-sm font-black">{item.title}</h3><p className="mt-1 text-xs text-slate-400">{item.version}</p></div></div>
+                    <Link key={item.id} href={item.fileUrl} target={item.fileUrl === "#" ? undefined : "_blank"} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.05] p-4 hover:bg-white/10">
+                      <div className="flex items-center gap-3"><Icon size={30} className={item.color || "text-cyan-300"} /><div><h3 className="text-sm font-black">{item.title}</h3><p className="mt-1 text-xs text-slate-400">{item.version || item.category || "دانلود"}</p></div></div>
                       <Download size={18} className="text-cyan-300" />
                     </Link>
                   );
@@ -719,6 +1044,216 @@ export default function Home() {
                 </p>
               </button>
             ))
+          )}
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={calendarModalOpen}
+        onOpenChange={setCalendarModalOpen}
+        title="تقویم کامل"
+      >
+        <div className="space-y-5 text-right" dir="rtl">
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2">
+            {[
+              { value: "day", label: "روزانه" },
+              { value: "month", label: "ماهانه" },
+              { value: "year", label: "سالانه" },
+            ].map((view) => (
+              <button
+                key={view.value}
+                type="button"
+                onClick={() => setCalendarView(view.value as CalendarView)}
+                className={`rounded-xl px-3 py-2 text-sm font-black transition ${
+                  calendarView === view.value
+                    ? "bg-cyan-400/20 text-cyan-100"
+                    : "text-slate-300 hover:bg-white/10"
+                }`}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
+
+          {calendarView === "day" && (
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+                <p className="text-xs text-cyan-100/75">روز انتخاب‌شده</p>
+                <h3 className="mt-1 text-lg font-black text-cyan-50">
+                  {selectedDateLabel}
+                </h3>
+              </div>
+
+              {selectedOccasions.map((event) => (
+                <div
+                  key={event.id}
+                  className={`rounded-2xl border p-4 ${
+                    event.isHoliday
+                      ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
+                      : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                  }`}
+                >
+                  <h3 className="font-bold">{event.title}</h3>
+                  <p className="mt-1 text-xs opacity-80">
+                    {event.isHoliday ? "تعطیل رسمی" : "مناسبت تقویم ایران"}
+                  </p>
+                </div>
+              ))}
+
+              {selectedMeetings.map((meeting) => (
+                <div
+                  key={meeting.id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-black text-white">{meeting.title}</h3>
+                    <span className="font-mono text-cyan-100">
+                      {getPersianTime(meeting.startAt)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-6 text-slate-400">
+                    {meeting.location || "بدون محل"} -{" "}
+                    {meeting.participants.length} عضو
+                  </p>
+                </div>
+              ))}
+
+              {[...selectedReminders, ...selectedTasks, ...selectedNotes].map(
+                (item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                  >
+                    <h3 className="font-bold text-white">{item.title}</h3>
+                    {"body" in item && (
+                      <p className="mt-1 text-xs leading-6 text-slate-300">
+                        {item.body}
+                      </p>
+                    )}
+                    {"description" in item && item.description && (
+                      <p className="mt-1 text-xs leading-6 text-slate-300">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+                ),
+              )}
+
+              {!selectedDayHasItems && (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
+                  برای این روز موردی ثبت نشده است.
+                </div>
+              )}
+            </div>
+          )}
+
+          {calendarView === "month" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalendarDate((date) => addDays(date, -30))}
+                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
+                >
+                  ماه قبل
+                </button>
+                <h3 className="text-base font-black text-white">
+                  {selectedJalaliDate
+                    ? `${jalaliMonthNames[selectedJalaliDate.jm - 1]} ${selectedJalaliDate.jy}`
+                    : ""}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalendarDate((date) => addDays(date, 30))}
+                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
+                >
+                  ماه بعد
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-2">
+                {selectedMonthDays.map((day) => {
+                  const dayKey = toLocalDateKey(day.gregorianDate);
+                  const meetingsCount = meetings.filter((meeting) =>
+                    isSameLocalDay(day.gregorianDate, meeting.startAt),
+                  ).length;
+                  const workCount =
+                    reminders.filter((reminder) =>
+                      isSameLocalDay(day.gregorianDate, reminder.remindAt),
+                    ).length +
+                    tasks.filter((task) =>
+                      isSameLocalDay(day.gregorianDate, task.dueDate),
+                    ).length;
+                  const isSelected = dayKey === selectedDateKey;
+                  const isHoliday = day.occasions.some(
+                    (event) => event.isHoliday,
+                  );
+
+                  return (
+                    <button
+                      key={dayKey}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCalendarDate(day.gregorianDate);
+                        setCalendarView("day");
+                      }}
+                      className={`min-h-16 rounded-xl border p-2 text-right transition ${
+                        isSelected
+                          ? "border-cyan-300 bg-cyan-400/20"
+                          : "border-white/10 bg-white/[0.04] hover:border-cyan-300/30"
+                      }`}
+                    >
+                      <span
+                        className={`text-sm font-black ${
+                          isHoliday ? "text-rose-200" : "text-white"
+                        }`}
+                      >
+                        {day.jalaliDay}
+                      </span>
+                      <span className="mt-2 block text-[10px] leading-5 text-slate-400">
+                        {meetingsCount > 0 && `${meetingsCount} جلسه`}
+                        {meetingsCount > 0 && workCount > 0 ? "، " : ""}
+                        {workCount > 0 && `${workCount} کار`}
+                        {day.occasions.length > 0 && (
+                          <span className="block text-rose-200">
+                            مناسبت
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {calendarView === "year" && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {selectedYearMonths.map((month) => (
+                <button
+                  key={month.month}
+                  type="button"
+                  onClick={() => {
+                    if (!selectedJalaliDate) return;
+                    setSelectedCalendarDate(
+                      fromLocalDateKey(
+                        jalaliToGregorian(
+                          selectedJalaliDate.jy,
+                          month.month,
+                          1,
+                        ),
+                      ),
+                    );
+                    setCalendarView("month");
+                  }}
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                >
+                  <h3 className="font-black text-white">{month.monthName}</h3>
+                  <p className="mt-2 text-xs leading-6 text-slate-400">
+                    {month.eventsCount} مناسبت، {month.meetingsCount} جلسه
+                  </p>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </Dialog>
