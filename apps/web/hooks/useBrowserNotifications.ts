@@ -7,6 +7,7 @@ import {
   subscribeToPushNotifications,
   type PortalNotification,
 } from "@/lib/notifications";
+import { getStoredAuthUser } from "@/lib/auth";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -100,8 +101,12 @@ export function useBrowserNotifications(
           config.publicKey,
         ),
       }));
+    const currentUser = getStoredAuthUser();
 
-    await subscribeToPushNotifications(subscription.toJSON());
+    await subscribeToPushNotifications(subscription.toJSON(), {
+      recipientDirectoryUserId: currentUser?.directoryUser?.id,
+      recipientEmail: currentUser?.email,
+    });
     setPushEnabled(true);
     setIsPushSubscribed(true);
   }

@@ -6,13 +6,16 @@ import {
   Param,
   Post,
   Put,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
 import { MeetingsService } from './meetings.service';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
 @Controller('meetings')
@@ -22,8 +25,14 @@ export class MeetingsController {
   ) {}
 
   @Get()
-  findAll() {
-    return this.meetingsService.findAll();
+  @UseGuards(OptionalJwtAuthGuard)
+  findAll(
+    @Req()
+    request: Request & {
+      user?: { id: string; username?: string; email?: string };
+    },
+  ) {
+    return this.meetingsService.findAll(false, request.user);
   }
 
   @Get('admin/all')
@@ -34,8 +43,15 @@ export class MeetingsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.meetingsService.findOne(id);
+  @UseGuards(OptionalJwtAuthGuard)
+  findOne(
+    @Param('id') id: string,
+    @Req()
+    request: Request & {
+      user?: { id: string; username?: string; email?: string };
+    },
+  ) {
+    return this.meetingsService.findOne(id, request.user);
   }
 
   @Post()

@@ -1,20 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
 
+type AuthenticatedUser = {
+  id: string;
+  username?: string;
+  email?: string;
+} | null;
+
 @Injectable()
 export class MeetingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(includePrivate = false) {
+  async findAll(
+    includePrivate = false,
+    currentUser?: AuthenticatedUser,
+  ) {
+    const where = includePrivate
+      ? undefined
+      : await this.getVisibleMeetingWhere(currentUser);
+
     return this.prisma.meeting.findMany({
-      where: includePrivate
-        ? undefined
-        : {
-            visibility: 'PUBLIC',
-          },
+      where,
       include: {
         organizer: true,
         organizerDirectoryUser: true,
@@ -31,9 +40,14 @@ export class MeetingsService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.meeting.findUnique({
-      where: { id },
+  async findOne(id: string, currentUser?: AuthenticatedUser) {
+    const visibleWhere =
+      await this.getVisibleMeetingWhere(currentUser);
+    const meeting = await this.prisma.meeting.findFirst({
+      where: {
+        id,
+        ...(visibleWhere ?? {}),
+      },
       include: {
         organizer: true,
         organizerDirectoryUser: true,
@@ -45,6 +59,12 @@ export class MeetingsService {
         },
       },
     });
+
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+
+    return meeting;
   }
 
   async create(dto: CreateMeetingDto) {
@@ -127,6 +147,73 @@ export class MeetingsService {
     return this.prisma.meeting.delete({
       where: { id },
     });
+  }
+
+  private async getVisibleMeetingWhere(
+    currentUser?: AuthenticatedUser,
+  ) {
+    if (!currentUser) {
+      return {
+        visibility: 'PUBLIC' as const,
+      };
+    }
+
+    const directoryUser = await this.prisma.directoryUser.findFirst({
+      where: {
+        isActive: true,
+        OR: [
+          ...(currentUser.username
+            ? [{ username: currentUser.username }]
+            : []),
+          ...(currentUser.email
+            ? [{ email: currentUser.email }]
+            : []),
+        ],
+      },
+    });
+
+    return {
+      OR: [
+        {
+          visibility: 'PUBLIC' as const,
+        },
+        {
+          organizerId: currentUser.id,
+        },
+        {
+          participants: {
+            some: {
+              userId: currentUser.id,
+            },
+          },
+        },
+        ...(directoryUser
+          ? [
+              {
+                organizerDirectoryUserId: directoryUser.id,
+              },
+              {
+                participants: {
+                  some: {
+                    directoryUserId: directoryUser.id,
+                  },
+                },
+              },
+            ]
+          : []),
+        ...(currentUser.email
+          ? [
+              {
+                participants: {
+                  some: {
+                    email: currentUser.email,
+                  },
+                },
+              },
+            ]
+          : []),
+      ],
+    };
   }
 
   private async createMeetingNotifications(

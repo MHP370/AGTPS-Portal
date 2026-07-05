@@ -9,6 +9,12 @@ import * as webPush from 'web-push';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushSubscriptionDto } from './dto/push-subscription.dto';
 
+type AuthenticatedUser = {
+  id: string;
+  username?: string;
+  email?: string;
+} | null;
+
 @Injectable()
 export class NotificationsService
   implements OnModuleInit, OnModuleDestroy
@@ -60,9 +66,15 @@ export class NotificationsService
     };
   }
 
-  findAll() {
+  async findAll(currentUser?: AuthenticatedUser) {
+    const recipientWhere =
+      await this.getNotificationRecipientWhere(currentUser);
+
     return this.prisma.portalNotification.findMany({
       where: {
+        AND: [
+          recipientWhere,
+          {
         OR: [
           {
             scheduledAt: null,
@@ -71,6 +83,8 @@ export class NotificationsService
             scheduledAt: {
               lte: new Date(),
             },
+          },
+        ],
           },
         ],
       },
@@ -92,6 +106,54 @@ export class NotificationsService
         readAt: new Date(),
       },
     });
+  }
+
+  private async getNotificationRecipientWhere(
+    currentUser?: AuthenticatedUser,
+  ) {
+    if (!currentUser) {
+      return {
+        recipientDirectoryUserId: null,
+        recipientEmail: null,
+      };
+    }
+
+    const directoryUser = await this.prisma.directoryUser.findFirst({
+      where: {
+        isActive: true,
+        OR: [
+          ...(currentUser.username
+            ? [{ username: currentUser.username }]
+            : []),
+          ...(currentUser.email
+            ? [{ email: currentUser.email }]
+            : []),
+        ],
+      },
+    });
+
+    return {
+      OR: [
+        {
+          recipientDirectoryUserId: null,
+          recipientEmail: null,
+        },
+        ...(directoryUser
+          ? [
+              {
+                recipientDirectoryUserId: directoryUser.id,
+              },
+            ]
+          : []),
+        ...(currentUser.email
+          ? [
+              {
+                recipientEmail: currentUser.email,
+              },
+            ]
+          : []),
+      ],
+    };
   }
 
   subscribe(dto: PushSubscriptionDto) {

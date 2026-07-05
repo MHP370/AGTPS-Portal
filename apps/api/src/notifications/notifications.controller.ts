@@ -5,9 +5,13 @@ import {
   Param,
   Post,
   Put,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { PushSubscriptionDto } from './dto/push-subscription.dto';
 import { NotificationsService } from './notifications.service';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -16,8 +20,14 @@ export class NotificationsController {
   ) {}
 
   @Get()
-  findAll() {
-    return this.notificationsService.findAll();
+  @UseGuards(OptionalJwtAuthGuard)
+  findAll(
+    @Req()
+    request: Request & {
+      user?: { id: string; username?: string; email?: string };
+    },
+  ) {
+    return this.notificationsService.findAll(request.user);
   }
 
   @Get('push/config')

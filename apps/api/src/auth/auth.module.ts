@@ -10,6 +10,7 @@ import { PassportModule } from '@nestjs/passport';
 
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 
 
 import { Reflector } from '@nestjs/core';
@@ -39,6 +40,7 @@ import { PermissionsGuard } from './guards/permissions.guard';
   AuthService,
   JwtStrategy,
   JwtAuthGuard,
+  OptionalJwtAuthGuard,
   RolesGuard,
   Reflector,
   PermissionsGuard,

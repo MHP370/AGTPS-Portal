@@ -8,12 +8,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 
 import { UsersService } from '../users/users.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async login(username: string, password: string) {
@@ -47,16 +49,66 @@ export class AuthService {
     return {
       access_token,
 
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
+      user: await this.getProfile(user.id),
+    };
+  }
 
-        firstName: user.firstName,
-        lastName: user.lastName,
-
-        isActive: user.isActive,
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: {
+        id: userId,
       },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const directoryUser = await this.prisma.directoryUser.findFirst({
+      where: {
+        isActive: true,
+        OR: [
+          {
+            username: user.username,
+          },
+          {
+            email: user.email,
+          },
+        ],
+      },
+      include: {
+        groupMemberships: {
+          include: {
+            group: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isActive: user.isActive,
+      roles: user.roles.map((item) => item.role.name),
+      permissions: user.roles.flatMap((item) =>
+        item.role.permissions.map(
+          (permission) => permission.permission.name,
+        ),
+      ),
+      directoryUser,
     };
   }
 }

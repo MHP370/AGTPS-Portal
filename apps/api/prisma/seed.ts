@@ -7,7 +7,7 @@ async function main() {
   const password = await bcrypt.hash('Admin@123', 10);
 
   // Admin
-  await prisma.user.upsert({
+  const adminUser = await prisma.user.upsert({
     where: {
       username: 'admin',
     },
@@ -18,6 +18,26 @@ async function main() {
       password,
       firstName: 'System',
       lastName: 'Administrator',
+    },
+  });
+
+  await prisma.directoryUser.upsert({
+    where: {
+      username: 'admin',
+    },
+    update: {
+      displayName: 'مدیر سیستم',
+      email: 'admin@agtps.local',
+      department: 'فناوری اطلاعات',
+      title: 'مدیر سامانه',
+      isActive: true,
+    },
+    create: {
+      username: 'admin',
+      displayName: 'مدیر سیستم',
+      email: 'admin@agtps.local',
+      department: 'فناوری اطلاعات',
+      title: 'مدیر سامانه',
     },
   });
   
@@ -81,11 +101,7 @@ await prisma.userRole.upsert({
   },
   update: {},
   create: {
-    userId: (
-      await prisma.user.findUniqueOrThrow({
-        where: { username: 'admin' },
-      })
-    ).id,
+    userId: adminUser.id,
     roleId: adminRole.id,
   },
 });

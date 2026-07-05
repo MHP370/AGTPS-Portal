@@ -19,6 +19,17 @@ export interface AuthUser {
   lastName: string | null;
 
   isActive: boolean;
+  roles: string[];
+  permissions: string[];
+  directoryUser?: {
+    id: string;
+    username: string;
+    displayName: string;
+    email?: string | null;
+    department?: string | null;
+    title?: string | null;
+    isActive: boolean;
+  } | null;
 }
 
 export interface LoginResponse {
@@ -70,6 +81,21 @@ export function getAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY) ?? getCookie(ACCESS_TOKEN_KEY);
 }
 
+export function getStoredAuthUser() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const value = localStorage.getItem(AUTH_USER_KEY);
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
 export function hasAuthSession() {
   return Boolean(getAccessToken());
 }
@@ -81,4 +107,8 @@ export async function login(
     "/auth/login",
     dto,
   );
+}
+
+export function getMe() {
+  return api.get<AuthUser>("/auth/me");
 }

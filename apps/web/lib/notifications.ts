@@ -33,9 +33,14 @@ export function getPushConfig() {
 
 export function subscribeToPushNotifications(
   subscription: PushSubscriptionJSON,
+  recipient?: {
+    recipientDirectoryUserId?: string;
+    recipientEmail?: string;
+  },
 ) {
   return api.post("/notifications/push/subscribe", {
     ...subscription,
+    ...recipient,
     userAgent:
       typeof navigator !== "undefined"
         ? navigator.userAgent
