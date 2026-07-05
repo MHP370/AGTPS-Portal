@@ -5,6 +5,7 @@ import { CreateDirectoryUserDto } from './dto/create-directory-user.dto';
 import { UpdateDirectoryGroupDto } from './dto/update-directory-group.dto';
 import { UpdateDirectoryUserDto } from './dto/update-directory-user.dto';
 import { UpdateGroupMembersDto } from './dto/update-group-members.dto';
+import { UpdateGroupRolesDto } from './dto/update-group-roles.dto';
 
 @Injectable()
 export class DirectoryService {
@@ -26,8 +27,26 @@ export class DirectoryService {
   }
 
   createUser(dto: CreateDirectoryUserDto) {
+    const { groupIds, ...data } = dto;
+
     return this.prisma.directoryUser.create({
-      data: dto,
+      data: {
+        ...data,
+        groupMemberships: groupIds?.length
+          ? {
+              create: groupIds.map((groupId) => ({
+                groupId,
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        groupMemberships: {
+          include: {
+            group: true,
+          },
+        },
+      },
     });
   }
 
@@ -50,6 +69,19 @@ export class DirectoryService {
         members: {
           include: {
             user: true,
+          },
+        },
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -87,6 +119,45 @@ export class DirectoryService {
         members: {
           include: {
             user: true,
+          },
+        },
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+  }
+
+  updateGroupRoles(id: string, dto: UpdateGroupRolesDto) {
+    return this.prisma.directoryGroup.update({
+      where: { id },
+      data: {
+        roles: {
+          deleteMany: {},
+          create: dto.roleIds.map((roleId) => ({
+            roleId,
+          })),
+        },
+      },
+      include: {
+        members: {
+          include: {
+            user: true,
+          },
+        },
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
           },
         },
       },

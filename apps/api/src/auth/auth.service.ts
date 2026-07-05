@@ -89,11 +89,45 @@ export class AuthService {
       include: {
         groupMemberships: {
           include: {
-            group: true,
+            group: {
+              include: {
+                roles: {
+                  include: {
+                    role: {
+                      include: {
+                        permissions: {
+                          include: {
+                            permission: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
     });
+    const userRoleNames = user.roles.map((item) => item.role.name);
+    const groupRoleNames =
+      directoryUser?.groupMemberships.flatMap((membership) =>
+        membership.group.roles.map((item) => item.role.name),
+      ) ?? [];
+    const userPermissions = user.roles.flatMap((item) =>
+      item.role.permissions.map(
+        (permission) => permission.permission.name,
+      ),
+    );
+    const groupPermissions =
+      directoryUser?.groupMemberships.flatMap((membership) =>
+        membership.group.roles.flatMap((item) =>
+          item.role.permissions.map(
+            (permission) => permission.permission.name,
+          ),
+        ),
+      ) ?? [];
 
     return {
       id: user.id,
@@ -102,11 +136,9 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       isActive: user.isActive,
-      roles: user.roles.map((item) => item.role.name),
-      permissions: user.roles.flatMap((item) =>
-        item.role.permissions.map(
-          (permission) => permission.permission.name,
-        ),
+      roles: Array.from(new Set([...userRoleNames, ...groupRoleNames])),
+      permissions: Array.from(
+        new Set([...userPermissions, ...groupPermissions]),
       ),
       directoryUser,
     };

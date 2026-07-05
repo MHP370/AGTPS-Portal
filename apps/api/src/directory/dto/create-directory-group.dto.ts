@@ -1,8 +1,10 @@
 import {
   IsBoolean,
+  IsEnum,
   IsOptional,
   IsString,
 } from 'class-validator';
+import { DirectorySource } from '@prisma/client';
 
 export class CreateDirectoryGroupDto {
   @IsString()
@@ -14,6 +16,10 @@ export class CreateDirectoryGroupDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsEnum(DirectorySource)
+  source?: DirectorySource;
 
   @IsOptional()
   @IsBoolean()

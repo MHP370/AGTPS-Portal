@@ -1,9 +1,12 @@
 import {
+  IsArray,
   IsBoolean,
   IsEmail,
+  IsEnum,
   IsOptional,
   IsString,
 } from 'class-validator';
+import { DirectorySource } from '@prisma/client';
 
 export class CreateDirectoryUserDto {
   @IsString()
@@ -25,6 +28,15 @@ export class CreateDirectoryUserDto {
   title?: string;
 
   @IsOptional()
+  @IsEnum(DirectorySource)
+  source?: DirectorySource;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  groupIds?: string[];
 }

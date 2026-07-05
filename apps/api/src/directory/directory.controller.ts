@@ -12,6 +12,7 @@ import { CreateDirectoryUserDto } from './dto/create-directory-user.dto';
 import { UpdateDirectoryGroupDto } from './dto/update-directory-group.dto';
 import { UpdateDirectoryUserDto } from './dto/update-directory-user.dto';
 import { UpdateGroupMembersDto } from './dto/update-group-members.dto';
+import { UpdateGroupRolesDto } from './dto/update-group-roles.dto';
 import { DirectoryService } from './directory.service';
 
 @Controller('directory')
@@ -67,6 +68,14 @@ export class DirectoryController {
     @Body() dto: UpdateGroupMembersDto,
   ) {
     return this.directoryService.updateGroupMembers(id, dto);
+  }
+
+  @Put('groups/:id/roles')
+  updateGroupRoles(
+    @Param('id') id: string,
+    @Body() dto: UpdateGroupRolesDto,
+  ) {
+    return this.directoryService.updateGroupRoles(id, dto);
   }
 
   @Delete('groups/:id')

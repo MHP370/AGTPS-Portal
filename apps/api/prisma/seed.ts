@@ -30,6 +30,7 @@ async function main() {
       email: 'admin@agtps.local',
       department: 'فناوری اطلاعات',
       title: 'مدیر سامانه',
+      source: 'INTERNAL',
       isActive: true,
     },
     create: {
@@ -38,6 +39,7 @@ async function main() {
       email: 'admin@agtps.local',
       department: 'فناوری اطلاعات',
       title: 'مدیر سامانه',
+      source: 'INTERNAL',
     },
   });
   
@@ -70,6 +72,10 @@ const permissionDefinitions = [
   {
     name: 'meetings.manage',
     title: 'Manage Meetings',
+  },
+  {
+    name: 'users.manage',
+    title: 'Manage Users',
   },
 ];
 

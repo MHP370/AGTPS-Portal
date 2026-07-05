@@ -44,6 +44,11 @@ enum NotificationType {
   TASK
 }
 
+enum DirectorySource {
+  INTERNAL
+  ACTIVE_DIRECTORY
+}
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -73,6 +78,7 @@ model Role {
 
   users       UserRole[]
   permissions RolePermission[]
+  directoryGroups DirectoryGroupRole[]
 
   createdAt   DateTime @default(now())
 }
@@ -92,6 +98,7 @@ model DirectoryUser {
   email       String?
   department  String?
   title       String?
+  source      DirectorySource @default(INTERNAL)
   isActive    Boolean @default(true)
 
   groupMemberships DirectoryGroupMember[]
@@ -109,9 +116,11 @@ model DirectoryGroup {
   name        String @unique
   title       String
   description String?
+  source      DirectorySource @default(INTERNAL)
   isActive    Boolean @default(true)
 
   members     DirectoryGroupMember[]
+  roles       DirectoryGroupRole[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -125,6 +134,16 @@ model DirectoryGroupMember {
   user  DirectoryUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([groupId, userId])
+}
+
+model DirectoryGroupRole {
+  groupId String
+  roleId  String
+
+  group DirectoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  role  Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, roleId])
 }
 
 model UserRole {

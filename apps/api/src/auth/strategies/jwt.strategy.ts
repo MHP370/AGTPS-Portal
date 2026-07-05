@@ -42,6 +42,63 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   },
 },
     });
+    const directoryUser = user
+      ? await this.prisma.directoryUser.findFirst({
+          where: {
+            isActive: true,
+            OR: [
+              {
+                username: user.username,
+              },
+              {
+                email: user.email,
+              },
+            ],
+          },
+          include: {
+            groupMemberships: {
+              include: {
+                group: {
+                  include: {
+                    roles: {
+                      include: {
+                        role: {
+                          include: {
+                            permissions: {
+                              include: {
+                                permission: true,
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        })
+      : null;
+    const userRoles = user?.roles.map((r) => r.role.name) ?? [];
+    const groupRoles =
+      directoryUser?.groupMemberships.flatMap((membership) =>
+        membership.group.roles.map((item) => item.role.name),
+      ) ?? [];
+    const userPermissions =
+      user?.roles.flatMap((r) =>
+        r.role.permissions.map(
+          (p) => p.permission.name,
+        ),
+      ) ?? [];
+    const groupPermissions =
+      directoryUser?.groupMemberships.flatMap((membership) =>
+        membership.group.roles.flatMap((item) =>
+          item.role.permissions.map(
+            (permission) => permission.permission.name,
+          ),
+        ),
+      ) ?? [];
 
     return {
   id: user?.id,
@@ -49,14 +106,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   email: user?.email,
 
   roles:
-    user?.roles.map((r) => r.role.name) ?? [],
+    Array.from(new Set([...userRoles, ...groupRoles])),
 
   permissions:
-    user?.roles.flatMap((r) =>
-      r.role.permissions.map(
-        (p) => p.permission.name,
-      ),
-    ) ?? [],
+    Array.from(new Set([...userPermissions, ...groupPermissions])),
 };
   }
 }

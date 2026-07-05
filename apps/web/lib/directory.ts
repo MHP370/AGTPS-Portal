@@ -1,4 +1,7 @@
 import { api } from "./api";
+import type { Role } from "./access";
+
+export type DirectorySource = "INTERNAL" | "ACTIVE_DIRECTORY";
 
 export interface DirectoryUser {
   id: string;
@@ -7,7 +10,11 @@ export interface DirectoryUser {
   email?: string;
   department?: string;
   title?: string;
+  source: DirectorySource;
   isActive: boolean;
+  groupMemberships?: Array<{
+    group: DirectoryGroup;
+  }>;
 }
 
 export interface DirectoryGroup {
@@ -15,9 +22,13 @@ export interface DirectoryGroup {
   name: string;
   title: string;
   description?: string;
+  source: DirectorySource;
   isActive: boolean;
   members: Array<{
     user: DirectoryUser;
+  }>;
+  roles: Array<{
+    role: Role;
   }>;
 }
 
@@ -27,13 +38,16 @@ export interface CreateDirectoryUserDto {
   email?: string;
   department?: string;
   title?: string;
+  source?: DirectorySource;
   isActive?: boolean;
+  groupIds?: string[];
 }
 
 export interface CreateDirectoryGroupDto {
   name: string;
   title: string;
   description?: string;
+  source?: DirectorySource;
   isActive?: boolean;
 }
 
@@ -66,6 +80,15 @@ export function updateDirectoryGroupMembers(
 ) {
   return api.put<DirectoryGroup>(`/directory/groups/${id}/members`, {
     userIds,
+  });
+}
+
+export function updateDirectoryGroupRoles(
+  id: string,
+  roleIds: string[],
+) {
+  return api.put<DirectoryGroup>(`/directory/groups/${id}/roles`, {
+    roleIds,
   });
 }
 

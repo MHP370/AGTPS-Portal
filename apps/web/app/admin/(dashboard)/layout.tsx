@@ -76,6 +76,13 @@ export default function AdminLayout({
             </Link>
 
             <Link
+              href="/admin/access"
+              className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
+            >
+              دسترسی‌ها
+            </Link>
+
+            <Link
               href="/admin/announcements"
               className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
             >

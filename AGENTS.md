@@ -7,6 +7,7 @@
 - Before making changes, explain briefly what will be changed and why.
 - Think carefully before every answer and every change.
 - Ask the user questions whenever requirements are unclear or a decision affects the product.
+- When the user suggests an idea or feature, evaluate whether it conflicts with standards, security, maintainability, or product quality. If it has drawbacks or should not be done, explain the reason clearly before implementing.
 - After each meaningful change, ask the user to test the project and report the result.
 - Only update GitHub after the user confirms the tested change is working.
 - After the user confirms a change is OK, commit the approved change locally, then provide the exact push commands for the user to run manually. Do not push to GitHub directly.

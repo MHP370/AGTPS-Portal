@@ -16,6 +16,7 @@ import {
   getDirectoryGroups,
   getDirectoryUsers,
   updateDirectoryGroupMembers,
+  updateDirectoryGroupRoles,
   type CreateDirectoryGroupDto,
   type CreateDirectoryUserDto,
 } from "@/lib/directory";
@@ -89,6 +90,25 @@ export function useUpdateDirectoryGroupMembers() {
       id: string;
       userIds: string[];
     }) => updateDirectoryGroupMembers(id, userIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: directoryGroupsQueryKey,
+      });
+    },
+  });
+}
+
+export function useUpdateDirectoryGroupRoles() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      roleIds,
+    }: {
+      id: string;
+      roleIds: string[];
+    }) => updateDirectoryGroupRoles(id, roleIds),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: directoryGroupsQueryKey,
