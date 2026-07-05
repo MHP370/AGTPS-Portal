@@ -34,16 +34,38 @@ const adminRole = await prisma.role.upsert({
 });
 
 // Permissions
-const manageApplications = await prisma.permission.upsert({
-  where: {
-    name: 'applications.manage',
-  },
-  update: {},
-  create: {
+const permissionDefinitions = [
+  {
     name: 'applications.manage',
     title: 'Manage Applications',
   },
-});
+  {
+    name: 'news.publish',
+    title: 'Publish News',
+  },
+  {
+    name: 'announcements.publish',
+    title: 'Publish Announcements',
+  },
+  {
+    name: 'meetings.manage',
+    title: 'Manage Meetings',
+  },
+];
+
+const permissions = await Promise.all(
+  permissionDefinitions.map((permission) =>
+    prisma.permission.upsert({
+      where: {
+        name: permission.name,
+      },
+      update: {
+        title: permission.title,
+      },
+      create: permission,
+    }),
+  ),
+);
 
 // Assign role to admin
 await prisma.userRole.upsert({
@@ -68,20 +90,24 @@ await prisma.userRole.upsert({
   },
 });
 
-// Assign permission to role
-await prisma.rolePermission.upsert({
-  where: {
-    roleId_permissionId: {
-      roleId: adminRole.id,
-      permissionId: manageApplications.id,
-    },
-  },
-  update: {},
-  create: {
-    roleId: adminRole.id,
-    permissionId: manageApplications.id,
-  },
-});
+// Assign permissions to role
+await Promise.all(
+  permissions.map((permission) =>
+    prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: adminRole.id,
+          permissionId: permission.id,
+        },
+      },
+      update: {},
+      create: {
+        roleId: adminRole.id,
+        permissionId: permission.id,
+      },
+    }),
+  ),
+);
 
 
   // Sites

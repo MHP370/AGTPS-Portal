@@ -6,12 +6,16 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 
 import { NewsService } from './news.service';
 
 import { CreateNewsDto } from './dto/create-news.dto';
 import { UpdateNewsDto } from './dto/update-news.dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
 @Controller('news')
 export class NewsController {
@@ -30,6 +34,8 @@ export class NewsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('news.publish')
   create(
     @Body() dto: CreateNewsDto,
   ) {
@@ -37,6 +43,8 @@ export class NewsController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('news.publish')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateNewsDto,
@@ -45,6 +53,8 @@ export class NewsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('news.publish')
   remove(@Param('id') id: string) {
     return this.newsService.remove(id);
   }

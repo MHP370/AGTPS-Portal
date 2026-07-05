@@ -6,12 +6,16 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 
 import { AnnouncementsService } from './announcements.service';
 
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
 @Controller('announcements')
 export class AnnouncementsController {
@@ -30,6 +34,8 @@ export class AnnouncementsController {
   }
 
   @Post()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('announcements.publish')
   create(
     @Body() dto: CreateAnnouncementDto,
   ) {
@@ -37,6 +43,8 @@ export class AnnouncementsController {
   }
 
   @Put(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('announcements.publish')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateAnnouncementDto,
@@ -45,6 +53,8 @@ export class AnnouncementsController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('announcements.publish')
   remove(@Param('id') id: string) {
     return this.announcementsService.remove(id);
   }

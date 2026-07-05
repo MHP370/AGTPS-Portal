@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import {
   ExternalLink,
-  MapPin,
   MonitorCog,
   type LucideIcon,
 } from "lucide-react";
@@ -62,6 +61,7 @@ type MapSite = {
   subtitle: string;
   color: string;
   point: ProjectedPoint;
+  visualPoint: ProjectedPoint;
   provinceName?: string;
 };
 
@@ -74,6 +74,15 @@ type SiteModal = {
 const mapWidth = 760;
 const mapHeight = 640;
 const mapPadding = 34;
+const mapPerspective = {
+  translateX: 28,
+  translateY: 58,
+  skewX: -8,
+  scaleX: 0.97,
+  scaleY: 0.84,
+};
+const mapPerspectiveTransform = `translate(${mapPerspective.translateX} ${mapPerspective.translateY}) skewX(${mapPerspective.skewX}) scale(${mapPerspective.scaleX} ${mapPerspective.scaleY})`;
+const mapPerspectiveOrigin = "380px 350px";
 
 const iconMap: Record<string, LucideIcon> = {
   MonitorCog,
@@ -121,6 +130,16 @@ const knownSiteCoordinates: Record<string, Coordinate> = {
   asaluyeh: [52.6155, 27.4761],
   assaluyeh: [52.6155, 27.4761],
   "سایت عسلویه": [52.6155, 27.4761],
+};
+
+const knownSiteColors: Record<string, string> = {
+  asl: "#f59e0b",
+  asaluyeh: "#f59e0b",
+  assaluyeh: "#f59e0b",
+  "سایت عسلویه": "#f59e0b",
+  teh: "#22d3ee",
+  tehran: "#22d3ee",
+  "دفتر تهران": "#22d3ee",
 };
 
 const fallbackSites = [
@@ -275,6 +294,15 @@ function getSiteCoordinate(site: Site): Coordinate | undefined {
   );
 }
 
+function getSiteColor(site: Site) {
+  return (
+    knownSiteColors[normalize(site.code)] ??
+    knownSiteColors[normalize(site.name)] ??
+    site.color ??
+    "#22d3ee"
+  );
+}
+
 function pointInRing(point: Coordinate, ring: Ring) {
   const [longitude, latitude] = point;
   let inside = false;
@@ -346,6 +374,19 @@ function buildProvinceShapes(features: ProvinceFeature[]) {
   };
 }
 
+function applyMapPerspective(point: ProjectedPoint): ProjectedPoint {
+  const scaledX = point.x * mapPerspective.scaleX;
+  const scaledY = point.y * mapPerspective.scaleY;
+  const skewedX =
+    scaledX +
+    Math.tan((mapPerspective.skewX * Math.PI) / 180) * scaledY;
+
+  return {
+    x: skewedX + mapPerspective.translateX,
+    y: scaledY + mapPerspective.translateY,
+  };
+}
+
 function buildMapSites(
   sites: Site[],
   project: (coordinate: Coordinate) => ProjectedPoint,
@@ -360,6 +401,7 @@ function buildMapSites(
       subtitle: site.subtitle,
       color: site.color,
       point: project(site.coordinate),
+      visualPoint: applyMapPerspective(project(site.coordinate)),
       provinceName: getProvinceForCoordinate(site.coordinate, features),
     }));
   }
@@ -373,8 +415,9 @@ function buildMapSites(
         id: site.id,
         title: site.name,
         subtitle: site.address || site.description || site.code,
-        color: site.color || "#22d3ee",
+        color: getSiteColor(site),
         point: project(coordinate),
+        visualPoint: applyMapPerspective(project(coordinate)),
         provinceName: getProvinceForCoordinate(coordinate, features),
       });
 
@@ -446,7 +489,8 @@ export default function IranPortalMap({
 
   return (
     <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] border border-cyan-300/10 bg-slate-950/20 p-4 md:min-h-[560px]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.18),transparent_35%),linear-gradient(rgba(56,189,248,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.07)_1px,transparent_1px)] bg-[size:100%_100%,56px_56px,56px_56px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_42%,rgba(34,211,238,0.2),transparent_32%),radial-gradient(circle_at_58%_78%,rgba(251,191,36,0.11),transparent_18%),linear-gradient(rgba(56,189,248,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.07)_1px,transparent_1px)] bg-[size:100%_100%,100%_100%,56px_56px,56px_56px]" />
+      <div className="absolute inset-x-12 bottom-10 h-20 rounded-[50%] bg-cyan-400/16 blur-3xl" />
       <svg
         viewBox={`0 0 ${mapWidth} ${mapHeight}`}
         className="relative z-10 h-full min-h-[390px] w-full drop-shadow-[0_0_28px_rgba(56,189,248,0.42)]"
@@ -455,14 +499,72 @@ export default function IranPortalMap({
       >
         <defs>
           <linearGradient id="provinceFill" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#164e63" stopOpacity="0.86" />
-            <stop offset="55%" stopColor="#1e3a8a" stopOpacity="0.74" />
-            <stop offset="100%" stopColor="#0f172a" stopOpacity="0.92" />
+            <stop offset="0%" stopColor="#1f4659" stopOpacity="0.94" />
+            <stop offset="48%" stopColor="#1f3346" stopOpacity="0.96" />
+            <stop offset="100%" stopColor="#111827" stopOpacity="0.98" />
           </linearGradient>
           <linearGradient id="hoveredProvinceFill" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.92" />
-            <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.82" />
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.92" />
+            <stop offset="100%" stopColor="#075985" stopOpacity="0.88" />
           </linearGradient>
+          <linearGradient id="provinceSideFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#0e7490" stopOpacity="0.72" />
+            <stop offset="100%" stopColor="#020617" stopOpacity="0.96" />
+          </linearGradient>
+          <radialGradient id="terrainLight" cx="38%" cy="28%" r="70%">
+            <stop offset="0%" stopColor="#93c5fd" stopOpacity="0.2" />
+            <stop offset="42%" stopColor="#22d3ee" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="#020617" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="mountainHighlight" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="#dbeafe" stopOpacity="0.62" />
+            <stop offset="45%" stopColor="#7dd3fc" stopOpacity="0.26" />
+            <stop offset="100%" stopColor="#0f172a" stopOpacity="0.2" />
+          </linearGradient>
+          <linearGradient id="mountainShadow" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="#020617" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#082f49" stopOpacity="0.28" />
+          </linearGradient>
+          <filter id="mapCastShadow" x="-20%" y="-20%" width="140%" height="150%">
+            <feDropShadow dx="0" dy="22" stdDeviation="12" floodColor="#020617" floodOpacity="0.7" />
+            <feDropShadow dx="0" dy="7" stdDeviation="3" floodColor="#38bdf8" floodOpacity="0.35" />
+          </filter>
+          <filter id="outerNeon" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feColorMatrix
+              in="blur"
+              type="matrix"
+              values="0 0 0 0 0.16 0 0 0 0 0.82 0 0 0 0 1 0 0 0 0.9 0"
+              result="cyanGlow"
+            />
+            <feMerge>
+              <feMergeNode in="cyanGlow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="terrainRelief" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.025 0.06"
+              numOctaves="4"
+              seed="24"
+              result="terrainNoise"
+            />
+            <feDiffuseLighting
+              in="terrainNoise"
+              lightingColor="#e0f2fe"
+              surfaceScale="4.2"
+              result="terrainLightMap"
+            >
+              <feDistantLight azimuth="310" elevation="34" />
+            </feDiffuseLighting>
+            <feComponentTransfer in="terrainLightMap">
+              <feFuncR type="gamma" amplitude="0.7" exponent="1.28" offset="0" />
+              <feFuncG type="gamma" amplitude="0.85" exponent="1.18" offset="0" />
+              <feFuncB type="gamma" amplitude="1" exponent="1.1" offset="0" />
+              <feFuncA type="table" tableValues="0 0.58" />
+            </feComponentTransfer>
+          </filter>
           <filter id="provinceGlow">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
@@ -470,76 +572,230 @@ export default function IranPortalMap({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+          <filter id="markerGlow" x="-120%" y="-120%" width="340%" height="340%">
+            <feGaussianBlur stdDeviation="7" result="blur" />
+            <feColorMatrix
+              in="blur"
+              type="matrix"
+              values="0 0 0 0 0.1 0 0 0 0 0.85 0 0 0 0 1 0 0 0 0.95 0"
+              result="glow"
+            />
+            <feMerge>
+              <feMergeNode in="glow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <clipPath id="iranMapClip">
+            <path d={provinceShapes.map((province) => province.path).join(" ")} />
+          </clipPath>
         </defs>
 
         <g
-          className="fill-cyan-200/75 text-[14px] font-bold"
+          className="fill-cyan-200/70 text-[14px] font-bold"
           pointerEvents="none"
         >
-          <text x="170" y="72" textAnchor="middle">
+          <text x="368" y="78" textAnchor="middle">
             دریای خزر
           </text>
-          <text x="218" y="574" textAnchor="middle">
+          <text x="208" y="588" textAnchor="middle">
             خلیج فارس
           </text>
-          <text x="590" y="612" textAnchor="middle">
+          <text x="596" y="610" textAnchor="middle">
             دریای عمان
           </text>
         </g>
 
-        {provinceShapes.map((province) => {
-          const isHovered = hoveredProvinceName === province.name;
-
-          return (
-            <path
-              key={province.name}
-              d={province.path}
-              role="img"
-              aria-label={`استان ${province.nameFa}`}
-              className="origin-center transition duration-200 hover:scale-[1.012] hover:fill-cyan-400/55"
-              fill={
-                isHovered
-                  ? "url(#hoveredProvinceFill)"
-                  : "url(#provinceFill)"
-              }
-              stroke={isHovered ? "#ffffff" : "#7dd3fc"}
-              strokeOpacity={isHovered ? 0.95 : 0.46}
-              strokeWidth={isHovered ? 2.2 : 1}
-              filter={isHovered ? "url(#provinceGlow)" : undefined}
-              onMouseEnter={() => setHoveredProvinceName(province.name)}
-              onMouseLeave={() => setHoveredProvinceName(null)}
-            />
-          );
-        })}
-
-        {hoveredProvince && (
-          <g
-            pointerEvents="none"
-            transform={`translate(${hoveredProvince.labelPoint.x.toFixed(1)} ${hoveredProvince.labelPoint.y.toFixed(1)})`}
-          >
-            <rect
-              x="-45"
-              y="-28"
-              width="90"
-              height="28"
-              rx="14"
-              fill="#020617"
-              opacity="0.82"
-              stroke="#67e8f9"
-              strokeOpacity="0.45"
-            />
-            <text
-              y="-10"
-              textAnchor="middle"
-              className="fill-white text-[12px] font-black"
-            >
-              {hoveredProvince.nameFa}
-            </text>
+        <g
+          filter="url(#mapCastShadow)"
+          style={{
+            transformBox: "view-box",
+            transformOrigin: mapPerspectiveOrigin,
+          }}
+        >
+          <g transform={`${mapPerspectiveTransform} translate(0 18)`}>
+            {provinceShapes.map((province) => (
+              <path
+                key={`side-${province.name}`}
+                d={province.path}
+                fill="url(#provinceSideFill)"
+                stroke="#0284c7"
+                strokeOpacity="0.42"
+                strokeWidth="1.2"
+              />
+            ))}
           </g>
-        )}
+
+          <g transform={`${mapPerspectiveTransform} translate(0 9)`}>
+            {provinceShapes.map((province) => (
+              <path
+                key={`rim-${province.name}`}
+                d={province.path}
+                fill="#082f49"
+                opacity="0.72"
+                stroke="#38bdf8"
+                strokeOpacity="0.5"
+                strokeWidth="1"
+              />
+            ))}
+          </g>
+
+          <g transform={mapPerspectiveTransform}>
+            <path
+              d={provinceShapes.map((province) => province.path).join(" ")}
+              fill="none"
+              stroke="#7dd3fc"
+              strokeOpacity="0.85"
+              strokeWidth="3.2"
+              filter="url(#outerNeon)"
+              pointerEvents="none"
+            />
+
+            {provinceShapes.map((province) => {
+              const isHovered = hoveredProvinceName === province.name;
+
+              return (
+                <path
+                  key={province.name}
+                  d={province.path}
+                  role="img"
+                  aria-label={`استان ${province.nameFa}`}
+                  className="origin-center transition duration-200 hover:scale-[1.018]"
+                  fill={
+                    isHovered
+                      ? "url(#hoveredProvinceFill)"
+                      : "url(#provinceFill)"
+                  }
+                  stroke={isHovered ? "#ffffff" : "#8bdfff"}
+                  strokeOpacity={isHovered ? 0.96 : 0.68}
+                  strokeWidth={isHovered ? 2.5 : 1.18}
+                  filter={isHovered ? "url(#provinceGlow)" : undefined}
+                  onMouseEnter={() => setHoveredProvinceName(province.name)}
+                  onMouseLeave={() => setHoveredProvinceName(null)}
+                  style={{
+                    transformBox: "fill-box",
+                    transformOrigin: "center",
+                  }}
+                />
+              );
+            })}
+
+            <path
+              d={provinceShapes.map((province) => province.path).join(" ")}
+              fill="url(#terrainLight)"
+              opacity="0.42"
+              pointerEvents="none"
+            />
+            {provinceShapes.map((province) => (
+              <path
+                key={`terrain-${province.name}`}
+                d={province.path}
+                fill="#ffffff"
+                opacity="0.18"
+                filter="url(#terrainRelief)"
+                pointerEvents="none"
+              />
+            ))}
+            <g
+              clipPath="url(#iranMapClip)"
+              pointerEvents="none"
+            >
+              <path
+                d="M98 128 C136 166 156 216 190 260 C226 306 252 360 290 410 C318 448 354 486 392 528"
+                fill="none"
+                stroke="url(#mountainShadow)"
+                strokeWidth="12"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.72"
+              />
+              <path
+                d="M90 118 C130 155 150 208 184 251 C220 299 246 350 284 400 C313 438 350 476 388 520"
+                fill="none"
+                stroke="url(#mountainHighlight)"
+                strokeWidth="4.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.88"
+              />
+              <path
+                d="M112 140 C150 176 170 226 202 266 C236 308 268 360 306 408"
+                fill="none"
+                stroke="#bae6fd"
+                strokeOpacity="0.34"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+
+              <path
+                d="M142 126 C205 98 278 105 340 128 C396 149 450 139 508 110"
+                fill="none"
+                stroke="url(#mountainShadow)"
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.58"
+              />
+              <path
+                d="M136 116 C202 91 276 96 342 119 C397 138 448 130 504 102"
+                fill="none"
+                stroke="url(#mountainHighlight)"
+                strokeWidth="4.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.78"
+              />
+
+              <path
+                d="M510 182 C560 236 584 304 566 374 C552 430 584 494 642 540"
+                fill="none"
+                stroke="url(#mountainShadow)"
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.46"
+              />
+              <path
+                d="M502 174 C550 226 572 296 556 364 C544 418 576 482 636 530"
+                fill="none"
+                stroke="url(#mountainHighlight)"
+                strokeWidth="3.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.58"
+              />
+            </g>
+            {hoveredProvince && (
+              <g
+                pointerEvents="none"
+                transform={`translate(${hoveredProvince.labelPoint.x.toFixed(1)} ${hoveredProvince.labelPoint.y.toFixed(1)})`}
+              >
+                <rect
+                  x="-45"
+                  y="-30"
+                  width="90"
+                  height="30"
+                  rx="15"
+                  fill="#020617"
+                  opacity="0.88"
+                  stroke="#67e8f9"
+                  strokeOpacity="0.55"
+                />
+                <text
+                  y="-11"
+                  textAnchor="middle"
+                  className="fill-white text-[12px] font-black"
+                >
+                  {hoveredProvince.nameFa}
+                </text>
+              </g>
+            )}
+
+          </g>
+        </g>
 
         {mapSites.map((site) => {
           const isSelected = selectedSiteId === site.id;
+          const labelWidth = Math.max(102, site.title.length * 11);
 
           return (
             <g
@@ -548,7 +804,8 @@ export default function IranPortalMap({
               tabIndex={0}
               aria-label={site.title}
               className="cursor-pointer outline-none transition hover:opacity-100"
-              transform={`translate(${site.point.x.toFixed(1)} ${site.point.y.toFixed(1)})`}
+              transform={`translate(${site.visualPoint.x.toFixed(1)} ${site.visualPoint.y.toFixed(1)})`}
+              filter="url(#markerGlow)"
               onClick={() => {
                 onSiteSelect?.(site.id);
                 setSiteModal({
@@ -569,34 +826,90 @@ export default function IranPortalMap({
                 }
               }}
             >
-              <circle
-                r={isSelected ? 20 : 16}
-                fill={site.color}
-                opacity="0.22"
+              <rect
+                x="-28"
+                y="-72"
+                width={labelWidth + 78}
+                height="92"
+                fill="transparent"
               />
-              <circle
-                r={isSelected ? 11 : 8}
+              <ellipse
+                cx="0"
+                cy="0"
+                rx={isSelected ? 22 : 18}
+                ry={isSelected ? 7 : 5}
+                fill={site.color}
+                opacity="0.36"
+              />
+              <ellipse
+                cx="0"
+                cy="-2"
+                rx={isSelected ? 13 : 10}
+                ry={isSelected ? 4.5 : 3.5}
+                fill="none"
+                stroke={site.color}
+                strokeWidth="2"
+                opacity="0.72"
+              />
+              <line
+                x1="0"
+                y1="-3"
+                x2="0"
+                y2="-25"
+                stroke={site.color}
+                strokeWidth="3.2"
+                strokeLinecap="round"
+                opacity="0.78"
+              />
+              <path
+                d="M0 -62 C-10 -62 -17 -54 -17 -45 C-17 -32 0 -1 0 -1 C0 -1 17 -32 17 -45 C17 -54 10 -62 0 -62Z"
                 fill={site.color}
                 stroke="#ffffff"
-                strokeWidth={isSelected ? 3 : 2}
+                strokeWidth="2.4"
               />
-              <foreignObject x="-12" y="-13" width="24" height="24">
-                <MapPin
-                  size={24}
-                  fill={site.color}
-                  color="#ffffff"
+              <circle
+                cx="0"
+                cy="-45"
+                r="6"
+                fill="#ffffff"
+                opacity="0.92"
+              />
+              <circle
+                cx="0"
+                cy="-45"
+                r="2.8"
+                fill={site.color}
+              />
+              <line
+                x1="17"
+                y1="-45"
+                x2="36"
+                y2="-45"
+                stroke="#cbd5e1"
+                strokeOpacity="0.75"
+                strokeWidth="1.2"
+              />
+              <g transform="translate(36 -62)">
+                <rect
+                  x="0"
+                  y="0"
+                  width={labelWidth}
+                  height="34"
+                  rx="6"
+                  fill="#0f172a"
+                  opacity="0.88"
+                  stroke="#e2e8f0"
+                  strokeOpacity="0.5"
                 />
-              </foreignObject>
-              <text
-                x="16"
-                y="-12"
-                className="fill-white text-[13px] font-black"
-                paintOrder="stroke"
-                stroke="#020617"
-                strokeWidth="4"
-              >
-                {site.title}
-              </text>
+                <text
+                  x={labelWidth / 2}
+                  y="22"
+                  textAnchor="middle"
+                  className="fill-white text-[13px] font-black"
+                >
+                  {site.title}
+                </text>
+              </g>
               <title>{`${site.title} - ${site.subtitle}`}</title>
             </g>
           );
