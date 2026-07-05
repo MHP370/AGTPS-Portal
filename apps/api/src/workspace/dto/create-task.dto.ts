@@ -21,6 +21,11 @@ export class CreateTaskDto {
   dueDate?: string;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  notifyBeforeMinutes?: number;
+
+  @IsOptional()
   @IsEnum(TaskStatus)
   status?: TaskStatus;
 

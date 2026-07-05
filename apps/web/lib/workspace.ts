@@ -17,6 +17,7 @@ export interface PortalReminder {
   title: string;
   description?: string;
   remindAt: string;
+  notifyBeforeMinutes?: number;
   completed: boolean;
   createdAt: string;
   updatedAt: string;
@@ -27,6 +28,7 @@ export interface PortalTask {
   title: string;
   description?: string;
   dueDate?: string | null;
+  notifyBeforeMinutes?: number;
   status: TaskStatus;
   priority: number;
   createdAt: string;
@@ -62,6 +64,7 @@ export function createReminder(dto: {
   title: string;
   description?: string;
   remindAt: string;
+  notifyBeforeMinutes?: number;
   completed?: boolean;
 }) {
   return api.post<PortalReminder>("/workspace/reminders", dto);
@@ -74,6 +77,7 @@ export function updateReminder(
     description?: string;
     remindAt: string;
     completed: boolean;
+    notifyBeforeMinutes: number;
   }>,
 ) {
   return api.put<PortalReminder>(`/workspace/reminders/${id}`, dto);
@@ -91,6 +95,7 @@ export function createTask(dto: {
   title: string;
   description?: string;
   dueDate?: string;
+  notifyBeforeMinutes?: number;
   status?: TaskStatus;
   priority?: number;
 }) {
@@ -103,6 +108,7 @@ export function updateTask(
     title: string;
     description?: string;
     dueDate?: string;
+    notifyBeforeMinutes: number;
     status: TaskStatus;
     priority: number;
   }>,

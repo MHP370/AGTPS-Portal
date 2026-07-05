@@ -372,6 +372,7 @@ model PortalReminder {
   title       String
   description String? @db.Text
   remindAt    DateTime
+  notifyBeforeMinutes Int?
   completed   Boolean @default(false)
 
   owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
@@ -386,6 +387,7 @@ model PortalTask {
   title       String
   description String? @db.Text
   dueDate     DateTime?
+  notifyBeforeMinutes Int?
   status      TaskStatus @default(TODO)
   priority    Int @default(1)
 

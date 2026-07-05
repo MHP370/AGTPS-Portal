@@ -1,8 +1,10 @@
 import {
   IsBoolean,
   IsDateString,
+  IsInt,
   IsOptional,
   IsString,
+  Min,
 } from 'class-validator';
 
 export class CreateReminderDto {
@@ -19,4 +21,9 @@ export class CreateReminderDto {
   @IsOptional()
   @IsBoolean()
   completed?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  notifyBeforeMinutes?: number;
 }

@@ -20,6 +20,7 @@ import { UploadsModule } from './uploads/uploads.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { WorkspaceModule } from './workspace/workspace.module';
 import { DirectoryModule } from './directory/directory.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 
 
@@ -48,6 +49,7 @@ import { DirectoryModule } from './directory/directory.module';
     MeetingsModule,
     WorkspaceModule,
     DirectoryModule,
+    NotificationsModule,
   ],
 
   controllers: [AppController],

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { NotificationType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { CreateReminderDto } from './dto/create-reminder.dto';
@@ -52,7 +53,22 @@ export class WorkspaceService {
       data: {
         ...dto,
         remindAt: new Date(dto.remindAt),
+        ...(dto.notifyBeforeMinutes !== undefined && {
+          notifyBeforeMinutes: dto.notifyBeforeMinutes,
+        }),
       },
+    }).then(async (reminder) => {
+      await this.createNotification({
+        type: NotificationType.REMINDER,
+        title: 'یادآوری',
+        body: reminder.title,
+        scheduledAt: this.getScheduledNotificationTime(
+          reminder.remindAt,
+          reminder.notifyBeforeMinutes,
+        ),
+      });
+
+      return reminder;
     });
   }
 
@@ -88,7 +104,24 @@ export class WorkspaceService {
       data: {
         ...dto,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+        ...(dto.notifyBeforeMinutes !== undefined && {
+          notifyBeforeMinutes: dto.notifyBeforeMinutes,
+        }),
       },
+    }).then(async (task) => {
+      if (task.dueDate) {
+        await this.createNotification({
+          type: NotificationType.TASK,
+          title: 'یادآوری کار',
+          body: task.title,
+          scheduledAt: this.getScheduledNotificationTime(
+            task.dueDate,
+            task.notifyBeforeMinutes,
+          ),
+        });
+      }
+
+      return task;
     });
   }
 
@@ -107,6 +140,26 @@ export class WorkspaceService {
   removeTask(id: string) {
     return this.prisma.portalTask.delete({
       where: { id },
+    });
+  }
+
+  private getScheduledNotificationTime(
+    date: Date,
+    notifyBeforeMinutes?: number | null,
+  ) {
+    if (!notifyBeforeMinutes) return date;
+
+    return new Date(date.getTime() - notifyBeforeMinutes * 60 * 1000);
+  }
+
+  private createNotification(data: {
+    type: NotificationType;
+    title: string;
+    body: string;
+    scheduledAt: Date;
+  }) {
+    return this.prisma.portalNotification.create({
+      data,
     });
   }
 }

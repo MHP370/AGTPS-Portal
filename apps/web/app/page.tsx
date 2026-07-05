@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
+  Bell,
   ChevronLeft,
   CloudDownload,
   Download,
+  Plus,
   Settings,
   X,
 } from "lucide-react";
@@ -14,11 +16,24 @@ import PersianClock from "@/components/portal/PersianClock";
 import IranPortalMap from "@/components/portal/IranPortalMap";
 import PortalApplicationsGrid from "@/components/portal/PortalApplicationsGrid";
 import { Dialog } from "@/components/ui/Dialog";
+import { Input } from "@/components/ui/Input";
+import { PersianDateInput } from "@/components/ui/PersianDateInput";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useNews } from "@/hooks/useNews";
+import {
+  useMarkNotificationRead,
+  useNotifications,
+} from "@/hooks/useNotifications";
 import { useSettings } from "@/hooks/useSettings";
-import { useNotes, useReminders, useTasks } from "@/hooks/useWorkspace";
+import {
+  useCreateNote,
+  useCreateReminder,
+  useCreateTask,
+  useNotes,
+  useReminders,
+  useTasks,
+} from "@/hooks/useWorkspace";
 import {
   hrNotices,
   iranCalendarEvents,
@@ -35,6 +50,8 @@ type PortalContentItem = {
   meta?: string;
   image?: string;
 };
+
+type QuickAction = "note" | "reminder" | "task";
 
 function isAnnouncementVisible({
   published,
@@ -99,6 +116,15 @@ export default function Home() {
   const [listModal, setListModal] = useState<"announcements" | "news" | null>(
     null,
   );
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [quickAction, setQuickAction] = useState<QuickAction | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickBody, setQuickBody] = useState("");
+  const [quickDate, setQuickDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [quickTime, setQuickTime] = useState("09:00");
+  const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const { data: settings } = useSettings();
   const { data: announcements = [] } = useAnnouncements();
   const { data: news = [] } = useNews();
@@ -106,6 +132,11 @@ export default function Home() {
   const { data: notes = [] } = useNotes();
   const { data: reminders = [] } = useReminders();
   const { data: tasks = [] } = useTasks();
+  const { data: notifications = [] } = useNotifications();
+  const markNotificationRead = useMarkNotificationRead();
+  const createNote = useCreateNote();
+  const createReminder = useCreateReminder();
+  const createTask = useCreateTask();
   const weekDays = ["یکشنبه", "دوشنبه", "امروز", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
   const monthDays = ["۸", "۹", "۱۰", "۱۱", "۱۲", "۱۳", "۱۴"];
   const backgroundImageUrl =
@@ -158,6 +189,55 @@ export default function Home() {
   const visibleTasks = tasks
     .filter((task) => task.status !== "DONE")
     .slice(0, 4);
+  const unreadNotifications = notifications.filter(
+    (notification) => !notification.readAt,
+  );
+
+  function openQuickAction(action: QuickAction) {
+    setQuickAction(action);
+    setQuickTitle("");
+    setQuickBody("");
+    setQuickDate(new Date().toISOString().slice(0, 10));
+    setQuickTime("09:00");
+    setQuickNotifyBefore("0");
+  }
+
+  async function submitQuickAction(event: React.FormEvent) {
+    event.preventDefault();
+    if (!quickAction || !quickTitle.trim()) return;
+
+    const notifyBeforeMinutes = Number(quickNotifyBefore || 0);
+
+    if (quickAction === "note") {
+      await createNote.mutateAsync({
+        title: quickTitle.trim(),
+        body: quickBody.trim() || quickTitle.trim(),
+        isPinned: true,
+      });
+    }
+
+    if (quickAction === "reminder") {
+      await createReminder.mutateAsync({
+        title: quickTitle.trim(),
+        description: quickBody.trim() || undefined,
+        remindAt: `${quickDate}T${quickTime}:00`,
+        notifyBeforeMinutes,
+      });
+    }
+
+    if (quickAction === "task") {
+      await createTask.mutateAsync({
+        title: quickTitle.trim(),
+        description: quickBody.trim() || undefined,
+        dueDate: quickDate ? `${quickDate}T${quickTime}:00` : undefined,
+        status: "TODO",
+        priority: 1,
+        notifyBeforeMinutes,
+      });
+    }
+
+    setQuickAction(null);
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#061528] text-white">
@@ -192,6 +272,19 @@ export default function Home() {
           </nav>
           <div className="order-2 flex items-center gap-4 xl:order-3">
             <PersianClock />
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen(true)}
+              className="relative grid size-12 place-items-center rounded-2xl border border-cyan-300/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20"
+              aria-label="نوتیفیکیشن‌ها"
+            >
+              <Bell size={22} />
+              {unreadNotifications.length > 0 && (
+                <span className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-rose-500 text-[10px] font-black text-white">
+                  {unreadNotifications.length}
+                </span>
+              )}
+            </button>
             <Link href="/admin/dashboard" className="flex items-center gap-3 rounded-2xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-white shadow-[0_0_24px_rgba(14,165,233,0.18)] hover:bg-cyan-500/20">
               پنل مدیریت
               <Settings size={22} />
@@ -403,7 +496,35 @@ export default function Home() {
             </GlassPanel>
 
             <GlassPanel id="workspace">
-              <SectionHeader title="دفترچه و کارهای من" />
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black text-white">
+                  دفترچه و کارهای من
+                </h2>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openQuickAction("note")}
+                    className="grid size-8 place-items-center rounded-full bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/25"
+                    aria-label="افزودن یادداشت"
+                  >
+                    <Plus size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openQuickAction("reminder")}
+                    className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-100 hover:bg-amber-400/25"
+                  >
+                    یادآوری
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openQuickAction("task")}
+                    className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-100 hover:bg-emerald-400/25"
+                  >
+                    تسک
+                  </button>
+                </div>
+              </div>
               <div className="space-y-3">
                 {visibleNotes.map((note) => (
                   <div key={note.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -547,6 +668,103 @@ export default function Home() {
             ),
           )}
         </div>
+      </Dialog>
+
+      <Dialog
+        open={notificationsOpen}
+        onOpenChange={setNotificationsOpen}
+        title="نوتیفیکیشن‌ها"
+      >
+        <div className="space-y-3 text-right" dir="rtl">
+          {notifications.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
+              نوتیفیکیشنی وجود ندارد.
+            </div>
+          ) : (
+            notifications.map((notification) => (
+              <button
+                key={notification.id}
+                type="button"
+                onClick={() => {
+                  if (!notification.readAt) {
+                    markNotificationRead.mutate(notification.id);
+                  }
+                }}
+                className={`w-full rounded-2xl border p-4 text-right transition ${
+                  notification.readAt
+                    ? "border-white/10 bg-white/[0.03] text-slate-400"
+                    : "border-cyan-300/30 bg-cyan-400/10 text-white"
+                }`}
+              >
+                <div className="font-black">{notification.title}</div>
+                {notification.body && (
+                  <p className="mt-2 text-sm leading-7">{notification.body}</p>
+                )}
+                <p className="mt-2 text-xs text-slate-500">
+                  {new Date(notification.createdAt).toLocaleString("fa-IR")}
+                </p>
+              </button>
+            ))
+          )}
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(quickAction)}
+        onOpenChange={(open) => {
+          if (!open) setQuickAction(null);
+        }}
+        title={
+          quickAction === "note"
+            ? "افزودن یادداشت"
+            : quickAction === "reminder"
+              ? "افزودن یادآوری"
+              : "افزودن تسک"
+        }
+      >
+        <form onSubmit={submitQuickAction} className="space-y-4 text-right" dir="rtl">
+          <Input
+            value={quickTitle}
+            onChange={(event) => setQuickTitle(event.target.value)}
+            placeholder="عنوان"
+          />
+          <textarea
+            value={quickBody}
+            onChange={(event) => setQuickBody(event.target.value)}
+            rows={4}
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            placeholder="توضیحات"
+          />
+          {quickAction !== "note" && (
+            <div className="grid gap-3 md:grid-cols-3">
+              <PersianDateInput value={quickDate} onChange={setQuickDate} />
+              <Input
+                type="time"
+                value={quickTime}
+                onChange={(event) => setQuickTime(event.target.value)}
+              />
+              <select
+                value={quickNotifyBefore}
+                onChange={(event) => setQuickNotifyBefore(event.target.value)}
+                className="h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              >
+                <option value="0">همان زمان</option>
+                <option value="60">۱ ساعت قبل</option>
+                <option value="180">۳ ساعت قبل</option>
+                <option value="1440">۱ روز قبل</option>
+                <option value="2880">۲ روز قبل</option>
+              </select>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white hover:bg-emerald-500"
+            >
+              ذخیره
+            </button>
+          </div>
+        </form>
       </Dialog>
     </main>
   );
