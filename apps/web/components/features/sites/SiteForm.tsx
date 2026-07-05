@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { FileUploadField } from "@/components/ui/FileUploadField";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import type { CreateSiteDto, Site } from "@/lib/sites";
@@ -27,6 +28,11 @@ export function SiteForm({
   const [baseUrl, setBaseUrl] = useState("");
   const [ipRange, setIpRange] = useState("");
   const [description, setDescription] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [logo, setLogo] = useState("");
+  const [image, setImage] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [color, setColor] = useState("#22d3ee");
@@ -42,6 +48,11 @@ export function SiteForm({
     setBaseUrl(site.baseUrl ?? "");
     setIpRange(site.ipRange ?? "");
     setDescription(site.description ?? "");
+    setAddress(site.address ?? "");
+    setPhone(site.phone ?? "");
+    setEmail(site.email ?? "");
+    setLogo(site.logo ?? "");
+    setImage(site.image ?? "");
     setLatitude(site.latitude === undefined || site.latitude === null ? "" : String(site.latitude));
     setLongitude(site.longitude === undefined || site.longitude === null ? "" : String(site.longitude));
     setColor(site.color || "#22d3ee");
@@ -58,6 +69,7 @@ export function SiteForm({
     const parsedSortOrder = Number(sortOrder || 0);
     const parsedLatitude = latitude.trim() ? Number(latitude) : undefined;
     const parsedLongitude = longitude.trim() ? Number(longitude) : undefined;
+    const trimmedEmail = email.trim();
 
     if (!trimmedName || !trimmedCode) {
       setFormError("نام سایت و کد سایت الزامی هستند.");
@@ -94,6 +106,14 @@ export function SiteForm({
       return;
     }
 
+    if (
+      trimmedEmail &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)
+    ) {
+      setFormError("ایمیل سایت معتبر نیست.");
+      return;
+    }
+
     setFormError("");
 
     await onSubmit({
@@ -102,6 +122,11 @@ export function SiteForm({
       baseUrl: baseUrl.trim() || undefined,
       ipRange: ipRange.trim() || undefined,
       description: description.trim() || undefined,
+      address: address.trim() || undefined,
+      phone: phone.trim() || undefined,
+      email: trimmedEmail || undefined,
+      logo: logo.trim() || undefined,
+      image: image.trim() || undefined,
       latitude: parsedLatitude,
       longitude: parsedLongitude,
       color: color.trim() || undefined,
@@ -156,6 +181,36 @@ export function SiteForm({
         </FormField>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <FormField label="آدرس">
+          <Input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            disabled={loading}
+            placeholder="تهران، ساختمان مرکزی"
+          />
+        </FormField>
+
+        <FormField label="تلفن">
+          <Input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={loading}
+            placeholder="021..."
+          />
+        </FormField>
+
+        <FormField label="ایمیل">
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+            placeholder="site@example.com"
+          />
+        </FormField>
+      </div>
+
       <FormField label="توضیحات">
         <textarea
           value={description}
@@ -165,6 +220,28 @@ export function SiteForm({
           className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </FormField>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField label="لوگوی سایت">
+          <FileUploadField
+            value={logo}
+            onChange={setLogo}
+            folder="sites"
+            disabled={loading}
+            placeholder="/uploads/sites/logo.png"
+          />
+        </FormField>
+
+        <FormField label="تصویر سایت">
+          <FileUploadField
+            value={image}
+            onChange={setImage}
+            folder="sites"
+            disabled={loading}
+            placeholder="/uploads/sites/image.png"
+          />
+        </FormField>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <FormField label="عرض جغرافیایی">

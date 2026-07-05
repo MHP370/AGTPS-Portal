@@ -35,7 +35,15 @@ export default function SitesPage() {
     if (!keyword) return data;
 
     return data.filter((site) =>
-      [site.name, site.code, site.baseUrl ?? "", site.ipRange ?? ""]
+      [
+        site.name,
+        site.code,
+        site.baseUrl ?? "",
+        site.ipRange ?? "",
+        site.address ?? "",
+        site.phone ?? "",
+        site.email ?? "",
+      ]
         .join(" ")
         .toLowerCase()
         .includes(keyword),
@@ -134,21 +142,27 @@ export default function SitesPage() {
             ),
           },
           {
-            key: "baseUrl",
-            title: "Base URL",
+            key: "connection",
+            title: "ارتباط",
             render: (site) => (
-              <span className="text-slate-300">
-                {site.baseUrl || "-"}
-              </span>
+              <div className="space-y-1 text-sm text-slate-300">
+                <div>{site.baseUrl || "-"}</div>
+                <div className="text-xs text-slate-500">
+                  {site.ipRange || "بدون IP Range"}
+                </div>
+              </div>
             ),
           },
           {
-            key: "ipRange",
-            title: "IP Range",
+            key: "contact",
+            title: "تماس",
             render: (site) => (
-              <span className="text-slate-300">
-                {site.ipRange || "-"}
-              </span>
+              <div className="space-y-1 text-sm text-slate-300">
+                <div>{site.phone || "-"}</div>
+                <div className="text-xs text-slate-500">
+                  {site.email || site.address || "بدون اطلاعات تماس"}
+                </div>
+              </div>
             ),
           },
           {

@@ -12,6 +12,8 @@ export interface Site {
   email?: string;
   latitude?: number;
   longitude?: number;
+  logo?: string;
+  image?: string;
   color?: string;
   sortOrder: number;
   isActive: boolean;
@@ -30,6 +32,8 @@ export interface CreateSiteDto {
   email?: string;
   latitude?: number;
   longitude?: number;
+  logo?: string;
+  image?: string;
   color?: string;
   sortOrder?: number;
   isActive?: boolean;

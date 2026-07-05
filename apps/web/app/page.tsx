@@ -13,6 +13,8 @@ import Logo from "@/components/layout/Logo";
 import PersianClock from "@/components/portal/PersianClock";
 import IranPortalMap from "@/components/portal/IranPortalMap";
 import PortalApplicationsGrid from "@/components/portal/PortalApplicationsGrid";
+import { useAnnouncements } from "@/hooks/useAnnouncements";
+import { useNews } from "@/hooks/useNews";
 import { useSettings } from "@/hooks/useSettings";
 import {
   hrNotices,
@@ -46,6 +48,8 @@ function GlassPanel({ children, className = "", id }: { children: React.ReactNod
 export default function Home() {
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const { data: settings } = useSettings();
+  const { data: announcements = [] } = useAnnouncements();
+  const { data: news = [] } = useNews();
   const weekDays = ["یکشنبه", "دوشنبه", "امروز", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
   const monthDays = ["۸", "۹", "۱۰", "۱۱", "۱۲", "۱۳", "۱۴"];
   const backgroundImageUrl =
@@ -54,6 +58,12 @@ export default function Home() {
     settings?.portalBackgroundOverlayColor || "#020617";
   const overlayOpacity =
     settings?.portalBackgroundOverlayOpacity ?? 0.72;
+  const activeAnnouncements = announcements
+    .filter((item) => item.published)
+    .slice(0, 4);
+  const latestNews = news
+    .filter((item) => item.published)
+    .slice(0, 4);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#061528] text-white">
@@ -100,33 +110,68 @@ export default function Home() {
             <GlassPanel id="announcements">
               <SectionHeader title="آخرین اطلاعیه ها" />
               <div className="space-y-3">
-                {managementNotices.map((notice) => (
-                  <div key={notice.title} className="rounded-2xl border border-white/5 bg-white/[0.04] p-4">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <h3 className="font-bold">{notice.title}</h3>
-                      <span className={`size-2.5 rounded-full ${notice.color}`} />
-                    </div>
-                    <p className="text-sm leading-7 text-slate-300">{notice.description}</p>
-                    <p className="mt-2 text-xs text-slate-500">{notice.time}</p>
-                  </div>
-                ))}
+                {activeAnnouncements.length > 0
+                  ? activeAnnouncements.map((notice) => (
+                      <div key={notice.id} className="rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <h3 className="font-bold">{notice.title}</h3>
+                          <span className="size-2.5 rounded-full bg-cyan-300" />
+                        </div>
+                        <p className="text-sm leading-7 text-slate-300">{notice.body}</p>
+                        <p className="mt-2 text-xs text-slate-500">
+                          اولویت {notice.priority}
+                        </p>
+                      </div>
+                    ))
+                  : managementNotices.map((notice) => (
+                      <div key={notice.title} className="rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <h3 className="font-bold">{notice.title}</h3>
+                          <span className={`size-2.5 rounded-full ${notice.color}`} />
+                        </div>
+                        <p className="text-sm leading-7 text-slate-300">{notice.description}</p>
+                        <p className="mt-2 text-xs text-slate-500">{notice.time}</p>
+                      </div>
+                    ))}
               </div>
             </GlassPanel>
 
             <GlassPanel id="hr">
-              <SectionHeader title="اطلاعیه های منابع انسانی" />
+              <SectionHeader title="اخبار سایت‌ها" />
               <div className="space-y-3">
-                {hrNotices.map((notice) => (
-                  <div key={notice.title} className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4">
-                    <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-white">
-                      <CloudDownload size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold">{notice.title}</h3>
-                      <p className="mt-1 text-xs leading-6 text-slate-300">{notice.description}</p>
-                    </div>
-                  </div>
-                ))}
+                {latestNews.length > 0
+                  ? latestNews.map((item) => (
+                      <div key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                        <div
+                          className="grid size-14 shrink-0 place-items-center rounded-2xl bg-cover bg-center text-white"
+                          style={{
+                            backgroundImage: item.image
+                              ? `url(${item.image})`
+                              : undefined,
+                          }}
+                        >
+                          {!item.image && <CloudDownload size={24} />}
+                        </div>
+                        <div>
+                          <h3 className="font-bold">{item.title}</h3>
+                          <p className="mt-1 text-xs leading-6 text-slate-300">{item.body}</p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {item.site?.name ?? "خبر سازمانی"}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  : hrNotices.map((notice) => (
+                      <div key={notice.title} className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                        <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-white">
+                          <CloudDownload size={24} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold">{notice.title}</h3>
+                          <p className="mt-1 text-xs leading-6 text-slate-300">{notice.description}</p>
+                        </div>
+                      </div>
+                    ))}
               </div>
             </GlassPanel>
           </aside>
