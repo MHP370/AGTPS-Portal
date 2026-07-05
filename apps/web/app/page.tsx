@@ -13,6 +13,7 @@ import Logo from "@/components/layout/Logo";
 import PersianClock from "@/components/portal/PersianClock";
 import IranPortalMap from "@/components/portal/IranPortalMap";
 import PortalApplicationsGrid from "@/components/portal/PortalApplicationsGrid";
+import { Dialog } from "@/components/ui/Dialog";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { useNews } from "@/hooks/useNews";
 import { useSettings } from "@/hooks/useSettings";
@@ -26,13 +27,30 @@ import {
   systemStatuses,
 } from "@/lib/portal";
 
-function SectionHeader({ title }: { title: string }) {
+type PortalContentItem = {
+  title: string;
+  body: string;
+  meta?: string;
+  image?: string;
+};
+
+function SectionHeader({
+  title,
+  onViewAll,
+}: {
+  title: string;
+  onViewAll?: () => void;
+}) {
   return (
     <div className="mb-5 flex items-center justify-between">
       <h2 className="text-lg font-black text-white">{title}</h2>
-      <Link href="#" className="text-xs font-bold text-cyan-300 hover:text-cyan-100">
+      <button
+        type="button"
+        onClick={onViewAll}
+        className="text-xs font-bold text-cyan-300 hover:text-cyan-100"
+      >
         مشاهده همه
-      </Link>
+      </button>
     </div>
   );
 }
@@ -47,6 +65,11 @@ function GlassPanel({ children, className = "", id }: { children: React.ReactNod
 
 export default function Home() {
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [selectedContent, setSelectedContent] =
+    useState<PortalContentItem | null>(null);
+  const [listModal, setListModal] = useState<"announcements" | "news" | null>(
+    null,
+  );
   const { data: settings } = useSettings();
   const { data: announcements = [] } = useAnnouncements();
   const { data: news = [] } = useNews();
@@ -60,10 +83,34 @@ export default function Home() {
     settings?.portalBackgroundOverlayOpacity ?? 0.72;
   const activeAnnouncements = announcements
     .filter((item) => item.published)
-    .slice(0, 4);
-  const latestNews = news
-    .filter((item) => item.published)
-    .slice(0, 4);
+  const latestNews = news.filter((item) => item.published);
+  const visibleAnnouncements = activeAnnouncements.slice(0, 4);
+  const visibleNews = latestNews.slice(0, 4);
+  const announcementItems: PortalContentItem[] =
+    activeAnnouncements.length > 0
+      ? activeAnnouncements.map((item) => ({
+          title: item.title,
+          body: item.body,
+          meta: `اولویت ${item.priority}`,
+        }))
+      : managementNotices.map((item) => ({
+          title: item.title,
+          body: item.description,
+          meta: item.time,
+        }));
+  const newsItems: PortalContentItem[] =
+    latestNews.length > 0
+      ? latestNews.map((item) => ({
+          title: item.title,
+          body: item.body,
+          meta: item.site?.name ?? "خبر سازمانی",
+          image: item.image,
+        }))
+      : hrNotices.map((item) => ({
+          title: item.title,
+          body: item.description,
+          meta: item.time,
+        }));
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#061528] text-white">
@@ -108,11 +155,25 @@ export default function Home() {
         <div className="grid flex-1 gap-5 xl:grid-cols-[460px_1fr_500px]">
           <aside className="space-y-5">
             <GlassPanel id="announcements">
-              <SectionHeader title="آخرین اطلاعیه ها" />
+              <SectionHeader
+                title="آخرین اطلاعیه ها"
+                onViewAll={() => setListModal("announcements")}
+              />
               <div className="space-y-3">
-                {activeAnnouncements.length > 0
-                  ? activeAnnouncements.map((notice) => (
-                      <div key={notice.id} className="rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                {visibleAnnouncements.length > 0
+                  ? visibleAnnouncements.map((notice) => (
+                      <button
+                        key={notice.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedContent({
+                            title: notice.title,
+                            body: notice.body,
+                            meta: `اولویت ${notice.priority}`,
+                          })
+                        }
+                        className="w-full rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                      >
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <h3 className="font-bold">{notice.title}</h3>
                           <span className="size-2.5 rounded-full bg-cyan-300" />
@@ -121,27 +182,53 @@ export default function Home() {
                         <p className="mt-2 text-xs text-slate-500">
                           اولویت {notice.priority}
                         </p>
-                      </div>
+                      </button>
                     ))
                   : managementNotices.map((notice) => (
-                      <div key={notice.title} className="rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                      <button
+                        key={notice.title}
+                        type="button"
+                        onClick={() =>
+                          setSelectedContent({
+                            title: notice.title,
+                            body: notice.description,
+                            meta: notice.time,
+                          })
+                        }
+                        className="w-full rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                      >
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <h3 className="font-bold">{notice.title}</h3>
                           <span className={`size-2.5 rounded-full ${notice.color}`} />
                         </div>
                         <p className="text-sm leading-7 text-slate-300">{notice.description}</p>
                         <p className="mt-2 text-xs text-slate-500">{notice.time}</p>
-                      </div>
+                      </button>
                     ))}
               </div>
             </GlassPanel>
 
             <GlassPanel id="hr">
-              <SectionHeader title="اخبار سایت‌ها" />
+              <SectionHeader
+                title="اخبار سایت‌ها"
+                onViewAll={() => setListModal("news")}
+              />
               <div className="space-y-3">
-                {latestNews.length > 0
-                  ? latestNews.map((item) => (
-                      <div key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                {visibleNews.length > 0
+                  ? visibleNews.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedContent({
+                            title: item.title,
+                            body: item.body,
+                            meta: item.site?.name ?? "خبر سازمانی",
+                            image: item.image,
+                          })
+                        }
+                        className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                      >
                         <div
                           className="grid size-14 shrink-0 place-items-center rounded-2xl bg-cover bg-center text-white"
                           style={{
@@ -159,10 +246,21 @@ export default function Home() {
                             {item.site?.name ?? "خبر سازمانی"}
                           </p>
                         </div>
-                      </div>
+                      </button>
                     ))
                   : hrNotices.map((notice) => (
-                      <div key={notice.title} className="flex items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4">
+                      <button
+                        key={notice.title}
+                        type="button"
+                        onClick={() =>
+                          setSelectedContent({
+                            title: notice.title,
+                            body: notice.description,
+                            meta: notice.time,
+                          })
+                        }
+                        className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                      >
                         <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-white">
                           <CloudDownload size={24} />
                         </div>
@@ -170,7 +268,7 @@ export default function Home() {
                           <h3 className="font-bold">{notice.title}</h3>
                           <p className="mt-1 text-xs leading-6 text-slate-300">{notice.description}</p>
                         </div>
-                      </div>
+                      </button>
                     ))}
               </div>
             </GlassPanel>
@@ -264,6 +362,81 @@ export default function Home() {
           <span className="inline-flex items-center gap-1 text-cyan-300">مشاهده تقویم کامل <ChevronLeft size={14} /></span>
         </footer>
       </div>
+
+      <Dialog
+        open={Boolean(selectedContent)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedContent(null);
+        }}
+        title={selectedContent?.title ?? ""}
+      >
+        {selectedContent && (
+          <div className="space-y-4 text-right" dir="rtl">
+            {selectedContent.image && (
+              <div
+                className="h-56 rounded-2xl bg-cover bg-center"
+                style={{
+                  backgroundImage: `url(${selectedContent.image})`,
+                }}
+              />
+            )}
+            {selectedContent.meta && (
+              <p className="text-xs font-bold text-cyan-200">
+                {selectedContent.meta}
+              </p>
+            )}
+            <p className="whitespace-pre-wrap text-sm leading-8 text-slate-200">
+              {selectedContent.body}
+            </p>
+          </div>
+        )}
+      </Dialog>
+
+      <Dialog
+        open={Boolean(listModal)}
+        onOpenChange={(open) => {
+          if (!open) setListModal(null);
+        }}
+        title={listModal === "news" ? "همه اخبار" : "همه اطلاعیه‌ها"}
+      >
+        <div className="space-y-3 text-right" dir="rtl">
+          {(listModal === "news" ? newsItems : announcementItems).map(
+            (item) => (
+              <button
+                key={`${item.title}-${item.meta ?? ""}`}
+                type="button"
+                onClick={() => {
+                  setListModal(null);
+                  setSelectedContent(item);
+                }}
+                className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+              >
+                {item.image && (
+                  <div
+                    className="size-16 shrink-0 rounded-xl bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url(${item.image})`,
+                    }}
+                  />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-black text-white">
+                    {item.title}
+                  </span>
+                  <span className="mt-1 line-clamp-2 block text-xs leading-6 text-slate-300">
+                    {item.body}
+                  </span>
+                  {item.meta && (
+                    <span className="mt-1 block text-[11px] text-slate-500">
+                      {item.meta}
+                    </span>
+                  )}
+                </span>
+              </button>
+            ),
+          )}
+        </div>
+      </Dialog>
     </main>
   );
 }

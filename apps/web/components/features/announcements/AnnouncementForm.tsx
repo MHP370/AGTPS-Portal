@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
+import { PersianDateInput } from "@/components/ui/PersianDateInput";
 import type {
   Announcement,
   CreateAnnouncementDto,
@@ -111,21 +112,31 @@ export function AnnouncementForm({
 
       <div className="grid gap-4 md:grid-cols-3">
         <FormField label="شروع نمایش" required>
-          <Input
-            type="date"
+          <PersianDateInput
             value={startDate}
-            onChange={(event) => setStartDate(event.target.value)}
+            onChange={setStartDate}
             disabled={loading}
           />
         </FormField>
 
         <FormField label="پایان نمایش">
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(event) => setEndDate(event.target.value)}
-            disabled={loading}
-          />
+          <div className="space-y-2">
+            <PersianDateInput
+              value={endDate}
+              onChange={setEndDate}
+              disabled={loading}
+            />
+            {endDate && (
+              <button
+                type="button"
+                className="text-xs font-bold text-slate-400 hover:text-cyan-200"
+                onClick={() => setEndDate("")}
+                disabled={loading}
+              >
+                حذف تاریخ پایان
+              </button>
+            )}
+          </div>
         </FormField>
 
         <FormField label="اولویت">
