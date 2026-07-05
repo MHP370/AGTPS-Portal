@@ -55,6 +55,27 @@ export default function AdminLayout({
             </Link>
 
             <Link
+              href="/admin/meetings"
+              className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
+            >
+              جلسات
+            </Link>
+
+            <Link
+              href="/admin/workspace"
+              className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
+            >
+              فضای کاری
+            </Link>
+
+            <Link
+              href="/admin/directory"
+              className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
+            >
+              اکتیو دایرکتوری
+            </Link>
+
+            <Link
               href="/admin/announcements"
               className="rounded-lg px-4 py-3 hover:bg-slate-800 transition"
             >

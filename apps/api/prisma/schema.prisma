@@ -20,6 +20,30 @@ enum NetworkType {
   VPN
 }
 
+enum MeetingStatus {
+  SCHEDULED
+  CANCELLED
+  DONE
+}
+
+enum MeetingVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum NotificationType {
+  MEETING_INVITE
+  MEETING_UPDATE
+  REMINDER
+  TASK
+}
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -32,6 +56,11 @@ model User {
   isActive    Boolean  @default(true)
 
   roles        UserRole[]
+  organizedMeetings Meeting[] @relation("MeetingOrganizer")
+  meetingParticipants MeetingParticipant[]
+  notes        PortalNote[]
+  reminders    PortalReminder[]
+  tasks        PortalTask[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -54,6 +83,47 @@ model Permission {
   title       String
 
   roles       RolePermission[]
+}
+
+model DirectoryUser {
+  id          String @id @default(cuid())
+  username    String @unique
+  displayName String
+  email       String?
+  department  String?
+  title       String?
+  isActive    Boolean @default(true)
+
+  groupMemberships DirectoryGroupMember[]
+  organizedMeetings Meeting[] @relation("DirectoryMeetingOrganizer")
+  meetingParticipants MeetingParticipant[]
+  notifications PortalNotification[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DirectoryGroup {
+  id          String @id @default(cuid())
+  name        String @unique
+  title       String
+  description String?
+  isActive    Boolean @default(true)
+
+  members     DirectoryGroupMember[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DirectoryGroupMember {
+  groupId String
+  userId  String
+
+  group DirectoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  DirectoryUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
 }
 
 model UserRole {
@@ -216,6 +286,113 @@ model Announcement {
   published   Boolean  @default(true)
 
   createdAt   DateTime @default(now())
+}
+
+model Meeting {
+  id          String   @id @default(cuid())
+  title       String
+  description String? @db.Text
+  location    String?
+
+  startAt     DateTime
+  endAt       DateTime?
+
+  status      MeetingStatus @default(SCHEDULED)
+  visibility  MeetingVisibility @default(PUBLIC)
+  isPublished Boolean @default(true)
+
+  organizerId String?
+  organizer   User? @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  organizerDirectoryUserId String?
+  organizerDirectoryUser DirectoryUser? @relation("DirectoryMeetingOrganizer", fields: [organizerDirectoryUserId], references: [id], onDelete: SetNull)
+
+  participants MeetingParticipant[]
+  notifications PortalNotification[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MeetingParticipant {
+  id          String @id @default(cuid())
+  meetingId   String
+  userId      String?
+  directoryUserId String?
+
+  displayName String
+  email       String?
+
+  notificationSent Boolean @default(false)
+  responseStatus   String?
+
+  meeting     Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  directoryUser DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+}
+
+model PortalNotification {
+  id          String @id @default(cuid())
+  type        NotificationType
+  title       String
+  body        String? @db.Text
+
+  recipientDirectoryUserId String?
+  recipientEmail String?
+
+  meetingId   String?
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  readAt      DateTime?
+
+  recipientDirectoryUser DirectoryUser? @relation(fields: [recipientDirectoryUserId], references: [id], onDelete: SetNull)
+  meeting     Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+}
+
+model PortalNote {
+  id          String @id @default(cuid())
+  ownerId     String?
+  title       String
+  body        String @db.Text
+  color       String?
+  isPinned    Boolean @default(false)
+
+  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PortalReminder {
+  id          String @id @default(cuid())
+  ownerId     String?
+  title       String
+  description String? @db.Text
+  remindAt    DateTime
+  completed   Boolean @default(false)
+
+  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PortalTask {
+  id          String @id @default(cuid())
+  ownerId     String?
+  title       String
+  description String? @db.Text
+  dueDate     DateTime?
+  status      TaskStatus @default(TODO)
+  priority    Int @default(1)
+
+  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Slider {

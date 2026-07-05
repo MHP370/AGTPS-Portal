@@ -67,6 +67,7 @@ Important local API base URL:
 - Keep the existing UI structure where possible.
 - Do not refactor the whole architecture unless the user explicitly asks.
 - Fix broken data flows with focused, minimal changes.
+- All new and existing UI work must be responsive across desktop, tablet, and mobile. Before considering a UI change complete, verify that layouts, dialogs, tables, forms, maps, widgets, and text do not overflow or overlap on small screens.
 
 ## Implemented Modules
 

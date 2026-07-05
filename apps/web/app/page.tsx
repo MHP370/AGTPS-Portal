@@ -15,8 +15,10 @@ import IranPortalMap from "@/components/portal/IranPortalMap";
 import PortalApplicationsGrid from "@/components/portal/PortalApplicationsGrid";
 import { Dialog } from "@/components/ui/Dialog";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
+import { useMeetings } from "@/hooks/useMeetings";
 import { useNews } from "@/hooks/useNews";
 import { useSettings } from "@/hooks/useSettings";
+import { useNotes, useReminders, useTasks } from "@/hooks/useWorkspace";
 import {
   hrNotices,
   iranCalendarEvents,
@@ -100,6 +102,10 @@ export default function Home() {
   const { data: settings } = useSettings();
   const { data: announcements = [] } = useAnnouncements();
   const { data: news = [] } = useNews();
+  const { data: meetings = [] } = useMeetings();
+  const { data: notes = [] } = useNotes();
+  const { data: reminders = [] } = useReminders();
+  const { data: tasks = [] } = useTasks();
   const weekDays = ["یکشنبه", "دوشنبه", "امروز", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
   const monthDays = ["۸", "۹", "۱۰", "۱۱", "۱۲", "۱۳", "۱۴"];
   const backgroundImageUrl =
@@ -137,6 +143,21 @@ export default function Home() {
           body: item.description,
           meta: item.time,
         }));
+  const upcomingMeetings = meetings
+    .filter(
+      (meeting) =>
+        meeting.isPublished &&
+        meeting.status === "SCHEDULED" &&
+        new Date(meeting.startAt) >= new Date(Date.now() - 60 * 60 * 1000),
+    )
+    .slice(0, 4);
+  const visibleNotes = notes.slice(0, 2);
+  const visibleReminders = reminders
+    .filter((reminder) => !reminder.completed)
+    .slice(0, 3);
+  const visibleTasks = tasks
+    .filter((task) => task.status !== "DONE")
+    .slice(0, 4);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#061528] text-white">
@@ -354,14 +375,78 @@ export default function Home() {
                 ))}
               </div>
               <div className="space-y-3">
-                {portalMeetings.map((meeting) => (
-                  <div key={meeting.title} className={`flex items-center justify-between border-r-2 ${meeting.color} rounded-2xl bg-white/[0.04] p-4`}>
-                    <div><h3 className="font-bold">{meeting.title}</h3><p className="mt-1 text-xs text-slate-400">{meeting.location}</p></div>
-                    <span className="font-mono text-lg">{meeting.time}</span>
-                  </div>
-                ))}
+                {upcomingMeetings.length > 0
+                  ? upcomingMeetings.map((meeting) => (
+                      <div key={meeting.id} className="flex items-center justify-between rounded-2xl border-r-2 border-cyan-400 bg-white/[0.04] p-4">
+                        <div>
+                          <h3 className="font-bold">{meeting.title}</h3>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {meeting.location || "بدون محل"} - {meeting.participants.length} عضو
+                          </p>
+                        </div>
+                        <span className="font-mono text-lg">
+                          {new Date(meeting.startAt).toLocaleTimeString("fa-IR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                    ))
+                  : portalMeetings.map((meeting) => (
+                      <div key={meeting.title} className={`flex items-center justify-between border-r-2 ${meeting.color} rounded-2xl bg-white/[0.04] p-4`}>
+                        <div><h3 className="font-bold">{meeting.title}</h3><p className="mt-1 text-xs text-slate-400">{meeting.location}</p></div>
+                        <span className="font-mono text-lg">{meeting.time}</span>
+                      </div>
+                    ))}
               </div>
               <div className="mt-4 rounded-2xl bg-cyan-400/10 p-3 text-xs leading-6 text-cyan-100">مناسبت‌ها: {iranCalendarEvents.join("، ")}</div>
+            </GlassPanel>
+
+            <GlassPanel id="workspace">
+              <SectionHeader title="دفترچه و کارهای من" />
+              <div className="space-y-3">
+                {visibleNotes.map((note) => (
+                  <div key={note.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <h3 className="font-bold text-cyan-100">{note.title}</h3>
+                    <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
+                      {note.body}
+                    </p>
+                  </div>
+                ))}
+
+                {visibleReminders.map((reminder) => (
+                  <div key={reminder.id} className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
+                    <h3 className="font-bold text-amber-100">{reminder.title}</h3>
+                    <p className="mt-1 text-xs text-amber-100/75">
+                      {new Date(reminder.remindAt).toLocaleString("fa-IR")}
+                    </p>
+                  </div>
+                ))}
+
+                {visibleTasks.map((task) => (
+                  <div key={task.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                    <div>
+                      <h3 className="font-bold">{task.title}</h3>
+                      <p className="mt-1 text-xs text-slate-400">
+                        اولویت {task.priority}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-200">
+                      {task.status === "TODO"
+                        ? "برای انجام"
+                        : "در حال انجام"}
+                    </span>
+                  </div>
+                ))}
+
+                {visibleNotes.length === 0 &&
+                  visibleReminders.length === 0 &&
+                  visibleTasks.length === 0 && (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300">
+                      هنوز یادداشت، یادآوری یا کاری ثبت نشده است.
+                    </div>
+                  )}
+              </div>
             </GlassPanel>
 
             <GlassPanel id="downloads">

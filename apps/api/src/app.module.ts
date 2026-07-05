@@ -17,6 +17,9 @@ import { PermissionsModule } from './permissions/permissions.module';
 import { UserRolesModule } from './user-roles/user-roles.module';
 import { RolePermissionsModule } from './role-permissions/role-permissions.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { MeetingsModule } from './meetings/meetings.module';
+import { WorkspaceModule } from './workspace/workspace.module';
+import { DirectoryModule } from './directory/directory.module';
 
 
 
@@ -42,6 +45,9 @@ import { UploadsModule } from './uploads/uploads.module';
     UserRolesModule,
     RolePermissionsModule,
     UploadsModule,
+    MeetingsModule,
+    WorkspaceModule,
+    DirectoryModule,
   ],
 
   controllers: [AppController],
