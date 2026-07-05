@@ -459,4 +459,16 @@ model Setting {
   portalBackgroundOverlayOpacity Float?
 
   footerText   String?
+
+  activeDirectoryEnabled Boolean @default(false)
+  activeDirectoryUrl String?
+  activeDirectoryDomain String?
+  activeDirectoryBaseDn String?
+  activeDirectoryBindDn String?
+  activeDirectoryBindPassword String?
+  activeDirectoryUserSearchBase String?
+  activeDirectoryGroupSearchBase String?
+  activeDirectoryLastStatus String?
+  activeDirectoryLastError String? @db.Text
+  activeDirectoryLastCheckedAt DateTime?
 }

@@ -9,6 +9,17 @@ export interface PortalSettings {
   portalBackgroundOverlayColor?: string;
   portalBackgroundOverlayOpacity?: number;
   footerText?: string;
+  activeDirectoryEnabled?: boolean;
+  activeDirectoryUrl?: string;
+  activeDirectoryDomain?: string;
+  activeDirectoryBaseDn?: string;
+  activeDirectoryBindDn?: string;
+  activeDirectoryBindPassword?: string | null;
+  activeDirectoryUserSearchBase?: string;
+  activeDirectoryGroupSearchBase?: string;
+  activeDirectoryLastStatus?: string | null;
+  activeDirectoryLastError?: string | null;
+  activeDirectoryLastCheckedAt?: string | null;
 }
 
 export interface UpdatePortalSettingsDto {
@@ -19,6 +30,14 @@ export interface UpdatePortalSettingsDto {
   portalBackgroundOverlayColor?: string;
   portalBackgroundOverlayOpacity?: number;
   footerText?: string;
+  activeDirectoryEnabled?: boolean;
+  activeDirectoryUrl?: string;
+  activeDirectoryDomain?: string;
+  activeDirectoryBaseDn?: string;
+  activeDirectoryBindDn?: string;
+  activeDirectoryBindPassword?: string;
+  activeDirectoryUserSearchBase?: string;
+  activeDirectoryGroupSearchBase?: string;
 }
 
 export const settingsQueryKey = ["settings"];
@@ -29,4 +48,8 @@ export function getSettings() {
 
 export function updateSettings(dto: UpdatePortalSettingsDto) {
   return api.put<PortalSettings>("/settings", dto);
+}
+
+export function testActiveDirectoryConnection() {
+  return api.post<PortalSettings>("/settings/active-directory/test");
 }

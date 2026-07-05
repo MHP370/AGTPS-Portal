@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
+import {
+  useSettings,
+  useTestActiveDirectoryConnection,
+  useUpdateSettings,
+} from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
 import { FileUploadField } from "@/components/ui/FileUploadField";
 import { FormField } from "@/components/ui/FormField";
@@ -10,6 +14,14 @@ import { Input } from "@/components/ui/Input";
 
 const defaultBackgroundImage = "/images/logo/apgt-logo.png";
 const hexColorPattern = /^#[0-9a-fA-F]{6}$/;
+const savedPasswordMarker = "__KEEP_EXISTING__";
+
+const activeDirectoryStatusLabels: Record<string, string> = {
+  connected: "متصل",
+  failed: "ناموفق",
+  disabled: "غیرفعال",
+  missing_config: "تنظیمات ناقص",
+};
 
 export default function SettingsPage() {
   const {
@@ -20,6 +32,7 @@ export default function SettingsPage() {
     refetch,
   } = useSettings();
   const updateSettings = useUpdateSettings();
+  const testActiveDirectory = useTestActiveDirectoryConnection();
 
   const [companyName, setCompanyName] = useState("AGTPS Portal");
   const [logo, setLogo] = useState("");
@@ -29,6 +42,14 @@ export default function SettingsPage() {
   const [overlayColor, setOverlayColor] = useState("#020617");
   const [overlayOpacity, setOverlayOpacity] = useState("0.78");
   const [footerText, setFooterText] = useState("");
+  const [adEnabled, setAdEnabled] = useState(false);
+  const [adUrl, setAdUrl] = useState("");
+  const [adDomain, setAdDomain] = useState("");
+  const [adBaseDn, setAdBaseDn] = useState("");
+  const [adBindDn, setAdBindDn] = useState("");
+  const [adBindPassword, setAdBindPassword] = useState("");
+  const [adUserSearchBase, setAdUserSearchBase] = useState("");
+  const [adGroupSearchBase, setAdGroupSearchBase] = useState("");
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -46,6 +67,16 @@ export default function SettingsPage() {
       String(settings.portalBackgroundOverlayOpacity ?? 0.78),
     );
     setFooterText(settings.footerText ?? "");
+    setAdEnabled(Boolean(settings.activeDirectoryEnabled));
+    setAdUrl(settings.activeDirectoryUrl ?? "");
+    setAdDomain(settings.activeDirectoryDomain ?? "");
+    setAdBaseDn(settings.activeDirectoryBaseDn ?? "");
+    setAdBindDn(settings.activeDirectoryBindDn ?? "");
+    setAdBindPassword(
+      settings.activeDirectoryBindPassword ? savedPasswordMarker : "",
+    );
+    setAdUserSearchBase(settings.activeDirectoryUserSearchBase ?? "");
+    setAdGroupSearchBase(settings.activeDirectoryGroupSearchBase ?? "");
   }, [settings]);
 
   async function submit(event: React.FormEvent) {
@@ -90,6 +121,19 @@ export default function SettingsPage() {
         portalBackgroundOverlayColor: overlayColor.trim() || undefined,
         portalBackgroundOverlayOpacity: parsedOverlayOpacity,
         footerText: footerText.trim() || undefined,
+        activeDirectoryEnabled: adEnabled,
+        activeDirectoryUrl: adUrl.trim() || undefined,
+        activeDirectoryDomain: adDomain.trim() || undefined,
+        activeDirectoryBaseDn: adBaseDn.trim() || undefined,
+        activeDirectoryBindDn: adBindDn.trim() || undefined,
+        activeDirectoryBindPassword:
+          adBindPassword === savedPasswordMarker
+            ? savedPasswordMarker
+            : adBindPassword.trim() || undefined,
+        activeDirectoryUserSearchBase:
+          adUserSearchBase.trim() || undefined,
+        activeDirectoryGroupSearchBase:
+          adGroupSearchBase.trim() || undefined,
       });
       setSuccess("تنظیمات ذخیره شد.");
     } catch (err) {
@@ -97,6 +141,22 @@ export default function SettingsPage() {
         err instanceof Error
           ? err.message
           : "ذخیره تنظیمات انجام نشد.",
+      );
+    }
+  }
+
+  async function testConnection() {
+    setFormError("");
+    setSuccess("");
+
+    try {
+      await testActiveDirectory.mutateAsync();
+      setSuccess("تست اتصال اکتیو دایرکتوری انجام شد.");
+    } catch (err) {
+      setFormError(
+        err instanceof Error
+          ? err.message
+          : "تست اتصال اکتیو دایرکتوری انجام نشد.",
       );
     }
   }
@@ -136,7 +196,11 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[1fr_420px]">
+      <form
+        id="portal-settings-form"
+        onSubmit={submit}
+        className="grid gap-6 xl:grid-cols-[1fr_420px]"
+      >
         <div className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/50 p-5">
           {(formError || success) && (
             <div
@@ -285,6 +349,152 @@ export default function SettingsPage() {
           </div>
         </div>
       </form>
+
+      <section className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold">اتصال اکتیو دایرکتوری</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              تنظیمات اتصال LDAP/AD را وارد کنید و وضعیت اتصال را تست کنید.
+            </p>
+          </div>
+          <div
+            className={`rounded-full border px-4 py-2 text-sm font-bold ${
+              settings?.activeDirectoryLastStatus === "connected"
+                ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                : settings?.activeDirectoryLastStatus === "failed"
+                  ? "border-red-400/30 bg-red-400/10 text-red-200"
+                  : "border-slate-600 bg-slate-950/60 text-slate-300"
+            }`}
+          >
+            وضعیت:{" "}
+            {settings?.activeDirectoryLastStatus
+              ? activeDirectoryStatusLabels[
+                  settings.activeDirectoryLastStatus
+                ] || settings.activeDirectoryLastStatus
+              : "تست نشده"}
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm font-bold">
+            <input
+              type="checkbox"
+              checked={adEnabled}
+              onChange={(event) => setAdEnabled(event.target.checked)}
+              disabled={updateSettings.isPending}
+            />
+            فعال‌سازی اتصال اکتیو دایرکتوری
+          </label>
+
+          <FormField label="آدرس سرور LDAP">
+            <Input
+              value={adUrl}
+              onChange={(event) => setAdUrl(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="ldap://ad.company.local:389"
+            />
+          </FormField>
+
+          <FormField label="دامنه">
+            <Input
+              value={adDomain}
+              onChange={(event) => setAdDomain(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="company.local"
+            />
+          </FormField>
+
+          <FormField label="Base DN">
+            <Input
+              value={adBaseDn}
+              onChange={(event) => setAdBaseDn(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="DC=company,DC=local"
+            />
+          </FormField>
+
+          <FormField label="Bind DN">
+            <Input
+              value={adBindDn}
+              onChange={(event) => setAdBindDn(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="CN=svc-portal,OU=Service Accounts,DC=company,DC=local"
+            />
+          </FormField>
+
+          <FormField label="Bind Password">
+            <Input
+              type="password"
+              value={adBindPassword}
+              onFocus={() => {
+                if (adBindPassword === savedPasswordMarker) {
+                  setAdBindPassword("");
+                }
+              }}
+              onChange={(event) => setAdBindPassword(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="رمز سرویس اکانت"
+            />
+          </FormField>
+
+          <FormField label="User Search Base">
+            <Input
+              value={adUserSearchBase}
+              onChange={(event) => setAdUserSearchBase(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="OU=Users,DC=company,DC=local"
+            />
+          </FormField>
+
+          <FormField label="Group Search Base">
+            <Input
+              value={adGroupSearchBase}
+              onChange={(event) => setAdGroupSearchBase(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="OU=Groups,DC=company,DC=local"
+            />
+          </FormField>
+        </div>
+
+        {settings?.activeDirectoryLastCheckedAt && (
+          <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-300">
+            <div>
+              آخرین بررسی:{" "}
+              {new Date(
+                settings.activeDirectoryLastCheckedAt,
+              ).toLocaleString("fa-IR")}
+            </div>
+            {settings.activeDirectoryLastError && (
+              <div className="mt-2 text-red-200">
+                خطا: {settings.activeDirectoryLastError}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button
+            type="submit"
+            form="portal-settings-form"
+            disabled={updateSettings.isPending}
+          >
+            {updateSettings.isPending
+              ? "در حال ذخیره..."
+              : "ذخیره تنظیمات AD"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void testConnection()}
+            disabled={testActiveDirectory.isPending}
+          >
+            {testActiveDirectory.isPending
+              ? "در حال تست..."
+              : "تست اتصال"}
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }

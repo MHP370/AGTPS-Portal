@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Put,
+  Post,
 } from '@nestjs/common';
 
 import { SettingsService } from './settings.service';
@@ -24,5 +25,10 @@ export class SettingsController {
     @Body() dto: UpdateSettingsDto,
   ) {
     return this.settingsService.update(dto);
+  }
+
+  @Post('active-directory/test')
+  testActiveDirectoryConnection() {
+    return this.settingsService.testActiveDirectoryConnection();
   }
 }

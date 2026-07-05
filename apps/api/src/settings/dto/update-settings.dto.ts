@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsNumber,
   IsOptional,
   IsString,
@@ -35,4 +36,36 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   footerText?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  activeDirectoryEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryDomain?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryBaseDn?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryBindDn?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryBindPassword?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryUserSearchBase?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryGroupSearchBase?: string;
 }
