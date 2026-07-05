@@ -13,6 +13,7 @@ import Logo from "@/components/layout/Logo";
 import PersianClock from "@/components/portal/PersianClock";
 import IranPortalMap from "@/components/portal/IranPortalMap";
 import PortalApplicationsGrid from "@/components/portal/PortalApplicationsGrid";
+import { useSettings } from "@/hooks/useSettings";
 import {
   hrNotices,
   iranCalendarEvents,
@@ -44,12 +45,32 @@ function GlassPanel({ children, className = "", id }: { children: React.ReactNod
 
 export default function Home() {
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const { data: settings } = useSettings();
   const weekDays = ["یکشنبه", "دوشنبه", "امروز", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
   const monthDays = ["۸", "۹", "۱۰", "۱۱", "۱۲", "۱۳", "۱۴"];
+  const backgroundImageUrl =
+    settings?.portalBackgroundImageUrl || "/images/logo/apgt-logo.png";
+  const overlayColor =
+    settings?.portalBackgroundOverlayColor || "#020617";
+  const overlayOpacity =
+    settings?.portalBackgroundOverlayOpacity ?? 0.72;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#061528] text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_5%,rgba(124,58,237,0.35),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,0.3),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.1),rgba(2,6,23,0.95)),url('/images/logo/apgt-logo.png')]" />
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: `url(${backgroundImageUrl})`,
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundColor: overlayColor,
+          opacity: overlayOpacity,
+        }}
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_5%,rgba(124,58,237,0.35),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,0.3),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.1),rgba(2,6,23,0.95))]" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(56,189,248,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.06)_1px,transparent_1px)] bg-[size:72px_72px] opacity-60" />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1920px] flex-col px-4 py-4">
         <header className="mb-5 flex min-h-24 flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">

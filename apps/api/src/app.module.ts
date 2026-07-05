@@ -16,6 +16,7 @@ import { RolesModule } from './roles/roles.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { UserRolesModule } from './user-roles/user-roles.module';
 import { RolePermissionsModule } from './role-permissions/role-permissions.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 
 
@@ -40,6 +41,7 @@ import { RolePermissionsModule } from './role-permissions/role-permissions.modul
     PermissionsModule,
     UserRolesModule,
     RolePermissionsModule,
+    UploadsModule,
   ],
 
   controllers: [AppController],

@@ -1,6 +1,9 @@
 import {
+  IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
 } from 'class-validator';
 
 export class UpdateSettingsDto {
@@ -14,6 +17,20 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   primaryColor?: string;
+
+  @IsOptional()
+  @IsString()
+  portalBackgroundImageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  portalBackgroundOverlayColor?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  portalBackgroundOverlayOpacity?: number;
 
   @IsOptional()
   @IsString()

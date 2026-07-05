@@ -239,6 +239,9 @@ model Setting {
 
   primaryColor String?
 
+  portalBackgroundImageUrl String?
+  portalBackgroundOverlayColor String?
+  portalBackgroundOverlayOpacity Float?
+
   footerText   String?
 }
-

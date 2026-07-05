@@ -109,7 +109,72 @@ async function request<T>(
     return undefined as T;
   }
 
-  return response.json();
+  const text = await response.text();
+
+  if (!text) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
+}
+
+async function upload<T>(
+  path: string,
+  formData: FormData,
+): Promise<T> {
+  let authToken: string | undefined;
+
+  if (typeof window !== "undefined") {
+    authToken =
+      localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      ...(authToken
+        ? {
+            Authorization: `Bearer ${authToken}`,
+          }
+        : {}),
+    },
+    body: formData,
+  });
+
+  if (response.status === 401) {
+    clearBrowserAuthSession();
+
+    if (typeof window !== "undefined") {
+      const next = encodeURIComponent(
+        `${window.location.pathname}${window.location.search}`,
+      );
+      window.location.assign(`/admin/login?next=${next}`);
+    }
+  }
+
+  if (!response.ok) {
+    let message = response.statusText;
+
+    try {
+      const error = await response.json();
+
+      message =
+        error?.message ??
+        error?.error ??
+        response.statusText;
+    } catch {}
+
+    throw new ApiError(response.status, message);
+  }
+
+  const text = await response.text();
+
+  if (!text) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
 export const api = {
@@ -162,4 +227,6 @@ export const api = {
       token,
     });
   },
+
+  upload,
 };
