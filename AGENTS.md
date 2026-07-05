@@ -9,7 +9,7 @@
 - Ask the user questions whenever requirements are unclear or a decision affects the product.
 - After each meaningful change, ask the user to test the project and report the result.
 - Only update GitHub after the user confirms the tested change is working.
-- After the user confirms a change is OK, commit/push the approved change to GitHub.
+- After the user confirms a change is OK, commit the approved change locally, then provide the exact push commands for the user to run manually. Do not push to GitHub directly.
 - If project instructions need to change, only update them when the user asks.
 
 ## Product Goal
