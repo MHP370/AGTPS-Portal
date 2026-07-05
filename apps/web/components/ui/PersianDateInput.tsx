@@ -1,5 +1,8 @@
 "use client";
 
+import { CalendarDays, ChevronDown } from "lucide-react";
+import { useState } from "react";
+
 import {
   getJalaliMonthLength,
   gregorianToJalali,
@@ -26,6 +29,7 @@ export function PersianDateInput({
   onChange,
   disabled = false,
 }: PersianDateInputProps) {
+  const [open, setOpen] = useState(false);
   const current = getCurrentJalaliDate();
   const selected = gregorianToJalali(value) ?? current;
   const years = Array.from(
@@ -44,54 +48,79 @@ export function PersianDateInput({
     onChange(jalaliToGregorian(jy, jm, jd));
   }
 
-  const className =
-    "h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50";
+  const controlClassName =
+    "h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <div className="grid grid-cols-[1fr_1.4fr_1fr] gap-2">
-      <select
-        value={day}
-        onChange={(event) => update({ jd: Number(event.target.value) })}
+    <div className="relative">
+      <button
+        type="button"
         disabled={disabled}
-        className={className}
-        aria-label="روز شمسی"
+        onClick={() => setOpen((currentOpen) => !currentOpen)}
+        className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white transition hover:border-emerald-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(
-          (item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ),
-        )}
-      </select>
+        <span className="flex items-center gap-2">
+          <CalendarDays size={18} className="text-cyan-200" />
+          {value
+            ? `${day} ${jalaliMonthNames[selected.jm - 1]} ${selected.jy}`
+            : "انتخاب تاریخ"}
+        </span>
+        <ChevronDown size={16} className="text-slate-400" />
+      </button>
 
-      <select
-        value={selected.jm}
-        onChange={(event) => update({ jm: Number(event.target.value) })}
-        disabled={disabled}
-        className={className}
-        aria-label="ماه شمسی"
-      >
-        {jalaliMonthNames.map((month, index) => (
-          <option key={month} value={index + 1}>
-            {month}
-          </option>
-        ))}
-      </select>
+      {open && !disabled && (
+        <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-slate-700 bg-slate-950 p-3 shadow-2xl">
+          <div className="grid grid-cols-[1fr_1.35fr] gap-2">
+            <select
+              value={selected.jy}
+              onChange={(event) => update({ jy: Number(event.target.value) })}
+              className={controlClassName}
+              aria-label="سال شمسی"
+            >
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
 
-      <select
-        value={selected.jy}
-        onChange={(event) => update({ jy: Number(event.target.value) })}
-        disabled={disabled}
-        className={className}
-        aria-label="سال شمسی"
-      >
-        {years.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
+            <select
+              value={selected.jm}
+              onChange={(event) => update({ jm: Number(event.target.value) })}
+              className={controlClassName}
+              aria-label="ماه شمسی"
+            >
+              {jalaliMonthNames.map((month, index) => (
+                <option key={month} value={index + 1}>
+                  {month}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-3 grid grid-cols-7 gap-1">
+            {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(
+              (item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => {
+                    update({ jd: item });
+                    setOpen(false);
+                  }}
+                  className={`grid h-9 place-items-center rounded-lg text-sm font-bold transition ${
+                    item === day
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-900 text-slate-200 hover:bg-slate-800"
+                  }`}
+                >
+                  {item}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

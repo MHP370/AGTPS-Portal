@@ -34,6 +34,33 @@ type PortalContentItem = {
   image?: string;
 };
 
+function isAnnouncementVisible({
+  published,
+  startDate,
+  endDate,
+}: {
+  published: boolean;
+  startDate: string;
+  endDate?: string | null;
+}) {
+  if (!published) return false;
+
+  const now = new Date();
+  const startsAt = new Date(startDate);
+  const endsAt = endDate ? new Date(endDate) : null;
+
+  startsAt.setHours(0, 0, 0, 0);
+
+  if (now < startsAt) return false;
+
+  if (endsAt) {
+    endsAt.setHours(23, 59, 59, 999);
+    if (now > endsAt) return false;
+  }
+
+  return true;
+}
+
 function SectionHeader({
   title,
   onViewAll,
@@ -81,8 +108,7 @@ export default function Home() {
     settings?.portalBackgroundOverlayColor || "#020617";
   const overlayOpacity =
     settings?.portalBackgroundOverlayOpacity ?? 0.72;
-  const activeAnnouncements = announcements
-    .filter((item) => item.published)
+  const activeAnnouncements = announcements.filter(isAnnouncementVisible);
   const latestNews = news.filter((item) => item.published);
   const visibleAnnouncements = activeAnnouncements.slice(0, 4);
   const visibleNews = latestNews.slice(0, 4);

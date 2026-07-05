@@ -110,7 +110,7 @@ export function AnnouncementForm({
         />
       </FormField>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-[1fr_1fr_150px]">
         <FormField label="شروع نمایش" required>
           <PersianDateInput
             value={startDate}
