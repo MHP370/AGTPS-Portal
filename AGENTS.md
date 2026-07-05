@@ -68,6 +68,7 @@ Important local API base URL:
 - Do not refactor the whole architecture unless the user explicitly asks.
 - Fix broken data flows with focused, minimal changes.
 - All new and existing UI work must be responsive across desktop, tablet, and mobile. Before considering a UI change complete, verify that layouts, dialogs, tables, forms, maps, widgets, and text do not overflow or overlap on small screens.
+- When a feature is finalized, update or add database seed data if the feature needs default records, demo data, permissions, roles, settings, or lookup values to work well after a fresh setup.
 
 ## Implemented Modules
 

@@ -19,6 +19,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { PersianDateInput } from "@/components/ui/PersianDateInput";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
+import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useNews } from "@/hooks/useNews";
 import {
@@ -134,6 +135,7 @@ export default function Home() {
   const { data: tasks = [] } = useTasks();
   const { data: notifications = [] } = useNotifications();
   const markNotificationRead = useMarkNotificationRead();
+  const browserNotifications = useBrowserNotifications(notifications);
   const createNote = useCreateNote();
   const createReminder = useCreateReminder();
   const createTask = useCreateTask();
@@ -285,6 +287,18 @@ export default function Home() {
                 </span>
               )}
             </button>
+            {browserNotifications.isSupported &&
+              browserNotifications.permission !== "granted" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void browserNotifications.requestPermission();
+                  }}
+                  className="hidden rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-black text-slate-200 hover:bg-white/[0.08] md:inline-flex"
+                >
+                  فعال‌سازی اعلان
+                </button>
+              )}
             <Link href="/admin/dashboard" className="flex items-center gap-3 rounded-2xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-white shadow-[0_0_24px_rgba(14,165,233,0.18)] hover:bg-cyan-500/20">
               پنل مدیریت
               <Settings size={22} />
