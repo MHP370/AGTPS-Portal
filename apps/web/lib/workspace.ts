@@ -52,6 +52,18 @@ export function createNote(dto: {
   return api.post<PortalNote>("/workspace/notes", dto);
 }
 
+export function updateNote(
+  id: string,
+  dto: Partial<{
+    title: string;
+    body: string;
+    color?: string;
+    isPinned: boolean;
+  }>,
+) {
+  return api.put<PortalNote>(`/workspace/notes/${id}`, dto);
+}
+
 export function deleteNote(id: string) {
   return api.delete<void>(`/workspace/notes/${id}`);
 }

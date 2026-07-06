@@ -19,6 +19,7 @@ import {
   notesQueryKey,
   remindersQueryKey,
   tasksQueryKey,
+  updateNote,
   updateReminder,
   updateTask,
   type TaskStatus,
@@ -67,6 +68,28 @@ export function useDeleteNote() {
   });
 }
 
+export function useUpdateNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: string;
+      dto: Partial<{
+        title: string;
+        body: string;
+        color?: string;
+        isPinned: boolean;
+      }>;
+    }) => updateNote(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notesQueryKey });
+    },
+  });
+}
+
 export function useCreateReminder() {
   const queryClient = useQueryClient();
 
@@ -92,6 +115,7 @@ export function useUpdateReminder() {
         description?: string;
         remindAt: string;
         completed: boolean;
+        notifyBeforeMinutes: number;
       }>;
     }) => updateReminder(id, dto),
     onSuccess: () => {
@@ -137,6 +161,7 @@ export function useUpdateTask() {
         dueDate?: string;
         status: TaskStatus;
         priority: number;
+        notifyBeforeMinutes: number;
       }>;
     }) => updateTask(id, dto),
     onSuccess: () => {

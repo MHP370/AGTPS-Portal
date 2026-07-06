@@ -8,12 +8,23 @@ import { UpdateNoteDto } from './dto/update-note.dto';
 import { UpdateReminderDto } from './dto/update-reminder.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
+type AuthenticatedUser = {
+  id: string;
+  username?: string;
+  email?: string;
+};
+
 @Injectable()
 export class WorkspaceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findNotes() {
+  findNotes(ownerId?: string) {
+    if (!ownerId) return [];
+
     return this.prisma.portalNote.findMany({
+      where: {
+        ownerId,
+      },
       orderBy: [
         { isPinned: 'desc' },
         { updatedAt: 'desc' },
@@ -21,37 +32,52 @@ export class WorkspaceService {
     });
   }
 
-  createNote(dto: CreateNoteDto) {
+  createNote(ownerId: string, dto: CreateNoteDto) {
     return this.prisma.portalNote.create({
-      data: dto,
+      data: {
+        ...dto,
+        ownerId,
+      },
     });
   }
 
-  updateNote(id: string, dto: UpdateNoteDto) {
+  updateNote(ownerId: string, id: string, dto: UpdateNoteDto) {
     return this.prisma.portalNote.update({
-      where: { id },
+      where: {
+        id,
+        ownerId,
+      },
       data: dto,
     });
   }
 
-  removeNote(id: string) {
+  removeNote(ownerId: string, id: string) {
     return this.prisma.portalNote.delete({
-      where: { id },
+      where: {
+        id,
+        ownerId,
+      },
     });
   }
 
-  findReminders() {
+  findReminders(ownerId?: string) {
+    if (!ownerId) return [];
+
     return this.prisma.portalReminder.findMany({
+      where: {
+        ownerId,
+      },
       orderBy: {
         remindAt: 'asc',
       },
     });
   }
 
-  createReminder(dto: CreateReminderDto) {
+  createReminder(user: AuthenticatedUser, dto: CreateReminderDto) {
     return this.prisma.portalReminder.create({
       data: {
         ...dto,
+        ownerId: user.id,
         remindAt: new Date(dto.remindAt),
         ...(dto.notifyBeforeMinutes !== undefined && {
           notifyBeforeMinutes: dto.notifyBeforeMinutes,
@@ -62,6 +88,7 @@ export class WorkspaceService {
         type: NotificationType.REMINDER,
         title: 'یادآوری',
         body: reminder.title,
+        recipientEmail: user.email,
         scheduledAt: this.getScheduledNotificationTime(
           reminder.remindAt,
           reminder.notifyBeforeMinutes,
@@ -72,9 +99,16 @@ export class WorkspaceService {
     });
   }
 
-  updateReminder(id: string, dto: UpdateReminderDto) {
+  updateReminder(
+    ownerId: string,
+    id: string,
+    dto: UpdateReminderDto,
+  ) {
     return this.prisma.portalReminder.update({
-      where: { id },
+      where: {
+        id,
+        ownerId,
+      },
       data: {
         ...dto,
         ...(dto.remindAt && {
@@ -84,14 +118,22 @@ export class WorkspaceService {
     });
   }
 
-  removeReminder(id: string) {
+  removeReminder(ownerId: string, id: string) {
     return this.prisma.portalReminder.delete({
-      where: { id },
+      where: {
+        id,
+        ownerId,
+      },
     });
   }
 
-  findTasks() {
+  findTasks(ownerId?: string) {
+    if (!ownerId) return [];
+
     return this.prisma.portalTask.findMany({
+      where: {
+        ownerId,
+      },
       orderBy: [
         { priority: 'desc' },
         { dueDate: 'asc' },
@@ -99,10 +141,11 @@ export class WorkspaceService {
     });
   }
 
-  createTask(dto: CreateTaskDto) {
+  createTask(user: AuthenticatedUser, dto: CreateTaskDto) {
     return this.prisma.portalTask.create({
       data: {
         ...dto,
+        ownerId: user.id,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
         ...(dto.notifyBeforeMinutes !== undefined && {
           notifyBeforeMinutes: dto.notifyBeforeMinutes,
@@ -114,6 +157,7 @@ export class WorkspaceService {
           type: NotificationType.TASK,
           title: 'یادآوری کار',
           body: task.title,
+          recipientEmail: user.email,
           scheduledAt: this.getScheduledNotificationTime(
             task.dueDate,
             task.notifyBeforeMinutes,
@@ -125,9 +169,12 @@ export class WorkspaceService {
     });
   }
 
-  updateTask(id: string, dto: UpdateTaskDto) {
+  updateTask(ownerId: string, id: string, dto: UpdateTaskDto) {
     return this.prisma.portalTask.update({
-      where: { id },
+      where: {
+        id,
+        ownerId,
+      },
       data: {
         ...dto,
         ...(dto.dueDate !== undefined && {
@@ -137,9 +184,12 @@ export class WorkspaceService {
     });
   }
 
-  removeTask(id: string) {
+  removeTask(ownerId: string, id: string) {
     return this.prisma.portalTask.delete({
-      where: { id },
+      where: {
+        id,
+        ownerId,
+      },
     });
   }
 
@@ -156,6 +206,7 @@ export class WorkspaceService {
     type: NotificationType;
     title: string;
     body: string;
+    recipientEmail?: string;
     scheduledAt: Date;
   }) {
     return this.prisma.portalNotification.create({

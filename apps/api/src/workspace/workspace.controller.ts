@@ -6,7 +6,12 @@ import {
   Param,
   Post,
   Put,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { CreateReminderDto } from './dto/create-reminder.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -15,6 +20,10 @@ import { UpdateReminderDto } from './dto/update-reminder.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { WorkspaceService } from './workspace.service';
 
+type AuthenticatedRequest = Request & {
+  user?: { id: string; username?: string; email?: string };
+};
+
 @Controller('workspace')
 export class WorkspaceController {
   constructor(
@@ -22,71 +31,108 @@ export class WorkspaceController {
   ) {}
 
   @Get('notes')
-  findNotes() {
-    return this.workspaceService.findNotes();
+  @UseGuards(OptionalJwtAuthGuard)
+  findNotes(@Req() request: AuthenticatedRequest) {
+    return this.workspaceService.findNotes(request.user?.id);
   }
 
   @Post('notes')
-  createNote(@Body() dto: CreateNoteDto) {
-    return this.workspaceService.createNote(dto);
+  @UseGuards(JwtAuthGuard)
+  createNote(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateNoteDto,
+  ) {
+    return this.workspaceService.createNote(request.user!.id, dto);
   }
 
   @Put('notes/:id')
+  @UseGuards(JwtAuthGuard)
   updateNote(
+    @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateNoteDto,
   ) {
-    return this.workspaceService.updateNote(id, dto);
+    return this.workspaceService.updateNote(request.user!.id, id, dto);
   }
 
   @Delete('notes/:id')
-  removeNote(@Param('id') id: string) {
-    return this.workspaceService.removeNote(id);
+  @UseGuards(JwtAuthGuard)
+  removeNote(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.workspaceService.removeNote(request.user!.id, id);
   }
 
   @Get('reminders')
-  findReminders() {
-    return this.workspaceService.findReminders();
+  @UseGuards(OptionalJwtAuthGuard)
+  findReminders(@Req() request: AuthenticatedRequest) {
+    return this.workspaceService.findReminders(request.user?.id);
   }
 
   @Post('reminders')
-  createReminder(@Body() dto: CreateReminderDto) {
-    return this.workspaceService.createReminder(dto);
+  @UseGuards(JwtAuthGuard)
+  createReminder(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateReminderDto,
+  ) {
+    return this.workspaceService.createReminder(request.user!, dto);
   }
 
   @Put('reminders/:id')
+  @UseGuards(JwtAuthGuard)
   updateReminder(
+    @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateReminderDto,
   ) {
-    return this.workspaceService.updateReminder(id, dto);
+    return this.workspaceService.updateReminder(
+      request.user!.id,
+      id,
+      dto,
+    );
   }
 
   @Delete('reminders/:id')
-  removeReminder(@Param('id') id: string) {
-    return this.workspaceService.removeReminder(id);
+  @UseGuards(JwtAuthGuard)
+  removeReminder(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.workspaceService.removeReminder(request.user!.id, id);
   }
 
   @Get('tasks')
-  findTasks() {
-    return this.workspaceService.findTasks();
+  @UseGuards(OptionalJwtAuthGuard)
+  findTasks(@Req() request: AuthenticatedRequest) {
+    return this.workspaceService.findTasks(request.user?.id);
   }
 
   @Post('tasks')
-  createTask(@Body() dto: CreateTaskDto) {
-    return this.workspaceService.createTask(dto);
+  @UseGuards(JwtAuthGuard)
+  createTask(
+    @Req() request: AuthenticatedRequest,
+    @Body() dto: CreateTaskDto,
+  ) {
+    return this.workspaceService.createTask(request.user!, dto);
   }
 
   @Put('tasks/:id')
+  @UseGuards(JwtAuthGuard)
   updateTask(
+    @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateTaskDto,
   ) {
-    return this.workspaceService.updateTask(id, dto);
+    return this.workspaceService.updateTask(request.user!.id, id, dto);
   }
 
   @Delete('tasks/:id')
-  removeTask(@Param('id') id: string) {
-    return this.workspaceService.removeTask(id);
+  @UseGuards(JwtAuthGuard)
+  removeTask(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.workspaceService.removeTask(request.user!.id, id);
   }
 }
