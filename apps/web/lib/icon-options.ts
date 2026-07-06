@@ -3,6 +3,7 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
+  CheckCircle2,
   CloudDownload,
   Database,
   FileText,
@@ -25,6 +26,7 @@ export const portalIconMap: Record<string, LucideIcon> = {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
+  CheckCircle2,
   CloudDownload,
   Database,
   FileText,
@@ -43,6 +45,7 @@ export const portalIconMap: Record<string, LucideIcon> = {
 
 export const portalIconOptions = [
   { value: "MonitorCog", label: "سامانه" },
+  { value: "CheckCircle2", label: "سالم" },
   { value: "Database", label: "دیتابیس" },
   { value: "WalletCards", label: "مالی" },
   { value: "Users", label: "کاربران" },

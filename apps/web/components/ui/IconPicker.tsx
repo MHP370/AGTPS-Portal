@@ -22,7 +22,7 @@ export function IconPicker({
     <div className="space-y-3">
       <div className="grid grid-cols-4 gap-2 md:grid-cols-8">
         {portalIconOptions.map((option) => {
-          const Icon = portalIconMap[option.value];
+          const Icon = portalIconMap[option.value] ?? ImageIcon;
           const selected = value === option.value;
 
           return (

@@ -17,6 +17,7 @@ import {
   PanelsTopLeft,
   Settings,
   ShieldCheck,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -69,6 +70,12 @@ const adminNavItems: AdminNavItem[] = [
     label: "دانلودها",
     icon: CloudDownload,
     permission: "downloads.manage",
+  },
+  {
+    href: "/admin/system-statuses",
+    label: "وضعیت سیستم‌ها",
+    icon: Activity,
+    permission: "system-statuses.manage",
   },
   {
     href: "/admin/directory",

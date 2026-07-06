@@ -9,6 +9,7 @@ import {
   Download,
   Plus,
   Settings,
+  ShieldCheck,
   X,
 } from "lucide-react";
 import Logo from "@/components/layout/Logo";
@@ -29,6 +30,7 @@ import {
 } from "@/hooks/useNotifications";
 import { useSettings } from "@/hooks/useSettings";
 import { useSliders } from "@/hooks/useSliders";
+import { useSystemStatuses } from "@/hooks/useSystemStatuses";
 import {
   useCreateNote,
   useCreateReminder,
@@ -200,6 +202,7 @@ export default function Home() {
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const { data: settings } = useSettings();
   const { data: sliders = [] } = useSliders();
+  const { data: managedSystemStatuses = [] } = useSystemStatuses();
   const { data: announcements = [] } = useAnnouncements();
   const { data: news = [] } = useNews();
   const { data: downloads = [] } = useDownloads();
@@ -392,6 +395,23 @@ export default function Home() {
           sortOrder: 0,
           createdAt: "",
           updatedAt: "",
+        }));
+  const visibleSystemStatuses =
+    managedSystemStatuses.length > 0
+      ? managedSystemStatuses
+      : systemStatuses.map((item, index) => ({
+          id: item.title,
+          title: item.title,
+          status: item.status,
+          icon: item.icon.name,
+          color: [
+            "#34d399",
+            "#38bdf8",
+            "#22d3ee",
+            "#f59e0b",
+            "#a78bfa",
+            "#60a5fa",
+          ][index % 6],
         }));
 
   function openQuickAction(action: QuickAction) {
@@ -732,12 +752,41 @@ export default function Home() {
             <GlassPanel id="status">
               <SectionHeader title="وضعیت سیستم ها" />
               <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10">
-                {systemStatuses.map((item) => {
-                  const Icon = item.icon;
+                {visibleSystemStatuses.map((item) => {
+                  const Icon =
+                    portalIconMap[item.icon || "CheckCircle2"] ??
+                    ShieldCheck;
+                  const uploadedIcon = isUploadedIcon(item.icon)
+                    ? item.icon
+                    : null;
                   return (
-                    <div key={item.title} className="flex items-center justify-between bg-white/[0.03] px-4 py-3">
-                      <div className="flex items-center gap-3"><Icon size={21} className="text-sky-200" /><span className="font-bold">{item.title}</span></div>
-                      <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">{item.status}</span>
+                    <div key={item.id} className="flex items-center justify-between bg-white/[0.03] px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="grid size-8 place-items-center rounded-lg bg-white/[0.04]"
+                          style={{ color: item.color || "#38bdf8" }}
+                        >
+                          {uploadedIcon ? (
+                            <img
+                              src={uploadedIcon}
+                              alt=""
+                              className="size-5 object-contain"
+                            />
+                          ) : (
+                            <Icon size={21} />
+                          )}
+                        </span>
+                        <span className="font-bold">{item.title}</span>
+                      </div>
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-bold"
+                        style={{
+                          backgroundColor: `${item.color || "#34d399"}22`,
+                          color: item.color || "#34d399",
+                        }}
+                      >
+                        {item.status}
+                      </span>
                     </div>
                   );
                 })}

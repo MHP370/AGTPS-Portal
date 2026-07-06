@@ -105,6 +105,10 @@ const permissionDefinitions = [
     name: 'downloads.manage',
     title: 'Manage Downloads',
   },
+  {
+    name: 'system-statuses.manage',
+    title: 'Manage System Statuses',
+  },
 ];
 
 const permissions = await Promise.all(
@@ -300,6 +304,69 @@ await Promise.all(
           id: download.title,
           ...download,
         },
+      }),
+    ),
+  );
+
+  const systemStatusSeeds = [
+    {
+      id: 'internet',
+      title: 'اینترنت',
+      status: 'متصل',
+      icon: 'CheckCircle2',
+      color: '#34d399',
+      sortOrder: 1,
+    },
+    {
+      id: 'vpn',
+      title: 'VPN',
+      status: 'متصل',
+      icon: 'ShieldCheck',
+      color: '#38bdf8',
+      sortOrder: 2,
+    },
+    {
+      id: 'erp',
+      title: 'سامانه ERP',
+      status: 'در دسترس',
+      icon: 'Database',
+      color: '#22d3ee',
+      sortOrder: 3,
+    },
+    {
+      id: 'finance',
+      title: 'سامانه مالی',
+      status: 'در دسترس',
+      icon: 'WalletCards',
+      color: '#f59e0b',
+      sortOrder: 4,
+    },
+    {
+      id: 'mail',
+      title: 'ایمیل سازمانی',
+      status: 'در دسترس',
+      icon: 'Mail',
+      color: '#a78bfa',
+      sortOrder: 5,
+    },
+    {
+      id: 'file-server',
+      title: 'سرور فایل',
+      status: 'در دسترس',
+      icon: 'FileText',
+      color: '#60a5fa',
+      sortOrder: 6,
+    },
+  ];
+
+  await Promise.all(
+    systemStatusSeeds.map((status) =>
+      prisma.systemStatus.upsert({
+        where: {
+          id: status.id,
+        },
+        update: status,
+        create: status,
       }),
     ),
   );
