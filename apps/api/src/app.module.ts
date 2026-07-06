@@ -24,6 +24,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DownloadsModule } from './downloads/downloads.module';
 import { PortalModulesModule } from './portal-modules/portal-modules.module';
 import { SystemStatusesModule } from './system-statuses/system-statuses.module';
+import { TrainingsModule } from './trainings/trainings.module';
 
 
 
@@ -56,6 +57,7 @@ import { SystemStatusesModule } from './system-statuses/system-statuses.module';
     DownloadsModule,
     PortalModulesModule,
     SystemStatusesModule,
+    TrainingsModule,
   ],
 
   controllers: [AppController],

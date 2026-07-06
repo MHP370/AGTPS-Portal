@@ -49,6 +49,24 @@ enum DirectorySource {
   ACTIVE_DIRECTORY
 }
 
+enum TrainingContentType {
+  VIDEO
+  PDF
+  DOCUMENT
+  SPREADSHEET
+  PRESENTATION
+  IMAGE
+  LINK
+  ATTACHMENT
+}
+
+enum TrainingPublishStatus {
+  NEEDS_REVIEW
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -473,6 +491,90 @@ model PortalModule {
   isEnabled   Boolean @default(true)
 
   sortOrder   Int @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrainingCategory {
+  id          String @id @default(cuid())
+
+  name        String
+  slug        String @unique
+  description String? @db.Text
+  color       String?
+  icon        String?
+  sortOrder   Int @default(0)
+  isActive    Boolean @default(true)
+
+  trainings   TrainingItem[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrainingItem {
+  id          String @id @default(cuid())
+
+  title       String
+  slug        String @unique
+  description String? @db.Text
+
+  contentType TrainingContentType @default(VIDEO)
+  sourceType  String @default("PORTAL_UPLOAD")
+  sourcePath  String?
+  fileUrl     String?
+  externalUrl String?
+  thumbnail   String?
+
+  instructor  String?
+  department  String?
+  level       String?
+  durationMinutes Int?
+  tags        String[] @default([])
+
+  isRequired  Boolean @default(false)
+  status      TrainingPublishStatus @default(DRAFT)
+  isActive    Boolean @default(true)
+
+  categoryId  String?
+  category    TrainingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  files       TrainingFile[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrainingFile {
+  id          String @id @default(cuid())
+
+  trainingId  String
+  title       String
+  fileUrl     String
+  fileType    String?
+  fileSize    Int?
+  sortOrder   Int @default(0)
+  isPrimary   Boolean @default(false)
+
+  training    TrainingItem @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrainingSource {
+  id          String @id @default(cuid())
+
+  name        String
+  type        String @default("SMB")
+  basePath    String
+  description String? @db.Text
+  username    String?
+  password    String?
+  isActive    Boolean @default(true)
+  lastSyncAt  DateTime?
+  lastSyncStatus String?
+  lastSyncError String? @db.Text
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

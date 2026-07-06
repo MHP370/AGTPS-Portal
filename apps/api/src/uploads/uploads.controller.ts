@@ -33,12 +33,18 @@ const allowedDocumentMimeTypes = new Set([
   'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'text/plain',
+  'text/csv',
+  'video/mp4',
+  'video/webm',
+  'video/x-matroska',
+  'application/octet-stream',
 ]);
 
 const documentFolders = new Set([
   'downloads',
   'news',
   'announcements',
+  'training',
 ]);
 
 @Controller('uploads')

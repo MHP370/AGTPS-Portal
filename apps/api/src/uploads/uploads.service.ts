@@ -31,6 +31,7 @@ const allowedFolders = new Set([
   'sliders',
   'news',
   'announcements',
+  'training',
 ]);
 
 @Injectable()

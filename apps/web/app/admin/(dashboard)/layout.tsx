@@ -11,6 +11,7 @@ import {
   Database,
   FileText,
   FolderTree,
+  GraduationCap,
   House,
   MapPin,
   Network,
@@ -76,6 +77,13 @@ const adminNavItems: AdminNavItem[] = [
     icon: CalendarDays,
     permission: "meetings.manage",
     moduleKey: "meetings",
+  },
+  {
+    href: "/admin/trainings",
+    label: "آموزش",
+    icon: GraduationCap,
+    permission: "training.manage",
+    moduleKey: "training",
   },
   {
     href: "/admin/workspace",

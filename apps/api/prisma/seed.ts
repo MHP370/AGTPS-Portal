@@ -1,4 +1,10 @@
-import { PrismaClient, ApplicationStatus, NetworkType } from '@prisma/client';
+import {
+  ApplicationStatus,
+  NetworkType,
+  PrismaClient,
+  TrainingContentType,
+  TrainingPublishStatus,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -609,6 +615,120 @@ await Promise.all(
       }),
     ),
   );
+
+  const trainingCategorySeeds = [
+    {
+      name: 'فناوری اطلاعات',
+      slug: 'it',
+      description: 'آموزش‌های سامانه‌ها، امنیت، شبکه و ابزارهای IT.',
+      color: '#22d3ee',
+      icon: 'Database',
+      sortOrder: 1,
+    },
+    {
+      name: 'HSE',
+      slug: 'hse',
+      description: 'آموزش‌های ایمنی، بهداشت و محیط زیست.',
+      color: '#34d399',
+      icon: 'ShieldCheck',
+      sortOrder: 2,
+    },
+    {
+      name: 'منابع انسانی',
+      slug: 'hr',
+      description: 'آموزش‌های منابع انسانی، اداری و فرهنگ سازمانی.',
+      color: '#a78bfa',
+      icon: 'Users',
+      sortOrder: 3,
+    },
+    {
+      name: 'عمومی',
+      slug: 'general-training',
+      description: 'آموزش‌های عمومی قابل استفاده برای همه کارکنان.',
+      color: '#f59e0b',
+      icon: 'GraduationCap',
+      sortOrder: 4,
+    },
+  ];
+
+  const trainingCategories = await Promise.all(
+    trainingCategorySeeds.map((category) =>
+      prisma.trainingCategory.upsert({
+        where: {
+          slug: category.slug,
+        },
+        update: category,
+        create: category,
+      }),
+    ),
+  );
+  const generalTrainingCategory = trainingCategories.find(
+    (category) => category.slug === 'general-training',
+  );
+
+  await prisma.trainingItem.upsert({
+    where: {
+      slug: 'portal-introduction',
+    },
+    update: {
+      title: 'معرفی پورتال سازمانی',
+      description:
+        'محتوای نمونه برای شروع ماژول آموزش. فایل واقعی بعدا از پنل یا SMB اضافه می‌شود.',
+      categoryId: generalTrainingCategory?.id,
+      contentType: TrainingContentType.LINK,
+      sourceType: 'PORTAL_UPLOAD',
+      externalUrl: '#',
+      instructor: 'واحد فناوری اطلاعات',
+      department: 'عمومی',
+      level: 'مقدماتی',
+      durationMinutes: 15,
+      tags: ['پورتال', 'عمومی'],
+      isRequired: false,
+      status: TrainingPublishStatus.DRAFT,
+      isActive: true,
+    },
+    create: {
+      title: 'معرفی پورتال سازمانی',
+      slug: 'portal-introduction',
+      description:
+        'محتوای نمونه برای شروع ماژول آموزش. فایل واقعی بعدا از پنل یا SMB اضافه می‌شود.',
+      categoryId: generalTrainingCategory?.id,
+      contentType: TrainingContentType.LINK,
+      sourceType: 'PORTAL_UPLOAD',
+      externalUrl: '#',
+      instructor: 'واحد فناوری اطلاعات',
+      department: 'عمومی',
+      level: 'مقدماتی',
+      durationMinutes: 15,
+      tags: ['پورتال', 'عمومی'],
+      isRequired: false,
+      status: TrainingPublishStatus.DRAFT,
+      isActive: true,
+    },
+  });
+
+  await prisma.trainingSource.upsert({
+    where: {
+      id: 'default-training-share',
+    },
+    update: {
+      name: 'فایل‌سرور آموزش',
+      type: 'SMB',
+      basePath: '/mnt/agtps-training',
+      description:
+        'مسیر نمونه برای فایل‌های آموزشی قبلی. sync واقعی بعد از مشخص شدن مسیر و دسترسی شبکه فعال می‌شود.',
+      isActive: false,
+    },
+    create: {
+      id: 'default-training-share',
+      name: 'فایل‌سرور آموزش',
+      type: 'SMB',
+      basePath: '/mnt/agtps-training',
+      description:
+        'مسیر نمونه برای فایل‌های آموزشی قبلی. sync واقعی بعد از مشخص شدن مسیر و دسترسی شبکه فعال می‌شود.',
+      isActive: false,
+    },
+  });
 
   console.log('✅ Seed completed.');
 }
