@@ -28,6 +28,7 @@ import {
   useNotifications,
 } from "@/hooks/useNotifications";
 import { useSettings } from "@/hooks/useSettings";
+import { useSliders } from "@/hooks/useSliders";
 import {
   useCreateNote,
   useCreateReminder,
@@ -190,6 +191,7 @@ export default function Home() {
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const { data: settings } = useSettings();
+  const { data: sliders = [] } = useSliders();
   const { data: announcements = [] } = useAnnouncements();
   const { data: news = [] } = useNews();
   const { data: downloads = [] } = useDownloads();
@@ -210,6 +212,8 @@ export default function Home() {
   const overlayOpacity =
     settings?.portalBackgroundOverlayOpacity ?? 0.72;
   const activeAnnouncements = announcements.filter(isAnnouncementVisible);
+  const activeSliders = sliders.filter((slider) => slider.isActive);
+  const heroSlider = activeSliders[0];
   const latestNews = news.filter((item) => item.published);
   const visibleAnnouncements = activeAnnouncements.slice(0, 4);
   const visibleNews = latestNews.slice(0, 4);
@@ -606,16 +610,47 @@ export default function Home() {
 
           <section className="relative flex flex-col justify-between gap-5">
             <GlassPanel className="mx-auto w-full max-w-3xl !p-3">
-              <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
-                <button className="grid size-10 place-items-center rounded-full text-slate-200 hover:bg-white/10" aria-label="بستن پیام"><X size={22} /></button>
-                <div className="hidden h-36 w-56 rounded-2xl bg-gradient-to-br from-sky-200 via-slate-500 to-slate-900 md:block" />
-                <div className="flex-1 py-4">
-                  <h1 className="text-2xl font-black">پیام مدیریت</h1>
-                  <p className="mt-3 text-xl font-bold">به پورتال سازمان خوش آمدید</p>
-                  <p className="mt-4 text-sm leading-7 text-slate-300">در تلاش هستیم تا با ارائه بهترین خدمات، بهره‌وری سازمان را افزایش دهیم.</p>
+              {heroSlider ? (
+                <Link
+                  href={heroSlider.url || "#announcements"}
+                  target={
+                    heroSlider.url?.startsWith("http") ? "_blank" : undefined
+                  }
+                  rel={
+                    heroSlider.url?.startsWith("http")
+                      ? "noreferrer"
+                      : undefined
+                  }
+                  className="relative block min-h-48 overflow-hidden rounded-2xl bg-cover bg-center p-5"
+                  style={{
+                    backgroundImage: `url(${heroSlider.image})`,
+                  }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-950/45 to-transparent" />
+                  <div className="relative z-10 flex min-h-40 flex-col justify-end">
+                    <p className="text-sm font-black text-cyan-200">
+                      پیام مدیریت
+                    </p>
+                    <h1 className="mt-2 text-2xl font-black text-white">
+                      {heroSlider.title}
+                    </h1>
+                    <span className="mt-4 w-fit rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-black text-cyan-100">
+                      مشاهده جزئیات
+                    </span>
+                  </div>
+                </Link>
+              ) : (
+                <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
+                  <button className="grid size-10 place-items-center rounded-full text-slate-200 hover:bg-white/10" aria-label="بستن پیام"><X size={22} /></button>
+                  <div className="hidden h-36 w-56 rounded-2xl bg-gradient-to-br from-sky-200 via-slate-500 to-slate-900 md:block" />
+                  <div className="flex-1 py-4">
+                    <h1 className="text-2xl font-black">پیام مدیریت</h1>
+                    <p className="mt-3 text-xl font-bold">به پورتال سازمان خوش آمدید</p>
+                    <p className="mt-4 text-sm leading-7 text-slate-300">در تلاش هستیم تا با ارائه بهترین خدمات، بهره‌وری سازمان را افزایش دهیم.</p>
+                  </div>
+                  <Link href="#announcements" className="hidden rounded-xl bg-gradient-to-l from-violet-600 to-sky-500 px-6 py-3 text-sm font-black md:inline-flex">اطلاعات بیشتر</Link>
                 </div>
-                <Link href="#announcements" className="hidden rounded-xl bg-gradient-to-l from-violet-600 to-sky-500 px-6 py-3 text-sm font-black md:inline-flex">اطلاعات بیشتر</Link>
-              </div>
+              )}
             </GlassPanel>
 
             <IranPortalMap

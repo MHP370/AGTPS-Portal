@@ -14,6 +14,7 @@ import {
   House,
   MapPin,
   Network,
+  PanelsTopLeft,
   Settings,
   ShieldCheck,
   type LucideIcon,
@@ -86,6 +87,12 @@ const adminNavItems: AdminNavItem[] = [
     label: "اطلاعیه‌ها",
     icon: Bell,
     permission: "announcements.publish",
+  },
+  {
+    href: "/admin/sliders",
+    label: "اسلایدر",
+    icon: PanelsTopLeft,
+    permission: "sliders.manage",
   },
   {
     href: "/admin/settings",
