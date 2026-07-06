@@ -457,6 +457,27 @@ model PortalDownload {
   updatedAt   DateTime @updatedAt
 }
 
+model PortalModule {
+  id          String @id @default(cuid())
+
+  key         String @unique
+  title       String
+  description String? @db.Text
+
+  icon        String?
+  route       String?
+  permission  String?
+
+  isCore      Boolean @default(false)
+  isInstalled Boolean @default(true)
+  isEnabled   Boolean @default(true)
+
+  sortOrder   Int @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model Slider {
   id          String   @id @default(cuid())
 

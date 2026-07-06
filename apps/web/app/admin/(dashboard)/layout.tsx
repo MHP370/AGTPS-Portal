@@ -15,6 +15,7 @@ import {
   MapPin,
   Network,
   PanelsTopLeft,
+  Puzzle,
   Settings,
   ShieldCheck,
   Activity,
@@ -24,88 +25,119 @@ import {
 import { AdminAuthGuard } from "@/components/auth/AdminAuthGuard";
 import { AdminLogoutButton } from "@/components/auth/AdminLogoutButton";
 import { getStoredAuthUser, type AuthUser } from "@/lib/auth";
+import { useEnabledPortalModules } from "@/hooks/usePortalModules";
 
 type AdminNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
   permission?: string;
+  moduleKey?: string;
 };
 
 const adminNavItems: AdminNavItem[] = [
-  { href: "/admin/dashboard", label: "داشبورد", icon: House },
+  {
+    href: "/admin/dashboard",
+    label: "داشبورد",
+    icon: House,
+    moduleKey: "dashboard",
+  },
   {
     href: "/admin/applications",
     label: "سامانه‌ها",
     icon: Database,
     permission: "applications.manage",
+    moduleKey: "applications",
   },
   {
     href: "/admin/categories",
     label: "دسته‌بندی‌ها",
     icon: FolderTree,
     permission: "categories.manage",
+    moduleKey: "categories",
   },
   {
     href: "/admin/sites",
     label: "سایت‌ها",
     icon: MapPin,
     permission: "sites.manage",
+    moduleKey: "sites",
   },
   {
     href: "/admin/news",
     label: "اخبار",
     icon: FileText,
     permission: "news.publish",
+    moduleKey: "news",
   },
   {
     href: "/admin/meetings",
     label: "جلسات",
     icon: CalendarDays,
     permission: "meetings.manage",
+    moduleKey: "meetings",
   },
-  { href: "/admin/workspace", label: "فضای کاری", icon: BriefcaseBusiness },
+  {
+    href: "/admin/workspace",
+    label: "فضای کاری",
+    icon: BriefcaseBusiness,
+    moduleKey: "workspace",
+  },
   {
     href: "/admin/downloads",
     label: "دانلودها",
     icon: CloudDownload,
     permission: "downloads.manage",
+    moduleKey: "downloads",
   },
   {
     href: "/admin/system-statuses",
     label: "وضعیت سیستم‌ها",
     icon: Activity,
     permission: "system-statuses.manage",
+    moduleKey: "system-statuses",
   },
   {
     href: "/admin/directory",
     label: "اکتیو دایرکتوری",
     icon: Network,
     permission: "directory.manage",
+    moduleKey: "directory",
   },
   {
     href: "/admin/access",
     label: "دسترسی‌ها",
     icon: ShieldCheck,
     permission: "access.manage",
+    moduleKey: "access",
   },
   {
     href: "/admin/announcements",
     label: "اطلاعیه‌ها",
     icon: Bell,
     permission: "announcements.publish",
+    moduleKey: "announcements",
   },
   {
     href: "/admin/sliders",
     label: "اسلایدر",
     icon: PanelsTopLeft,
     permission: "sliders.manage",
+    moduleKey: "sliders",
+  },
+  {
+    href: "/admin/modules",
+    label: "ماژول‌ها",
+    icon: Puzzle,
+    permission: "modules.manage",
+    moduleKey: "modules",
   },
   {
     href: "/admin/settings",
     label: "تنظیمات",
     icon: Settings,
     permission: "settings.manage",
+    moduleKey: "settings",
   },
 ];
 
@@ -121,6 +153,7 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const { data: enabledModules } = useEnabledPortalModules();
 
   useEffect(() => {
     const syncUser = () => setUser(getStoredAuthUser());
@@ -135,13 +168,26 @@ export default function AdminLayout({
     };
   }, []);
 
-  const visibleNavItems = adminNavItems.filter((item) =>
-    hasPermission(user, item.permission),
-  );
+  const enabledModuleKeys = enabledModules
+    ? new Set(enabledModules.map((module) => module.key))
+    : null;
+  const visibleNavItems = adminNavItems.filter((item) => {
+    const moduleIsEnabled =
+      !enabledModuleKeys ||
+      !item.moduleKey ||
+      enabledModuleKeys.has(item.moduleKey);
+
+    return moduleIsEnabled && hasPermission(user, item.permission);
+  });
   const currentNavItem = adminNavItems
     .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
     .sort((first, second) => second.href.length - first.href.length)[0];
-  const canViewCurrentPage = hasPermission(user, currentNavItem?.permission);
+  const currentModuleIsEnabled =
+    !enabledModuleKeys ||
+    !currentNavItem?.moduleKey ||
+    enabledModuleKeys.has(currentNavItem.moduleKey);
+  const canViewCurrentPage =
+    currentModuleIsEnabled && hasPermission(user, currentNavItem?.permission);
 
   return (
     <AdminAuthGuard>
@@ -205,8 +251,8 @@ export default function AdminLayout({
                   دسترسی مجاز نیست
                 </h1>
                 <p className="mt-3 text-sm leading-7 text-rose-100/75">
-                  برای مشاهده این بخش باید دسترسی لازم توسط مدیر سیستم به نقش یا
-                  گروه کاربری شما اضافه شود.
+                  برای مشاهده این بخش باید ماژول فعال باشد و دسترسی لازم توسط
+                  مدیر سیستم به نقش یا گروه کاربری شما اضافه شود.
                 </p>
               </div>
             )}

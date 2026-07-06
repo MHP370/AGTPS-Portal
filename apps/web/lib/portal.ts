@@ -26,6 +26,7 @@ export type PortalNavItem = {
   title: string;
   icon: LucideIcon;
   href: string;
+  moduleKey?: string;
 };
 
 export type PortalNotice = {
@@ -72,12 +73,37 @@ export type PortalSite = {
 
 export const portalNavItems: PortalNavItem[] = [
   { title: "خانه", icon: House, href: "/" },
-  { title: "سامانه ها", icon: Database, href: "#systems" },
-  { title: "اطلاعیه ها", icon: Bell, href: "#announcements" },
-  { title: "منابع انسانی", icon: Users, href: "#hr" },
-  { title: "دانلود نرم افزار", icon: CloudDownload, href: "#downloads" },
-  { title: "تقویم جلسات", icon: CalendarDays, href: "#calendar" },
-  { title: "وضعیت سیستم ها", icon: ShieldCheck, href: "#status" },
+  {
+    title: "سامانه ها",
+    icon: Database,
+    href: "#systems",
+    moduleKey: "applications",
+  },
+  {
+    title: "اطلاعیه ها",
+    icon: Bell,
+    href: "#announcements",
+    moduleKey: "announcements",
+  },
+  { title: "منابع انسانی", icon: Users, href: "#hr", moduleKey: "news" },
+  {
+    title: "دانلود نرم افزار",
+    icon: CloudDownload,
+    href: "#downloads",
+    moduleKey: "downloads",
+  },
+  {
+    title: "تقویم جلسات",
+    icon: CalendarDays,
+    href: "#calendar",
+    moduleKey: "meetings",
+  },
+  {
+    title: "وضعیت سیستم ها",
+    icon: ShieldCheck,
+    href: "#status",
+    moduleKey: "system-statuses",
+  },
 ];
 
 export const managementNotices: PortalNotice[] = [

@@ -28,6 +28,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/hooks/useNotifications";
+import { useEnabledPortalModules } from "@/hooks/usePortalModules";
 import { useSettings } from "@/hooks/useSettings";
 import { useSliders } from "@/hooks/useSliders";
 import { useSystemStatuses } from "@/hooks/useSystemStatuses";
@@ -73,6 +74,18 @@ type PortalWidgetEntry = {
 
 type QuickAction = "note" | "reminder" | "task";
 type CalendarView = "day" | "month" | "year";
+
+const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
+  hero: "sliders",
+  announcements: "announcements",
+  news: "news",
+  map: "sites",
+  systems: "applications",
+  status: "system-statuses",
+  calendar: "meetings",
+  workspace: "workspace",
+  downloads: "downloads",
+};
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -201,6 +214,7 @@ export default function Home() {
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const { data: settings } = useSettings();
+  const { data: enabledModules } = useEnabledPortalModules();
   const { data: sliders = [] } = useSliders();
   const { data: managedSystemStatuses = [] } = useSystemStatuses();
   const { data: announcements = [] } = useAnnouncements();
@@ -231,14 +245,26 @@ export default function Home() {
       .filter((widget) => widget.enabled)
       .map((widget) => widget.id),
   );
+  const enabledModuleKeys = enabledModules
+    ? new Set(enabledModules.map((module) => module.key))
+    : null;
+  const moduleIsEnabled = (moduleKey?: string | null) =>
+    !enabledModuleKeys || !moduleKey || enabledModuleKeys.has(moduleKey);
   const sortPortalWidgets = (widgets: PortalWidgetEntry[]) =>
     widgets
-      .filter((widget) => enabledPortalWidgets.has(widget.id))
+      .filter(
+        (widget) =>
+          enabledPortalWidgets.has(widget.id) &&
+          moduleIsEnabled(portalWidgetModuleKeys[widget.id]),
+      )
       .sort(
         (first, second) =>
           (portalWidgetOrder.get(first.id) ?? 0) -
           (portalWidgetOrder.get(second.id) ?? 0),
       );
+  const visiblePortalNavItems = portalNavItems.filter((item) =>
+    moduleIsEnabled(item.moduleKey),
+  );
   const activeAnnouncements = announcements.filter(isAnnouncementVisible);
   const activeSliders = sliders.filter((slider) => slider.isActive);
   const heroSlider = activeSliders[0];
@@ -481,7 +507,7 @@ export default function Home() {
         <header className="mb-5 flex min-h-24 flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">
           <Logo />
           <nav className="order-3 flex w-full flex-wrap justify-center gap-2 xl:order-2 xl:w-auto">
-            {portalNavItems.map((item, index) => {
+            {visiblePortalNavItems.map((item, index) => {
               const Icon = item.icon;
               return (
                 <Link key={item.title} href={item.href} className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-cyan-400/10 hover:text-cyan-100 ${index === 0 ? "bg-cyan-400/15 text-cyan-100 shadow-[inset_0_-2px_0_rgba(34,211,238,0.8)]" : ""}`}>

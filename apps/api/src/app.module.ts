@@ -22,6 +22,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
 import { DirectoryModule } from './directory/directory.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { DownloadsModule } from './downloads/downloads.module';
+import { PortalModulesModule } from './portal-modules/portal-modules.module';
 import { SystemStatusesModule } from './system-statuses/system-statuses.module';
 
 
@@ -53,6 +54,7 @@ import { SystemStatusesModule } from './system-statuses/system-statuses.module';
     DirectoryModule,
     NotificationsModule,
     DownloadsModule,
+    PortalModulesModule,
     SystemStatusesModule,
   ],
 

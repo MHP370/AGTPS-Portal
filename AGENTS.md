@@ -12,6 +12,9 @@
 - Only update GitHub after the user confirms the tested change is working.
 - After the user confirms a change is OK, commit the approved change locally, then provide the exact push commands for the user to run manually. Do not push to GitHub directly.
 - If project instructions need to change, only update them when the user asks.
+- All major product areas must be designed as modules. Modules must have a stable key, title, description, icon, permissions, seed data when needed, and a database-controlled enabled/disabled state.
+- The portal must support a plugin/module-style operating model: modules can be logically installed, enabled, disabled, and hidden from navigation/admin surfaces without changing user-facing code paths manually.
+- Runtime deletion of application code is not required or recommended. "Uninstall" should mean disabling the module, removing/hiding its navigation and actions, and optionally cleaning module-owned data through a controlled migration or admin action.
 
 ## Product Goal
 
@@ -32,6 +35,7 @@ It is used to manage:
 - Users.
 - Roles and permissions.
 - Future modules: sites, dashboard, logs, announcements, downloads, calendar, and portal widgets.
+- Feature modules must be able to be disabled globally, for example disabling the Training/LMS module completely.
 
 ## Tech Stack
 
