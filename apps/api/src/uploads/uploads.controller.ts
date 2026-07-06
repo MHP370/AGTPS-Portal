@@ -4,12 +4,14 @@ import {
   Param,
   Post,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 import { UploadsService } from './uploads.service';
 import type { UploadedFile as UploadedImageFile } from './uploads.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 const allowedImageMimeTypes = new Set([
   'image/jpeg',
@@ -20,6 +22,7 @@ const allowedImageMimeTypes = new Set([
 ]);
 
 @Controller('uploads')
+@UseGuards(JwtAuthGuard)
 export class UploadsController {
   constructor(
     private readonly uploadsService: UploadsService,

@@ -5,11 +5,17 @@ import {
   Get,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { RolePermissionsService } from './role-permissions.service';
 import { AssignPermissionDto } from './dto/assign-permission.dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('access.manage')
 @Controller('roles/:roleId/permissions')
 export class RolePermissionsController {
   constructor(

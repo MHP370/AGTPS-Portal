@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { hasAuthSession } from "@/lib/auth";
+import { getMe, hasAuthSession, setStoredAuthUser } from "@/lib/auth";
 
 interface AdminAuthGuardProps {
   children: ReactNode;
@@ -15,13 +15,28 @@ export function AdminAuthGuard({ children }: AdminAuthGuardProps) {
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    if (hasAuthSession()) {
-      setAllowed(true);
+    if (!hasAuthSession()) {
+      const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
+      router.replace(`/admin/login${next}`);
       return;
     }
 
-    const next = pathname ? `?next=${encodeURIComponent(pathname)}` : "";
-    router.replace(`/admin/login${next}`);
+    let mounted = true;
+
+    getMe()
+      .then((user) => {
+        setStoredAuthUser(user);
+        window.dispatchEvent(new Event("auth-user-updated"));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!mounted) return;
+        setAllowed(true);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, [pathname, router]);
 
   if (!allowed) {

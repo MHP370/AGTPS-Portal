@@ -62,6 +62,14 @@ const permissionDefinitions = [
     title: 'Manage Applications',
   },
   {
+    name: 'categories.manage',
+    title: 'Manage Categories',
+  },
+  {
+    name: 'sites.manage',
+    title: 'Manage Sites',
+  },
+  {
     name: 'news.publish',
     title: 'Publish News',
   },
@@ -76,6 +84,22 @@ const permissionDefinitions = [
   {
     name: 'users.manage',
     title: 'Manage Users',
+  },
+  {
+    name: 'directory.manage',
+    title: 'Manage Directory',
+  },
+  {
+    name: 'access.manage',
+    title: 'Manage Access',
+  },
+  {
+    name: 'settings.manage',
+    title: 'Manage Settings',
+  },
+  {
+    name: 'sliders.manage',
+    title: 'Manage Sliders',
   },
   {
     name: 'downloads.manage',

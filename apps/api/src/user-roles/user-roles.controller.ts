@@ -5,11 +5,17 @@ import {
   Get,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { UserRolesService } from './user-roles.service';
 import { AssignRoleDto } from './dto/assign-role.dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('access.manage')
 @Controller('users/:userId/roles')
 export class UserRolesController {
   constructor(

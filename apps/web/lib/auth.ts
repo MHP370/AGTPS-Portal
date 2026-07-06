@@ -63,6 +63,14 @@ export function setAuthSession(session: LoginResponse) {
   )}; path=/; max-age=${AUTH_COOKIE_MAX_AGE}; SameSite=Lax`;
 }
 
+export function setStoredAuthUser(user: AuthUser) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+}
+
 export function clearAuthSession() {
   if (typeof window === "undefined") {
     return;

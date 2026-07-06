@@ -6,13 +6,19 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 
 import { SitesService } from './sites.service';
 
 import { CreateSiteDto } from './dto/create-site.dto';
 import { UpdateSiteDto } from './dto/update-site.dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('sites.manage')
 @Controller('sites')
 export class SitesController {
   constructor(

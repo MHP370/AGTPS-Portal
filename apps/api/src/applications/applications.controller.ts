@@ -17,9 +17,12 @@ import { CreateApplicationSiteDto } from './dto/create-application-site.dto';
 import { UpdateApplicationSiteDto } from './dto/update-application-site.dto';
 
 import { UseGuards } from '@nestjs/common';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('applications.manage')
 @Controller('applications')
 export class ApplicationsController {
   constructor(

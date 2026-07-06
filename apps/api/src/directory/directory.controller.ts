@@ -6,7 +6,11 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { CreateDirectoryGroupDto } from './dto/create-directory-group.dto';
 import { CreateDirectoryUserDto } from './dto/create-directory-user.dto';
 import { UpdateDirectoryGroupDto } from './dto/update-directory-group.dto';
@@ -15,6 +19,8 @@ import { UpdateGroupMembersDto } from './dto/update-group-members.dto';
 import { UpdateGroupRolesDto } from './dto/update-group-roles.dto';
 import { DirectoryService } from './directory.service';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('directory.manage')
 @Controller('directory')
 export class DirectoryController {
   constructor(

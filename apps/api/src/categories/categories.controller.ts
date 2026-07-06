@@ -6,13 +6,19 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 
 import { CategoriesService } from './categories.service';
 
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Permissions('categories.manage')
 @Controller('categories')
 export class CategoriesController {
   constructor(
