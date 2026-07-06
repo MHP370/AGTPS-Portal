@@ -548,7 +548,7 @@ export default function TrainingsPage() {
                   value={newFileUrl}
                   onChange={setNewFileUrl}
                   folder="training"
-                  accept="video/*,.pdf,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*"
+                  accept="video/*,image/*,.pdf,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.mp4,.mkv,.webm,.mov,.avi,.jpg,.jpeg,.png,.webp,.gif"
                   placeholder="/uploads/training/course.mp4 یا https://..."
                 />
               </FormField>

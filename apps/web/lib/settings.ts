@@ -22,6 +22,8 @@ export interface PortalSettings {
   activeDirectoryLastStatus?: string | null;
   activeDirectoryLastError?: string | null;
   activeDirectoryLastCheckedAt?: string | null;
+  trainingMaxUploadSizeMb?: number;
+  trainingAllowedFileExtensions?: string;
 }
 
 export interface UpdatePortalSettingsDto {
@@ -41,6 +43,8 @@ export interface UpdatePortalSettingsDto {
   activeDirectoryBindPassword?: string;
   activeDirectoryUserSearchBase?: string;
   activeDirectoryGroupSearchBase?: string;
+  trainingMaxUploadSizeMb?: number;
+  trainingAllowedFileExtensions?: string;
 }
 
 export const settingsQueryKey = ["settings"];

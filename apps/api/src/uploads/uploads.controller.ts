@@ -8,6 +8,10 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { mkdirSync } from 'fs';
+import { extname, resolve } from 'path';
+import { randomUUID } from 'crypto';
 
 import { UploadsService } from './uploads.service';
 import type { UploadedFile as UploadedImageFile } from './uploads.service';
@@ -37,6 +41,8 @@ const allowedDocumentMimeTypes = new Set([
   'video/mp4',
   'video/webm',
   'video/x-matroska',
+  'video/quicktime',
+  'video/x-msvideo',
   'application/octet-stream',
 ]);
 
@@ -46,6 +52,16 @@ const documentFolders = new Set([
   'announcements',
   'training',
 ]);
+
+function getUploadTempDirectory() {
+  const cwd = process.cwd();
+
+  if (cwd.endsWith('/apps/api')) {
+    return resolve(cwd, '../web/public/uploads/.tmp');
+  }
+
+  return resolve(cwd, 'apps/web/public/uploads/.tmp');
+}
 
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
@@ -57,11 +73,31 @@ export class UploadsController {
   @Post(':folder')
   @UseInterceptors(
     FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (request, file, callback) => {
+          const directory = getUploadTempDirectory();
+          mkdirSync(directory, {
+            recursive: true,
+          });
+          callback(null, directory);
+        },
+        filename: (request, file, callback) => {
+          callback(
+            null,
+            `${Date.now()}-${randomUUID()}${extname(file.originalname).toLowerCase()}`,
+          );
+        },
+      }),
       limits: {
-        fileSize: 50 * 1024 * 1024,
+        fileSize: 2 * 1024 * 1024 * 1024,
       },
       fileFilter: (request, file, callback) => {
         const folder = request.params.folder;
+        if (folder === 'training') {
+          callback(null, true);
+          return;
+        }
+
         const allowedMimeTypes = documentFolders.has(folder)
           ? allowedDocumentMimeTypes
           : allowedImageMimeTypes;

@@ -18,6 +18,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Upload,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -154,6 +155,14 @@ export default function SettingsPage() {
   const [adBindPassword, setAdBindPassword] = useState("");
   const [adUserSearchBase, setAdUserSearchBase] = useState("");
   const [adGroupSearchBase, setAdGroupSearchBase] = useState("");
+  const [trainingMaxUploadSizeMb, setTrainingMaxUploadSizeMb] =
+    useState("2048");
+  const [
+    trainingAllowedFileExtensions,
+    setTrainingAllowedFileExtensions,
+  ] = useState(
+    "mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z",
+  );
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -182,12 +191,20 @@ export default function SettingsPage() {
     );
     setAdUserSearchBase(settings.activeDirectoryUserSearchBase ?? "");
     setAdGroupSearchBase(settings.activeDirectoryGroupSearchBase ?? "");
+    setTrainingMaxUploadSizeMb(
+      String(settings.trainingMaxUploadSizeMb ?? 2048),
+    );
+    setTrainingAllowedFileExtensions(
+      settings.trainingAllowedFileExtensions ||
+        "mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z",
+    );
   }, [settings]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
 
     const parsedOverlayOpacity = Number(overlayOpacity);
+    const parsedTrainingMaxUploadSizeMb = Number(trainingMaxUploadSizeMb);
 
     if (!companyName.trim()) {
       setFormError("نام شرکت الزامی است.");
@@ -210,6 +227,15 @@ export default function SettingsPage() {
       parsedOverlayOpacity > 1
     ) {
       setFormError("شدت پوشش باید عددی بین ۰ و ۱ باشد.");
+      return;
+    }
+
+    if (
+      !Number.isFinite(parsedTrainingMaxUploadSizeMb) ||
+      parsedTrainingMaxUploadSizeMb < 1 ||
+      parsedTrainingMaxUploadSizeMb > 2048
+    ) {
+      setFormError("حجم آپلود آموزش باید عددی بین ۱ تا ۲۰۴۸ مگابایت باشد.");
       return;
     }
 
@@ -240,6 +266,9 @@ export default function SettingsPage() {
           adUserSearchBase.trim() || undefined,
         activeDirectoryGroupSearchBase:
           adGroupSearchBase.trim() || undefined,
+        trainingMaxUploadSizeMb: parsedTrainingMaxUploadSizeMb,
+        trainingAllowedFileExtensions:
+          trainingAllowedFileExtensions.trim() || undefined,
       });
       setSuccess("تنظیمات ذخیره شد.");
     } catch (err) {
@@ -588,6 +617,52 @@ export default function SettingsPage() {
               {updateSettings.isPending
                 ? "در حال ذخیره..."
                 : "ذخیره چیدمان ویجت‌ها"}
+            </Button>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          title="تنظیمات فایل‌های آموزشی"
+          description="حجم مجاز و پسوندهای قابل آپلود در ماژول آموزش را مدیریت کنید."
+          icon={Upload}
+          className="xl:col-span-2"
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <IconFormField label="حداکثر حجم آپلود - مگابایت" icon={Upload}>
+              <Input
+                type="number"
+                min={1}
+                max={2048}
+                value={trainingMaxUploadSizeMb}
+                onChange={(event) =>
+                  setTrainingMaxUploadSizeMb(event.target.value)
+                }
+                disabled={updateSettings.isPending}
+              />
+            </IconFormField>
+
+            <IconFormField label="پسوندهای مجاز آموزش" icon={FileText}>
+              <Input
+                value={trainingAllowedFileExtensions}
+                onChange={(event) =>
+                  setTrainingAllowedFileExtensions(event.target.value)
+                }
+                disabled={updateSettings.isPending}
+                placeholder="mp4,mkv,pdf,docx,pptx"
+              />
+            </IconFormField>
+          </div>
+
+          <p className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-7 text-amber-100">
+            سقف فنی فعلی ۲۰۴۸ مگابایت است. برای فایل‌های بزرگ بهتر است سرور
+            آموزش/SMB استفاده شود تا فایل‌ها مستقیم از مسیر شبکه sync شوند.
+          </p>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={updateSettings.isPending}>
+              {updateSettings.isPending
+                ? "در حال ذخیره..."
+                : "ذخیره تنظیمات فایل آموزشی"}
             </Button>
           </div>
         </SettingsSection>

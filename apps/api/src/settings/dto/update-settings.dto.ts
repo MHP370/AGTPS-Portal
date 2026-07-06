@@ -73,4 +73,14 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   activeDirectoryGroupSearchBase?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(2048)
+  trainingMaxUploadSizeMb?: number;
+
+  @IsOptional()
+  @IsString()
+  trainingAllowedFileExtensions?: string;
 }

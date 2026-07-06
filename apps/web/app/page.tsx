@@ -7,7 +7,9 @@ import {
   ChevronLeft,
   CloudDownload,
   Download,
+  GraduationCap,
   Plus,
+  PlayCircle,
   Settings,
   ShieldCheck,
   X,
@@ -32,6 +34,7 @@ import { useEnabledPortalModules } from "@/hooks/usePortalModules";
 import { useSettings } from "@/hooks/useSettings";
 import { useSliders } from "@/hooks/useSliders";
 import { useSystemStatuses } from "@/hooks/useSystemStatuses";
+import { useTrainings } from "@/hooks/useTrainings";
 import {
   useCreateNote,
   useCreateReminder,
@@ -81,6 +84,7 @@ const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
   news: "news",
   map: "sites",
   systems: "applications",
+  training: "training",
   status: "system-statuses",
   calendar: "meetings",
   workspace: "workspace",
@@ -166,20 +170,31 @@ function isAnnouncementVisible({
 function SectionHeader({
   title,
   onViewAll,
+  viewAllHref,
 }: {
   title: string;
   onViewAll?: () => void;
+  viewAllHref?: string;
 }) {
   return (
     <div className="mb-5 flex items-center justify-between">
       <h2 className="text-lg font-black text-white">{title}</h2>
-      <button
-        type="button"
-        onClick={onViewAll}
-        className="text-xs font-bold text-cyan-300 hover:text-cyan-100"
-      >
-        مشاهده همه
-      </button>
+      {viewAllHref ? (
+        <Link
+          href={viewAllHref}
+          className="text-xs font-bold text-cyan-300 hover:text-cyan-100"
+        >
+          مشاهده همه
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="text-xs font-bold text-cyan-300 hover:text-cyan-100"
+        >
+          مشاهده همه
+        </button>
+      )}
     </div>
   );
 }
@@ -220,6 +235,7 @@ export default function Home() {
   const { data: announcements = [] } = useAnnouncements();
   const { data: news = [] } = useNews();
   const { data: downloads = [] } = useDownloads();
+  const { data: trainings = [] } = useTrainings();
   const { data: meetings = [] } = useMeetings();
   const { data: notes = [] } = useNotes();
   const { data: reminders = [] } = useReminders();
@@ -422,6 +438,7 @@ export default function Home() {
           createdAt: "",
           updatedAt: "",
         }));
+  const visibleTrainings = trainings.slice(0, 4);
   const visibleSystemStatuses =
     managedSystemStatuses.length > 0
       ? managedSystemStatuses
@@ -762,6 +779,75 @@ export default function Home() {
                 selectedSiteId={selectedSiteId}
                 onSiteSelect={setSelectedSiteId}
               />
+            </GlassPanel>
+                ),
+              },
+
+              {
+                id: "training",
+                node: (
+            <GlassPanel id="training">
+              <SectionHeader title="کتابخانه آموزش" viewAllHref="/trainings" />
+              <div className="grid gap-3 md:grid-cols-2">
+                {visibleTrainings.map((training) => {
+                  return (
+                    <Link
+                      key={training.id}
+                      href={`/trainings/${training.id}`}
+                      className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-right transition hover:border-cyan-300/40 hover:bg-white/[0.08]"
+                    >
+                      <div
+                        className="relative h-28 bg-slate-800 bg-cover bg-center"
+                        style={{
+                          backgroundImage: training.thumbnail
+                            ? `url(${training.thumbnail})`
+                            : undefined,
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-slate-950/10" />
+                        <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full bg-cyan-400/20 text-cyan-100 ring-1 ring-cyan-300/30">
+                          {training.contentType === "VIDEO" ? (
+                            <PlayCircle size={22} />
+                          ) : (
+                            <GraduationCap size={22} />
+                          )}
+                        </span>
+                      </div>
+                      <div className="p-4">
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-100">
+                            {training.category?.name || "آموزش"}
+                          </span>
+                          {training.isRequired && (
+                            <span className="rounded-full bg-rose-400/10 px-3 py-1 text-[11px] font-bold text-rose-100">
+                              اجباری
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="line-clamp-1 font-black text-white">
+                          {training.title}
+                        </h3>
+                        <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
+                          {training.description || "محتوای آموزشی سازمانی"}
+                        </p>
+                        <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                          <span>
+                            {training.durationMinutes
+                              ? `${training.durationMinutes} دقیقه`
+                              : "بدون زمان"}
+                          </span>
+                          <span>{training.files.length} فایل</span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+              {visibleTrainings.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm leading-7 text-slate-300">
+                  هنوز آموزش منتشرشده‌ای برای نمایش در پرتال وجود ندارد.
+                </div>
+              )}
             </GlassPanel>
                 ),
               },

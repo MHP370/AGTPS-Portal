@@ -8,6 +8,7 @@ import {
   Database,
   FileText,
   Globe,
+  GraduationCap,
   Headphones,
   HeartPulse,
   House,
@@ -91,6 +92,12 @@ export const portalNavItems: PortalNavItem[] = [
     icon: CloudDownload,
     href: "#downloads",
     moduleKey: "downloads",
+  },
+  {
+    title: "آموزش",
+    icon: GraduationCap,
+    href: "#training",
+    moduleKey: "training",
   },
   {
     title: "تقویم جلسات",

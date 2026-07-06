@@ -4,6 +4,7 @@ export type PortalWidgetId =
   | "news"
   | "map"
   | "systems"
+  | "training"
   | "status"
   | "calendar"
   | "workspace"
@@ -53,6 +54,13 @@ export const defaultPortalWidgets: PortalWidgetSetting[] = [
     title: "دسترسی سریع به سامانه‌ها",
     enabled: true,
     order: 30,
+    column: "center",
+  },
+  {
+    id: "training",
+    title: "کتابخانه آموزش",
+    enabled: true,
+    order: 40,
     column: "center",
   },
   {
