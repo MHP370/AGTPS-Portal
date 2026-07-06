@@ -3,6 +3,21 @@
 import Link from "next/link";
 import { ReactNode, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import {
+  Bell,
+  BriefcaseBusiness,
+  CalendarDays,
+  CloudDownload,
+  Database,
+  FileText,
+  FolderTree,
+  House,
+  MapPin,
+  Network,
+  Settings,
+  ShieldCheck,
+  type LucideIcon,
+} from "lucide-react";
 
 import { AdminAuthGuard } from "@/components/auth/AdminAuthGuard";
 import { AdminLogoutButton } from "@/components/auth/AdminLogoutButton";
@@ -11,52 +26,71 @@ import { getStoredAuthUser, type AuthUser } from "@/lib/auth";
 type AdminNavItem = {
   href: string;
   label: string;
+  icon: LucideIcon;
   permission?: string;
 };
 
 const adminNavItems: AdminNavItem[] = [
-  { href: "/admin/dashboard", label: "داشبورد" },
+  { href: "/admin/dashboard", label: "داشبورد", icon: House },
   {
     href: "/admin/applications",
     label: "سامانه‌ها",
+    icon: Database,
     permission: "applications.manage",
   },
   {
     href: "/admin/categories",
     label: "دسته‌بندی‌ها",
+    icon: FolderTree,
     permission: "categories.manage",
   },
-  { href: "/admin/sites", label: "سایت‌ها", permission: "sites.manage" },
-  { href: "/admin/news", label: "اخبار", permission: "news.publish" },
+  {
+    href: "/admin/sites",
+    label: "سایت‌ها",
+    icon: MapPin,
+    permission: "sites.manage",
+  },
+  {
+    href: "/admin/news",
+    label: "اخبار",
+    icon: FileText,
+    permission: "news.publish",
+  },
   {
     href: "/admin/meetings",
     label: "جلسات",
+    icon: CalendarDays,
     permission: "meetings.manage",
   },
-  { href: "/admin/workspace", label: "فضای کاری" },
+  { href: "/admin/workspace", label: "فضای کاری", icon: BriefcaseBusiness },
   {
     href: "/admin/downloads",
     label: "دانلودها",
+    icon: CloudDownload,
     permission: "downloads.manage",
   },
   {
     href: "/admin/directory",
     label: "اکتیو دایرکتوری",
+    icon: Network,
     permission: "directory.manage",
   },
   {
     href: "/admin/access",
     label: "دسترسی‌ها",
+    icon: ShieldCheck,
     permission: "access.manage",
   },
   {
     href: "/admin/announcements",
     label: "اطلاعیه‌ها",
+    icon: Bell,
     permission: "announcements.publish",
   },
   {
     href: "/admin/settings",
     label: "تنظیمات",
+    icon: Settings,
     permission: "settings.manage",
   },
 ];
@@ -108,18 +142,28 @@ export default function AdminLayout({
             {visibleNavItems.map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-lg px-4 py-3 transition ${
+                  className={`flex items-center justify-between gap-3 rounded-lg px-4 py-3 transition ${
                     active
                       ? "bg-cyan-500/15 text-cyan-100"
-                      : "hover:bg-slate-800"
+                      : "text-slate-200 hover:bg-slate-800 hover:text-white"
                   }`}
                 >
-                  {item.label}
+                  <span className="font-bold">{item.label}</span>
+                  <span
+                    className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
+                      active
+                        ? "border-cyan-300/30 bg-cyan-400/15 text-cyan-100"
+                        : "border-white/10 bg-white/[0.04] text-slate-400"
+                    }`}
+                  >
+                    <Icon size={17} />
+                  </span>
                 </Link>
               );
             })}

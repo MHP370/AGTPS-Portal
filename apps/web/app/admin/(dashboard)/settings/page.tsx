@@ -1,6 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Building2,
+  Database,
+  FileText,
+  Globe,
+  Image,
+  LockKeyhole,
+  Network,
+  Palette,
+  Search,
+  Settings,
+  ShieldCheck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   useSettings,
@@ -9,7 +24,6 @@ import {
 } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/Button";
 import { FileUploadField } from "@/components/ui/FileUploadField";
-import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 
 const defaultBackgroundImage = "/images/logo/apgt-logo.png";
@@ -22,6 +36,83 @@ const activeDirectoryStatusLabels: Record<string, string> = {
   disabled: "غیرفعال",
   missing_config: "تنظیمات ناقص",
 };
+
+function SettingsSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+  className = "",
+}: {
+  title: string;
+  description?: string;
+  icon: LucideIcon;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`space-y-5 rounded-xl border border-slate-800 bg-slate-900/50 p-5 ${className}`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-cyan-200/35 bg-cyan-400/20 text-cyan-100 shadow-[0_0_26px_rgba(34,211,238,0.18)]">
+          <Icon size={28} strokeWidth={2.3} />
+        </span>
+        <div>
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+          {description && (
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              {description}
+            </p>
+          )}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function InlineSectionTitle({
+  title,
+  icon: Icon,
+}: {
+  title: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+      <span className="grid size-10 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">
+        <Icon size={21} strokeWidth={2.3} />
+      </span>
+      <h3 className="font-black text-slate-100">{title}</h3>
+    </div>
+  );
+}
+
+function IconFormField({
+  label,
+  required = false,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  icon: LucideIcon;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/45 p-4 shadow-lg shadow-black/10">
+      <label className="mb-3 flex items-center gap-3 text-sm font-black text-white">
+        <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-cyan-200/35 bg-cyan-400/20 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.22)]">
+          <Icon size={24} strokeWidth={2.4} />
+        </span>
+        <span className="text-base">{label}</span>
+        {required && <span className="text-red-400">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const {
@@ -189,11 +280,16 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">تنظیمات پورتال</h1>
-        <p className="mt-2 text-sm text-slate-400">
-          بکگراند و تنظیمات ظاهری صفحه اصلی را از این بخش تغییر دهید.
-        </p>
+      <div className="flex items-start gap-3">
+        <span className="grid size-12 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-200">
+          <Settings size={24} />
+        </span>
+        <div>
+          <h1 className="text-3xl font-bold">تنظیمات پورتال</h1>
+          <p className="mt-2 text-sm text-slate-400">
+            بکگراند و تنظیمات ظاهری صفحه اصلی را از این بخش تغییر دهید.
+          </p>
+        </div>
       </div>
 
       <form
@@ -201,7 +297,11 @@ export default function SettingsPage() {
         onSubmit={submit}
         className="grid gap-6 xl:grid-cols-[1fr_420px]"
       >
-        <div className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <SettingsSection
+          title="تنظیمات عمومی و برندینگ"
+          description="نام سازمان، لوگو، رنگ اصلی و متن پایین صفحه را مدیریت کنید."
+          icon={Building2}
+        >
           {(formError || success) && (
             <div
               className={
@@ -214,16 +314,18 @@ export default function SettingsPage() {
             </div>
           )}
 
+          <InlineSectionTitle title="هویت سازمان" icon={ShieldCheck} />
+
           <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="نام شرکت" required>
+            <IconFormField label="نام شرکت" icon={Building2} required>
               <Input
                 value={companyName}
                 onChange={(event) => setCompanyName(event.target.value)}
                 disabled={updateSettings.isPending}
               />
-            </FormField>
+            </IconFormField>
 
-            <FormField label="لوگو">
+            <IconFormField label="لوگو" icon={Image}>
               <FileUploadField
                 value={logo}
                 onChange={setLogo}
@@ -231,11 +333,11 @@ export default function SettingsPage() {
                 disabled={updateSettings.isPending}
                 placeholder="/images/logo/apgt-logo.png"
               />
-            </FormField>
+            </IconFormField>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="رنگ اصلی">
+            <IconFormField label="رنگ اصلی" icon={Palette}>
               <div className="flex gap-2">
                 <Input
                   value={primaryColor}
@@ -256,18 +358,20 @@ export default function SettingsPage() {
                   aria-label="انتخاب رنگ اصلی"
                 />
               </div>
-            </FormField>
+            </IconFormField>
 
-            <FormField label="متن footer">
+            <IconFormField label="متن footer" icon={FileText}>
               <Input
                 value={footerText}
                 onChange={(event) => setFooterText(event.target.value)}
                 disabled={updateSettings.isPending}
               />
-            </FormField>
+            </IconFormField>
           </div>
 
-          <FormField label="تصویر بکگراند صفحه اصلی">
+          <InlineSectionTitle title="ظاهر صفحه اصلی" icon={Palette} />
+
+          <IconFormField label="تصویر بکگراند صفحه اصلی" icon={Image}>
             <FileUploadField
               value={backgroundImageUrl}
               onChange={setBackgroundImageUrl}
@@ -275,10 +379,10 @@ export default function SettingsPage() {
               disabled={updateSettings.isPending}
               placeholder="/images/portal/background.jpg یا https://..."
             />
-          </FormField>
+          </IconFormField>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="رنگ پوشش بکگراند">
+            <IconFormField label="رنگ پوشش بکگراند" icon={Palette}>
               <div className="flex gap-2">
                 <Input
                   value={overlayColor}
@@ -299,9 +403,9 @@ export default function SettingsPage() {
                   aria-label="انتخاب رنگ پوشش بکگراند"
                 />
               </div>
-            </FormField>
+            </IconFormField>
 
-            <FormField label="شدت پوشش بکگراند">
+            <IconFormField label="شدت پوشش بکگراند" icon={Settings}>
               <Input
                 type="number"
                 min={0}
@@ -311,7 +415,7 @@ export default function SettingsPage() {
                 onChange={(event) => setOverlayOpacity(event.target.value)}
                 disabled={updateSettings.isPending}
               />
-            </FormField>
+            </IconFormField>
           </div>
 
           <div className="flex justify-end">
@@ -321,10 +425,13 @@ export default function SettingsPage() {
                 : "ذخیره تنظیمات"}
             </Button>
           </div>
-        </div>
+        </SettingsSection>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-          <h2 className="mb-4 text-lg font-semibold">پیش‌نمایش بکگراند</h2>
+        <SettingsSection
+          title="پیش‌نمایش بکگراند"
+          description="نمای کلی صفحه اصلی با تصویر و پوشش انتخاب‌شده."
+          icon={Image}
+        >
           <div
             className="relative min-h-80 overflow-hidden rounded-xl border border-white/10 bg-cover bg-center"
             style={{
@@ -347,17 +454,15 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
-        </div>
+        </SettingsSection>
       </form>
 
-      <section className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+      <SettingsSection
+        title="اتصال اکتیو دایرکتوری"
+        description="تنظیمات اتصال LDAP/AD را وارد کنید و وضعیت اتصال را تست کنید."
+        icon={Network}
+      >
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold">اتصال اکتیو دایرکتوری</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              تنظیمات اتصال LDAP/AD را وارد کنید و وضعیت اتصال را تست کنید.
-            </p>
-          </div>
           <div
             className={`rounded-full border px-4 py-2 text-sm font-bold ${
               settings?.activeDirectoryLastStatus === "connected"
@@ -377,7 +482,10 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm font-bold">
+          <label className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-base font-black text-white shadow-lg shadow-black/10">
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-cyan-200/35 bg-cyan-400/20 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.22)]">
+              <ShieldCheck size={24} strokeWidth={2.4} />
+            </span>
             <input
               type="checkbox"
               checked={adEnabled}
@@ -387,43 +495,43 @@ export default function SettingsPage() {
             فعال‌سازی اتصال اکتیو دایرکتوری
           </label>
 
-          <FormField label="آدرس سرور LDAP">
+          <IconFormField label="آدرس سرور LDAP" icon={Globe}>
             <Input
               value={adUrl}
               onChange={(event) => setAdUrl(event.target.value)}
               disabled={updateSettings.isPending}
               placeholder="ldap://ad.company.local:389"
             />
-          </FormField>
+          </IconFormField>
 
-          <FormField label="دامنه">
+          <IconFormField label="دامنه" icon={Network}>
             <Input
               value={adDomain}
               onChange={(event) => setAdDomain(event.target.value)}
               disabled={updateSettings.isPending}
               placeholder="company.local"
             />
-          </FormField>
+          </IconFormField>
 
-          <FormField label="Base DN">
+          <IconFormField label="Base DN" icon={Database}>
             <Input
               value={adBaseDn}
               onChange={(event) => setAdBaseDn(event.target.value)}
               disabled={updateSettings.isPending}
               placeholder="DC=company,DC=local"
             />
-          </FormField>
+          </IconFormField>
 
-          <FormField label="Bind DN">
+          <IconFormField label="Bind DN" icon={Users}>
             <Input
               value={adBindDn}
               onChange={(event) => setAdBindDn(event.target.value)}
               disabled={updateSettings.isPending}
               placeholder="CN=svc-portal,OU=Service Accounts,DC=company,DC=local"
             />
-          </FormField>
+          </IconFormField>
 
-          <FormField label="Bind Password">
+          <IconFormField label="Bind Password" icon={LockKeyhole}>
             <Input
               type="password"
               value={adBindPassword}
@@ -436,25 +544,25 @@ export default function SettingsPage() {
               disabled={updateSettings.isPending}
               placeholder="رمز سرویس اکانت"
             />
-          </FormField>
+          </IconFormField>
 
-          <FormField label="User Search Base">
+          <IconFormField label="User Search Base" icon={Search}>
             <Input
               value={adUserSearchBase}
               onChange={(event) => setAdUserSearchBase(event.target.value)}
               disabled={updateSettings.isPending}
               placeholder="OU=Users,DC=company,DC=local"
             />
-          </FormField>
+          </IconFormField>
 
-          <FormField label="Group Search Base">
+          <IconFormField label="Group Search Base" icon={Search}>
             <Input
               value={adGroupSearchBase}
               onChange={(event) => setAdGroupSearchBase(event.target.value)}
               disabled={updateSettings.isPending}
               placeholder="OU=Groups,DC=company,DC=local"
             />
-          </FormField>
+          </IconFormField>
         </div>
 
         {settings?.activeDirectoryLastCheckedAt && (
@@ -494,7 +602,7 @@ export default function SettingsPage() {
               : "تست اتصال"}
           </Button>
         </div>
-      </section>
+      </SettingsSection>
     </div>
   );
 }
