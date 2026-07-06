@@ -1,0 +1,65 @@
+import {
+  Bell,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  CloudDownload,
+  Database,
+  FileText,
+  Globe,
+  Headphones,
+  HeartPulse,
+  LockKeyhole,
+  Mail,
+  MonitorCog,
+  Plane,
+  ShieldCheck,
+  Users,
+  Utensils,
+  WalletCards,
+  type LucideIcon,
+} from "lucide-react";
+
+export const portalIconMap: Record<string, LucideIcon> = {
+  Bell,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  CloudDownload,
+  Database,
+  FileText,
+  Globe,
+  Headphones,
+  HeartPulse,
+  LockKeyhole,
+  Mail,
+  MonitorCog,
+  Plane,
+  ShieldCheck,
+  Users,
+  Utensils,
+  WalletCards,
+};
+
+export const portalIconOptions = [
+  { value: "MonitorCog", label: "سامانه" },
+  { value: "Database", label: "دیتابیس" },
+  { value: "WalletCards", label: "مالی" },
+  { value: "Users", label: "کاربران" },
+  { value: "FileText", label: "مستندات" },
+  { value: "CloudDownload", label: "دانلود" },
+  { value: "ShieldCheck", label: "امنیت" },
+  { value: "Globe", label: "وب" },
+  { value: "Plane", label: "ارتباط" },
+  { value: "BriefcaseBusiness", label: "اداری" },
+  { value: "Headphones", label: "پشتیبانی" },
+  { value: "HeartPulse", label: "خدمات" },
+  { value: "Utensils", label: "رفاهی" },
+  { value: "Mail", label: "ایمیل" },
+  { value: "CalendarDays", label: "تقویم" },
+  { value: "Building2", label: "ساختمان" },
+];
+
+export function isUploadedIcon(value?: string | null) {
+  return Boolean(value && (/^https?:\/\//.test(value) || value.startsWith("/")));
+}

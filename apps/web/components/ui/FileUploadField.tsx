@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 interface FileUploadFieldProps {
   value: string;
   folder: string;
+  accept?: string;
   disabled?: boolean;
   placeholder?: string;
   onChange: (value: string) => void;
@@ -18,6 +19,7 @@ interface FileUploadFieldProps {
 export function FileUploadField({
   value,
   folder,
+  accept = "image/*",
   disabled = false,
   placeholder,
   onChange,
@@ -68,7 +70,7 @@ export function FileUploadField({
         <input
           id={inputId}
           type="file"
-          accept="image/*"
+          accept={accept}
           className="hidden"
           disabled={isDisabled}
           onChange={handleFileChange}

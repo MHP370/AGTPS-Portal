@@ -4,6 +4,8 @@ export interface Announcement {
   id: string;
   title: string;
   body: string;
+  category?: string | null;
+  attachmentUrl?: string | null;
   startDate: string;
   endDate?: string | null;
   priority: number;
@@ -14,6 +16,8 @@ export interface Announcement {
 export interface CreateAnnouncementDto {
   title: string;
   body: string;
+  category?: string;
+  attachmentUrl?: string;
   startDate: string;
   endDate?: string;
   priority?: number;

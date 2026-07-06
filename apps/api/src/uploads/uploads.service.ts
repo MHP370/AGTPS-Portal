@@ -26,8 +26,11 @@ const allowedFolders = new Set([
   'sites',
   'applications',
   'categories',
+  'downloads',
+  'icons',
   'sliders',
   'news',
+  'announcements',
 ]);
 
 @Injectable()

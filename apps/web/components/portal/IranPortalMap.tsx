@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
   ExternalLink,
   MonitorCog,
-  type LucideIcon,
 } from "lucide-react";
 
 import iranProvinces from "@/lib/geo/iran-provinces.json";
@@ -12,6 +11,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { usePortalApplications } from "@/hooks/useApplications";
 import { useSites } from "@/hooks/useSites";
 import type { Application } from "@/lib/applications";
+import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import type { Site } from "@/lib/sites";
 
 type Coordinate = [number, number];
@@ -83,10 +83,6 @@ const mapPerspective = {
 };
 const mapPerspectiveTransform = `translate(${mapPerspective.translateX} ${mapPerspective.translateY}) skewX(${mapPerspective.skewX}) scale(${mapPerspective.scaleX} ${mapPerspective.scaleY})`;
 const mapPerspectiveOrigin = "380px 350px";
-
-const iconMap: Record<string, LucideIcon> = {
-  MonitorCog,
-};
 
 const provinceNameFa: Record<string, string> = {
   Alborz: "البرز",
@@ -448,7 +444,7 @@ function getSiteApplications(
 
 function getApplicationIcon(application: Application) {
   return application.icon
-    ? iconMap[application.icon] ?? MonitorCog
+    ? portalIconMap[application.icon] ?? MonitorCog
     : MonitorCog;
 }
 
@@ -961,6 +957,9 @@ export default function IranPortalMap({
                   siteModal?.id ?? "",
                 );
                 const Icon = getApplicationIcon(application);
+                const uploadedIcon = isUploadedIcon(application.icon)
+                  ? application.icon
+                  : null;
 
                 return (
                   <a
@@ -986,7 +985,15 @@ export default function IranPortalMap({
                         color: application.color || "#67e8f9",
                       }}
                     >
-                      <Icon size={24} />
+                      {uploadedIcon ? (
+                        <img
+                          src={uploadedIcon}
+                          alt=""
+                          className="size-7 object-contain"
+                        />
+                      ) : (
+                        <Icon size={24} />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-black text-white">

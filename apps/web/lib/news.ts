@@ -5,6 +5,8 @@ export interface NewsItem {
   id: string;
   title: string;
   body: string;
+  category?: string | null;
+  attachmentUrl?: string | null;
   image?: string;
   published: boolean;
   siteId: string;
@@ -15,6 +17,8 @@ export interface NewsItem {
 export interface CreateNewsDto {
   title: string;
   body: string;
+  category?: string;
+  attachmentUrl?: string;
   siteId: string;
   image?: string;
   published?: boolean;

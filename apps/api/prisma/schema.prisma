@@ -285,6 +285,8 @@ model News {
   id          String   @id @default(cuid())
   title       String
   body        String   @db.Text
+  category    String?
+  attachmentUrl String?
   image       String?
   published   Boolean  @default(true)
 
@@ -298,6 +300,8 @@ model Announcement {
   id          String   @id @default(cuid())
   title       String
   body        String   @db.Text
+  category    String?
+  attachmentUrl String?
 
   startDate   DateTime
   endDate     DateTime?

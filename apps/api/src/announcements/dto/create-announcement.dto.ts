@@ -14,6 +14,14 @@ export class CreateAnnouncementDto {
   @IsString()
   body: string;
 
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  attachmentUrl?: string;
+
   @IsDateString()
   startDate: string;
 

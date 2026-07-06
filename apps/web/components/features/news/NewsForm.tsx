@@ -25,8 +25,10 @@ export function NewsForm({
   const { data: sites = [] } = useSites();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [category, setCategory] = useState("");
   const [siteId, setSiteId] = useState("");
   const [image, setImage] = useState("");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
   const [published, setPublished] = useState(true);
   const [formError, setFormError] = useState("");
 
@@ -34,8 +36,10 @@ export function NewsForm({
     if (news) {
       setTitle(news.title);
       setBody(news.body);
+      setCategory(news.category ?? "");
       setSiteId(news.siteId);
       setImage(news.image ?? "");
+      setAttachmentUrl(news.attachmentUrl ?? "");
       setPublished(news.published);
       setFormError("");
       return;
@@ -43,8 +47,10 @@ export function NewsForm({
 
     setTitle("");
     setBody("");
+    setCategory("");
     setSiteId("");
     setImage("");
+    setAttachmentUrl("");
     setPublished(true);
     setFormError("");
   }, [news]);
@@ -62,8 +68,10 @@ export function NewsForm({
     await onSubmit({
       title: title.trim(),
       body: body.trim(),
+      category: category.trim() || undefined,
       siteId,
       image: image.trim() || undefined,
+      attachmentUrl: attachmentUrl.trim() || undefined,
       published,
     });
   }
@@ -102,6 +110,15 @@ export function NewsForm({
         </FormField>
       </div>
 
+      <FormField label="دسته‌بندی خبر">
+        <Input
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+          disabled={loading}
+          placeholder="مثلا فناوری اطلاعات، منابع انسانی، عملیات"
+        />
+      </FormField>
+
       <FormField label="تصویر خبر">
         <FileUploadField
           value={image}
@@ -109,6 +126,17 @@ export function NewsForm({
           folder="news"
           disabled={loading}
           placeholder="/uploads/news/image.png"
+        />
+      </FormField>
+
+      <FormField label="پیوست خبر">
+        <FileUploadField
+          value={attachmentUrl}
+          onChange={setAttachmentUrl}
+          folder="news"
+          accept=".pdf,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*"
+          disabled={loading}
+          placeholder="/uploads/news/attachment.pdf"
         />
       </FormField>
 

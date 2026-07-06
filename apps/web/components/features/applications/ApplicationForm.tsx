@@ -10,6 +10,7 @@ import type {
 
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { IconPicker } from "@/components/ui/IconPicker";
 import { Input } from "@/components/ui/Input";
 
 const statusOptions = [
@@ -47,6 +48,8 @@ export function ApplicationForm({
   const [status, setStatus] = useState("ACTIVE");
   const [networkType, setNetworkType] = useState("INTRANET");
   const [description, setDescription] = useState("");
+  const [icon, setIcon] = useState("MonitorCog");
+  const [color, setColor] = useState("#0891b2");
   const [version, setVersion] = useState("");
   const [owner, setOwner] = useState("");
   const [supportDepartment, setSupportDepartment] = useState("");
@@ -73,6 +76,8 @@ export function ApplicationForm({
     setStatus(application.status || "ACTIVE");
     setNetworkType(application.networkType || "INTRANET");
     setDescription(application.description ?? "");
+    setIcon(application.icon ?? "MonitorCog");
+    setColor(application.color ?? "#0891b2");
     setVersion(application.version ?? "");
     setOwner(application.owner ?? "");
     setSupportDepartment(application.supportDepartment ?? "");
@@ -124,6 +129,8 @@ export function ApplicationForm({
       status,
       networkType,
       description: description.trim() || undefined,
+      icon: icon.trim() || undefined,
+      color: color.trim() || undefined,
       version: version.trim() || undefined,
       owner: owner.trim() || undefined,
       supportDepartment: supportDepartment.trim() || undefined,
@@ -195,6 +202,24 @@ export function ApplicationForm({
           disabled={loading}
           rows={3}
           className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+        />
+      </FormField>
+
+      <FormField label="آیکن سامانه">
+        <IconPicker
+          value={icon}
+          onChange={setIcon}
+          folder="icons"
+          disabled={loading}
+        />
+      </FormField>
+
+      <FormField label="رنگ کارت و آیکن">
+        <Input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          disabled={loading}
         />
       </FormField>
 

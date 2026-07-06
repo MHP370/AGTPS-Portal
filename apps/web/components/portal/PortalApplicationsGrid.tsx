@@ -1,39 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Building2,
-  BriefcaseBusiness,
-  Database,
-  FileText,
-  Headphones,
-  HeartPulse,
-  MonitorCog,
-  PieChart,
-  Users,
-  Utensils,
-  WalletCards,
-  type LucideIcon,
-} from "lucide-react";
+import { MonitorCog } from "lucide-react";
 
 import { usePortalApplications } from "@/hooks/useApplications";
 import { useSites } from "@/hooks/useSites";
+import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import type { Application } from "@/lib/applications";
 import { portalApps } from "@/lib/portal";
-
-const iconMap: Record<string, LucideIcon> = {
-  Building2,
-  BriefcaseBusiness,
-  Database,
-  FileText,
-  Headphones,
-  HeartPulse,
-  MonitorCog,
-  PieChart,
-  Users,
-  Utensils,
-  WalletCards,
-};
 
 const fallbackColors = [
   "#2563eb",
@@ -62,7 +36,9 @@ function getApplicationUrl(
 }
 
 function getApplicationIcon(application: Application) {
-  return application.icon ? iconMap[application.icon] ?? MonitorCog : MonitorCog;
+  return application.icon
+    ? portalIconMap[application.icon] ?? MonitorCog
+    : MonitorCog;
 }
 
 function PortalApplicationCard({
@@ -75,6 +51,7 @@ function PortalApplicationCard({
   selectedSiteId?: string | null;
 }) {
   const Icon = getApplicationIcon(application);
+  const uploadedIcon = isUploadedIcon(application.icon) ? application.icon : null;
   const href = getApplicationUrl(application, selectedSiteId);
   const color = isHexColor(application.color)
     ? application.color
@@ -94,7 +71,15 @@ function PortalApplicationCard({
         className="mx-auto mb-2 grid size-12 place-items-center rounded-2xl bg-slate-950/30"
         style={{ color }}
       >
-        <Icon size={30} />
+        {uploadedIcon ? (
+          <img
+            src={uploadedIcon}
+            alt=""
+            className="size-8 object-contain"
+          />
+        ) : (
+          <Icon size={30} />
+        )}
       </div>
       <h3 className="font-black text-white">{application.title}</h3>
       <p className="mt-1 min-h-10 text-xs leading-5 text-slate-300">

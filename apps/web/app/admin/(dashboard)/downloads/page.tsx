@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
 import { FileUploadField } from "@/components/ui/FileUploadField";
 import { FormField } from "@/components/ui/FormField";
+import { IconPicker } from "@/components/ui/IconPicker";
 import { Input } from "@/components/ui/Input";
 import {
   useAdminDownloads,
@@ -14,15 +15,6 @@ import {
   useUpdateDownload,
 } from "@/hooks/useDownloads";
 import type { PortalDownloadItem } from "@/lib/downloads";
-
-const iconOptions = [
-  "CloudDownload",
-  "Globe",
-  "Plane",
-  "ShieldCheck",
-  "BriefcaseBusiness",
-  "FileText",
-];
 
 export default function DownloadsPage() {
   const { data: downloads = [] } = useAdminDownloads();
@@ -127,29 +119,26 @@ export default function DownloadsPage() {
               onChange={(event) => setSortOrder(event.target.value)}
             />
           </FormField>
-          <FormField label="آیکن">
-            <select
-              value={icon}
-              onChange={(event) => setIcon(event.target.value)}
-              className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white"
-            >
-              {iconOptions.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-          </FormField>
           <FormField label="رنگ آیکن">
             <Input value={color} onChange={(event) => setColor(event.target.value)} />
           </FormField>
         </div>
+
+        <FormField label="آیکن دانلود">
+          <IconPicker
+            value={icon}
+            onChange={setIcon}
+            folder="icons"
+            disabled={createDownload.isPending || updateDownload.isPending}
+          />
+        </FormField>
 
         <FormField label="فایل یا لینک دانلود" required>
           <FileUploadField
             value={fileUrl}
             onChange={setFileUrl}
             folder="downloads"
+            accept=".pdf,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.exe,.msi,image/*"
             placeholder="/uploads/downloads/file.zip یا https://..."
           />
         </FormField>

@@ -9,13 +9,7 @@ import {
   Download,
   Plus,
   Settings,
-  Globe,
-  Plane,
-  ShieldCheck,
-  BriefcaseBusiness,
-  FileText,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import Logo from "@/components/layout/Logo";
 import PersianClock from "@/components/portal/PersianClock";
@@ -50,6 +44,7 @@ import {
   systemStatuses,
 } from "@/lib/portal";
 import { getIranCalendarEvents, iranFixedCalendarEvents } from "@/lib/iran-calendar-events";
+import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import {
   getJalaliMonthLength,
   gregorianToJalali,
@@ -57,20 +52,12 @@ import {
   jalaliToGregorian,
 } from "@/lib/jalali";
 
-const downloadIconMap: Record<string, LucideIcon> = {
-  CloudDownload,
-  Globe,
-  Plane,
-  ShieldCheck,
-  BriefcaseBusiness,
-  FileText,
-};
-
 type PortalContentItem = {
   title: string;
   body: string;
   meta?: string;
   image?: string;
+  attachmentUrl?: string | null;
 };
 
 type QuickAction = "note" | "reminder" | "task";
@@ -231,7 +218,10 @@ export default function Home() {
       ? activeAnnouncements.map((item) => ({
           title: item.title,
           body: item.body,
-          meta: `اولویت ${item.priority}`,
+          meta: item.category
+            ? `${item.category} · اولویت ${item.priority}`
+            : `اولویت ${item.priority}`,
+          attachmentUrl: item.attachmentUrl,
         }))
       : managementNotices.map((item) => ({
           title: item.title,
@@ -243,8 +233,11 @@ export default function Home() {
       ? latestNews.map((item) => ({
           title: item.title,
           body: item.body,
-          meta: item.site?.name ?? "خبر سازمانی",
+          meta: item.category
+            ? `${item.category} · ${item.site?.name ?? "خبر سازمانی"}`
+            : item.site?.name ?? "خبر سازمانی",
           image: item.image,
+          attachmentUrl: item.attachmentUrl,
         }))
       : hrNotices.map((item) => ({
           title: item.title,
@@ -500,7 +493,10 @@ export default function Home() {
                           setSelectedContent({
                             title: notice.title,
                             body: notice.body,
-                            meta: `اولویت ${notice.priority}`,
+                            meta: notice.category
+                              ? `${notice.category} · اولویت ${notice.priority}`
+                              : `اولویت ${notice.priority}`,
+                            attachmentUrl: notice.attachmentUrl,
                           })
                         }
                         className="w-full rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
@@ -554,8 +550,11 @@ export default function Home() {
                           setSelectedContent({
                             title: item.title,
                             body: item.body,
-                            meta: item.site?.name ?? "خبر سازمانی",
+                            meta: item.category
+                              ? `${item.category} · ${item.site?.name ?? "خبر سازمانی"}`
+                              : item.site?.name ?? "خبر سازمانی",
                             image: item.image,
+                            attachmentUrl: item.attachmentUrl,
                           })
                         }
                         className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
@@ -912,11 +911,24 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-3">
                 {visibleDownloads.map((item) => {
                   const Icon =
-                    downloadIconMap[item.icon || "CloudDownload"] ??
+                    portalIconMap[item.icon || "CloudDownload"] ??
                     CloudDownload;
+                  const uploadedIcon = isUploadedIcon(item.icon)
+                    ? item.icon
+                    : null;
                   return (
                     <Link key={item.id} href={item.fileUrl} target={item.fileUrl === "#" ? undefined : "_blank"} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.05] p-4 hover:bg-white/10">
-                      <div className="flex items-center gap-3"><Icon size={30} className={item.color || "text-cyan-300"} /><div><h3 className="text-sm font-black">{item.title}</h3><p className="mt-1 text-xs text-slate-400">{item.version || item.category || "دانلود"}</p></div></div>
+                      <div className="flex items-center gap-3">
+                        {uploadedIcon ? (
+                          <img
+                            src={uploadedIcon}
+                            alt=""
+                            className="size-8 rounded-lg object-contain"
+                          />
+                        ) : (
+                          <Icon size={30} className={item.color || "text-cyan-300"} />
+                        )}
+                        <div><h3 className="text-sm font-black">{item.title}</h3><p className="mt-1 text-xs text-slate-400">{item.version || item.category || "دانلود"}</p></div></div>
                       <Download size={18} className="text-cyan-300" />
                     </Link>
                   );
@@ -959,6 +971,16 @@ export default function Home() {
             <p className="whitespace-pre-wrap text-sm leading-8 text-slate-200">
               {selectedContent.body}
             </p>
+            {selectedContent.attachmentUrl && (
+              <a
+                href={selectedContent.attachmentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-black text-cyan-100 hover:bg-cyan-400/20"
+              >
+                مشاهده پیوست
+              </a>
+            )}
           </div>
         )}
       </Dialog>

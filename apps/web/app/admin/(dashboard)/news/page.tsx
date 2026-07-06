@@ -23,6 +23,8 @@ export default function NewsPage() {
   const deleteNews = useDeleteNews();
 
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -32,18 +34,33 @@ export default function NewsPage() {
   const [formError, setFormError] = useState("");
   const [deleteError, setDeleteError] = useState("");
 
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set(data.map((item) => item.category).filter(Boolean)),
+      ) as string[],
+    [data],
+  );
+
   const filtered = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    if (!keyword) return data;
+    return data.filter((item) => {
+      const matchesSearch =
+        !keyword ||
+        [item.title, item.body, item.category ?? "", item.site?.name ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
+      const matchesCategory =
+        categoryFilter === "all" || item.category === categoryFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "published" ? item.published : !item.published);
 
-    return data.filter((item) =>
-      [item.title, item.body, item.site?.name ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(keyword),
-    );
-  }, [data, search]);
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [categoryFilter, data, search, statusFilter]);
 
   async function handleCreate(dto: CreateNewsDto) {
     setFormError("");
@@ -132,11 +149,34 @@ export default function NewsPage() {
         </div>
       )}
 
-      <SearchBox
-        value={search}
-        onChange={setSearch}
-        placeholder="جستجوی خبر..."
-      />
+      <div className="grid gap-3 lg:grid-cols-[1fr_220px_180px]">
+        <SearchBox
+          value={search}
+          onChange={setSearch}
+          placeholder="جستجوی خبر..."
+        />
+        <select
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value)}
+          className="h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white"
+        >
+          <option value="all">همه دسته‌بندی‌ها</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          className="h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white"
+        >
+          <option value="all">همه وضعیت‌ها</option>
+          <option value="published">منتشر شده</option>
+          <option value="draft">پیش‌نویس</option>
+        </select>
+      </div>
 
       <DataTable
         data={filtered}
@@ -148,7 +188,7 @@ export default function NewsPage() {
               <div>
                 <div className="font-semibold">{item.title}</div>
                 <div className="mt-1 line-clamp-1 text-xs text-slate-400">
-                  {item.body}
+                  {item.category ? `${item.category} · ${item.body}` : item.body}
                 </div>
               </div>
             ),
@@ -157,6 +197,23 @@ export default function NewsPage() {
             key: "site",
             title: "سایت",
             render: (item) => item.site?.name ?? "-",
+          },
+          {
+            key: "attachment",
+            title: "پیوست",
+            render: (item) =>
+              item.attachmentUrl ? (
+                <a
+                  href={item.attachmentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-cyan-300 hover:text-cyan-100"
+                >
+                  مشاهده
+                </a>
+              ) : (
+                "-"
+              ),
           },
           {
             key: "published",

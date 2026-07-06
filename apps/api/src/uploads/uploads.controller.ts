@@ -21,6 +21,26 @@ const allowedImageMimeTypes = new Set([
   'image/svg+xml',
 ]);
 
+const allowedDocumentMimeTypes = new Set([
+  ...allowedImageMimeTypes,
+  'application/pdf',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+]);
+
+const documentFolders = new Set([
+  'downloads',
+  'news',
+  'announcements',
+]);
+
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
 export class UploadsController {
@@ -32,13 +52,20 @@ export class UploadsController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: 50 * 1024 * 1024,
       },
-      fileFilter: (_request, file, callback) => {
-        if (!allowedImageMimeTypes.has(file.mimetype)) {
+      fileFilter: (request, file, callback) => {
+        const folder = request.params.folder;
+        const allowedMimeTypes = documentFolders.has(folder)
+          ? allowedDocumentMimeTypes
+          : allowedImageMimeTypes;
+
+        if (!allowedMimeTypes.has(file.mimetype)) {
           callback(
             new BadRequestException(
-              'فقط فایل تصویری مجاز است.',
+              documentFolders.has(folder)
+                ? 'نوع فایل انتخاب‌شده مجاز نیست.'
+                : 'فقط فایل تصویری مجاز است.',
             ),
             false,
           );

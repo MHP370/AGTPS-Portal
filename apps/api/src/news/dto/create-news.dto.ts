@@ -11,6 +11,14 @@ export class CreateNewsDto {
   @IsString()
   body: string;
 
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsString()
+  attachmentUrl?: string;
+
   @IsString()
   siteId: string;
 

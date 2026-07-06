@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { FileUploadField } from "@/components/ui/FileUploadField";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
 import { PersianDateInput } from "@/components/ui/PersianDateInput";
@@ -30,6 +31,8 @@ export function AnnouncementForm({
 }: AnnouncementFormProps) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [category, setCategory] = useState("");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [priority, setPriority] = useState("1");
@@ -40,6 +43,8 @@ export function AnnouncementForm({
     if (announcement) {
       setTitle(announcement.title);
       setBody(announcement.body);
+      setCategory(announcement.category ?? "");
+      setAttachmentUrl(announcement.attachmentUrl ?? "");
       setStartDate(toDateInputValue(announcement.startDate));
       setEndDate(toDateInputValue(announcement.endDate));
       setPriority(String(announcement.priority ?? 1));
@@ -50,6 +55,8 @@ export function AnnouncementForm({
 
     setTitle("");
     setBody("");
+    setCategory("");
+    setAttachmentUrl("");
     setStartDate(new Date().toISOString().slice(0, 10));
     setEndDate("");
     setPriority("1");
@@ -77,6 +84,8 @@ export function AnnouncementForm({
     await onSubmit({
       title: title.trim(),
       body: body.trim(),
+      category: category.trim() || undefined,
+      attachmentUrl: attachmentUrl.trim() || undefined,
       startDate,
       endDate: endDate || undefined,
       priority: parsedPriority,
@@ -109,6 +118,28 @@ export function AnnouncementForm({
           className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </FormField>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField label="دسته‌بندی اطلاعیه">
+          <Input
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            disabled={loading}
+            placeholder="مثلا اداری، منابع انسانی، فوری"
+          />
+        </FormField>
+
+        <FormField label="پیوست اطلاعیه">
+          <FileUploadField
+            value={attachmentUrl}
+            onChange={setAttachmentUrl}
+            folder="announcements"
+            accept=".pdf,.zip,.rar,.7z,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*"
+            disabled={loading}
+            placeholder="/uploads/announcements/file.pdf"
+          />
+        </FormField>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr_150px]">
         <FormField label="شروع نمایش" required>
