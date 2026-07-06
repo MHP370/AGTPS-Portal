@@ -1,4 +1,5 @@
 import { api } from "./api";
+import type { PortalWidgetSetting } from "./portal-widgets";
 
 export interface PortalSettings {
   id: number;
@@ -8,6 +9,7 @@ export interface PortalSettings {
   portalBackgroundImageUrl?: string;
   portalBackgroundOverlayColor?: string;
   portalBackgroundOverlayOpacity?: number;
+  portalWidgets?: PortalWidgetSetting[] | null;
   footerText?: string;
   activeDirectoryEnabled?: boolean;
   activeDirectoryUrl?: string;
@@ -29,6 +31,7 @@ export interface UpdatePortalSettingsDto {
   portalBackgroundImageUrl?: string;
   portalBackgroundOverlayColor?: string;
   portalBackgroundOverlayOpacity?: number;
+  portalWidgets?: PortalWidgetSetting[];
   footerText?: string;
   activeDirectoryEnabled?: boolean;
   activeDirectoryUrl?: string;

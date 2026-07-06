@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Building2,
   Database,
+  Eye,
+  EyeOff,
   FileText,
   Globe,
   Image,
+  LayoutDashboard,
   LockKeyhole,
   Network,
   Palette,
@@ -25,6 +30,11 @@ import {
 import { Button } from "@/components/ui/Button";
 import { FileUploadField } from "@/components/ui/FileUploadField";
 import { Input } from "@/components/ui/Input";
+import {
+  normalizePortalWidgets,
+  normalizePortalWidgetsForSave,
+  type PortalWidgetSetting,
+} from "@/lib/portal-widgets";
 
 const defaultBackgroundImage = "/images/logo/apgt-logo.png";
 const hexColorPattern = /^#[0-9a-fA-F]{6}$/;
@@ -132,6 +142,9 @@ export default function SettingsPage() {
     useState(defaultBackgroundImage);
   const [overlayColor, setOverlayColor] = useState("#020617");
   const [overlayOpacity, setOverlayOpacity] = useState("0.78");
+  const [portalWidgets, setPortalWidgets] = useState<PortalWidgetSetting[]>(
+    () => normalizePortalWidgets(null),
+  );
   const [footerText, setFooterText] = useState("");
   const [adEnabled, setAdEnabled] = useState(false);
   const [adUrl, setAdUrl] = useState("");
@@ -157,6 +170,7 @@ export default function SettingsPage() {
     setOverlayOpacity(
       String(settings.portalBackgroundOverlayOpacity ?? 0.78),
     );
+    setPortalWidgets(normalizePortalWidgets(settings.portalWidgets));
     setFooterText(settings.footerText ?? "");
     setAdEnabled(Boolean(settings.activeDirectoryEnabled));
     setAdUrl(settings.activeDirectoryUrl ?? "");
@@ -211,6 +225,7 @@ export default function SettingsPage() {
           backgroundImageUrl.trim() || undefined,
         portalBackgroundOverlayColor: overlayColor.trim() || undefined,
         portalBackgroundOverlayOpacity: parsedOverlayOpacity,
+        portalWidgets: normalizePortalWidgetsForSave(portalWidgets),
         footerText: footerText.trim() || undefined,
         activeDirectoryEnabled: adEnabled,
         activeDirectoryUrl: adUrl.trim() || undefined,
@@ -250,6 +265,36 @@ export default function SettingsPage() {
           : "تست اتصال اکتیو دایرکتوری انجام نشد.",
       );
     }
+  }
+
+  function toggleWidget(id: string) {
+    setPortalWidgets((widgets) =>
+      widgets.map((widget) =>
+        widget.id === id
+          ? {
+              ...widget,
+              enabled: !widget.enabled,
+            }
+          : widget,
+      ),
+    );
+  }
+
+  function moveWidget(id: string, direction: "up" | "down") {
+    setPortalWidgets((widgets) => {
+      const index = widgets.findIndex((widget) => widget.id === id);
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+
+      if (index < 0 || targetIndex < 0 || targetIndex >= widgets.length) {
+        return widgets;
+      }
+
+      const next = [...widgets];
+      const [item] = next.splice(index, 1);
+      next.splice(targetIndex, 0, item);
+
+      return normalizePortalWidgetsForSave(next);
+    });
   }
 
   if (isLoading) {
@@ -453,6 +498,97 @@ export default function SettingsPage() {
                 نمونه نمایش بکگراند در صفحه اصلی پورتال
               </p>
             </div>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          title="ویجت‌های صفحه اصلی"
+          description="نمایش ویجت‌های پورتال و ترتیب آن‌ها را مدیریت کنید."
+          icon={LayoutDashboard}
+          className="xl:col-span-2"
+        >
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {portalWidgets.map((widget, index) => {
+              const columnLabel =
+                widget.column === "left"
+                  ? "ستون راست محتوای پورتال"
+                  : widget.column === "center"
+                    ? "ستون مرکزی"
+                    : "ستون چپ محتوای پورتال";
+
+              return (
+                <div
+                  key={widget.id}
+                  className={`rounded-2xl border p-4 transition ${
+                    widget.enabled
+                      ? "border-cyan-300/20 bg-cyan-400/10"
+                      : "border-slate-800 bg-slate-950/45 opacity-70"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-black text-white">
+                        {widget.title}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {columnLabel}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleWidget(widget.id)}
+                      className={`grid size-9 place-items-center rounded-xl border ${
+                        widget.enabled
+                          ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
+                          : "border-slate-700 bg-slate-900 text-slate-400"
+                      }`}
+                      aria-label={
+                        widget.enabled ? "غیرفعال کردن" : "فعال کردن"
+                      }
+                    >
+                      {widget.enabled ? (
+                        <Eye size={18} />
+                      ) : (
+                        <EyeOff size={18} />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={index === 0}
+                      onClick={() => moveWidget(widget.id, "up")}
+                      className="gap-2"
+                    >
+                      <ArrowUp size={15} />
+                      بالا
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={index === portalWidgets.length - 1}
+                      onClick={() => moveWidget(widget.id, "down")}
+                      className="gap-2"
+                    >
+                      <ArrowDown size={15} />
+                      پایین
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={updateSettings.isPending}>
+              {updateSettings.isPending
+                ? "در حال ذخیره..."
+                : "ذخیره چیدمان ویجت‌ها"}
+            </Button>
           </div>
         </SettingsSection>
       </form>

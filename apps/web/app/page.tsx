@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   Bell,
   ChevronLeft,
@@ -47,6 +47,10 @@ import {
 import { getIranCalendarEvents, iranFixedCalendarEvents } from "@/lib/iran-calendar-events";
 import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import {
+  normalizePortalWidgets,
+  type PortalWidgetId,
+} from "@/lib/portal-widgets";
+import {
   getJalaliMonthLength,
   gregorianToJalali,
   jalaliMonthNames,
@@ -59,6 +63,10 @@ type PortalContentItem = {
   meta?: string;
   image?: string;
   attachmentUrl?: string | null;
+};
+type PortalWidgetEntry = {
+  id: PortalWidgetId;
+  node: React.ReactNode;
 };
 
 type QuickAction = "note" | "reminder" | "task";
@@ -211,6 +219,23 @@ export default function Home() {
     settings?.portalBackgroundOverlayColor || "#020617";
   const overlayOpacity =
     settings?.portalBackgroundOverlayOpacity ?? 0.72;
+  const portalWidgetSettings = normalizePortalWidgets(settings?.portalWidgets);
+  const portalWidgetOrder = new Map(
+    portalWidgetSettings.map((widget) => [widget.id, widget.order]),
+  );
+  const enabledPortalWidgets = new Set(
+    portalWidgetSettings
+      .filter((widget) => widget.enabled)
+      .map((widget) => widget.id),
+  );
+  const sortPortalWidgets = (widgets: PortalWidgetEntry[]) =>
+    widgets
+      .filter((widget) => enabledPortalWidgets.has(widget.id))
+      .sort(
+        (first, second) =>
+          (portalWidgetOrder.get(first.id) ?? 0) -
+          (portalWidgetOrder.get(second.id) ?? 0),
+      );
   const activeAnnouncements = announcements.filter(isAnnouncementVisible);
   const activeSliders = sliders.filter((slider) => slider.isActive);
   const heroSlider = activeSliders[0];
@@ -482,6 +507,10 @@ export default function Home() {
 
         <div className="grid flex-1 gap-5 xl:grid-cols-[460px_1fr_500px]">
           <aside className="space-y-5">
+            {sortPortalWidgets([
+              {
+                id: "announcements",
+                node: (
             <GlassPanel id="announcements">
               <SectionHeader
                 title="آخرین اطلاعیه ها"
@@ -538,7 +567,12 @@ export default function Home() {
                     ))}
               </div>
             </GlassPanel>
+                ),
+              },
 
+              {
+                id: "news",
+                node: (
             <GlassPanel id="hr">
               <SectionHeader
                 title="اخبار سایت‌ها"
@@ -606,9 +640,18 @@ export default function Home() {
                     ))}
               </div>
             </GlassPanel>
+                ),
+              },
+            ]).map((widget) => (
+              <Fragment key={widget.id}>{widget.node}</Fragment>
+            ))}
           </aside>
 
           <section className="relative flex flex-col justify-between gap-5">
+            {sortPortalWidgets([
+              {
+                id: "hero",
+                node: (
             <GlassPanel className="mx-auto w-full max-w-3xl !p-3">
               {heroSlider ? (
                 <Link
@@ -652,21 +695,40 @@ export default function Home() {
                 </div>
               )}
             </GlassPanel>
+                ),
+              },
 
+              {
+                id: "map",
+                node: (
             <IranPortalMap
               selectedSiteId={selectedSiteId}
               onSiteSelect={setSelectedSiteId}
             />
+                ),
+              },
 
+              {
+                id: "systems",
+                node: (
             <GlassPanel id="systems" className="!p-4">
               <PortalApplicationsGrid
                 selectedSiteId={selectedSiteId}
                 onSiteSelect={setSelectedSiteId}
               />
             </GlassPanel>
+                ),
+              },
+            ]).map((widget) => (
+              <Fragment key={widget.id}>{widget.node}</Fragment>
+            ))}
           </section>
 
           <aside className="space-y-5">
+            {sortPortalWidgets([
+              {
+                id: "status",
+                node: (
             <GlassPanel id="status">
               <SectionHeader title="وضعیت سیستم ها" />
               <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10">
@@ -681,7 +743,12 @@ export default function Home() {
                 })}
               </div>
             </GlassPanel>
+                ),
+              },
 
+              {
+                id: "calendar",
+                node: (
             <GlassPanel id="calendar">
               <SectionHeader
                 title="تقویم جلسات"
@@ -865,7 +932,12 @@ export default function Home() {
                 </button>
               </div>
             </GlassPanel>
+                ),
+              },
 
+              {
+                id: "workspace",
+                node: (
             <GlassPanel id="workspace">
               <div className="mb-5 flex items-center justify-between gap-3">
                 <h2 className="text-lg font-black text-white">
@@ -940,7 +1012,12 @@ export default function Home() {
                   )}
               </div>
             </GlassPanel>
+                ),
+              },
 
+              {
+                id: "downloads",
+                node: (
             <GlassPanel id="downloads">
               <SectionHeader title="دانلود نرم افزارها" />
               <div className="grid grid-cols-2 gap-3">
@@ -970,6 +1047,11 @@ export default function Home() {
                 })}
               </div>
             </GlassPanel>
+                ),
+              },
+            ]).map((widget) => (
+              <Fragment key={widget.id}>{widget.node}</Fragment>
+            ))}
           </aside>
         </div>
 

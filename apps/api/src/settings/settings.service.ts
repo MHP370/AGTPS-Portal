@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { Client } from 'ldapts';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -45,6 +46,7 @@ export class SettingsService {
   }
 
   async update(dto: UpdateSettingsDto) {
+    const { portalWidgets, ...settingsDto } = dto;
     const currentSettings = await this.prisma.setting.upsert({
       where: {
         id: 1,
@@ -53,7 +55,10 @@ export class SettingsService {
       create: defaultSettings,
     });
     const updateData = {
-      ...dto,
+      ...settingsDto,
+      ...(portalWidgets !== undefined && {
+        portalWidgets: portalWidgets as Prisma.InputJsonValue,
+      }),
       activeDirectoryBindPassword:
         dto.activeDirectoryBindPassword &&
         dto.activeDirectoryBindPassword !== '__KEEP_EXISTING__'

@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsArray,
   IsNumber,
   IsOptional,
   IsString,
@@ -32,6 +33,10 @@ export class UpdateSettingsDto {
   @Min(0)
   @Max(1)
   portalBackgroundOverlayOpacity?: number;
+
+  @IsOptional()
+  @IsArray()
+  portalWidgets?: unknown[];
 
   @IsOptional()
   @IsString()

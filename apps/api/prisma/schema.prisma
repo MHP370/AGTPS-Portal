@@ -481,6 +481,7 @@ model Setting {
   portalBackgroundImageUrl String?
   portalBackgroundOverlayColor String?
   portalBackgroundOverlayOpacity Float?
+  portalWidgets Json?
 
   footerText   String?
 
