@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -17,6 +18,7 @@ import { CreateTrainingSourceDto } from './dto/create-training-source.dto';
 import { UpdateTrainingCategoryDto } from './dto/update-training-category.dto';
 import { UpdateTrainingItemDto } from './dto/update-training-item.dto';
 import { UpdateTrainingSourceDto } from './dto/update-training-source.dto';
+import { UpsertTrainingProgressDto } from './dto/upsert-training-progress.dto';
 import { TrainingsService } from './trainings.service';
 
 @Controller('trainings')
@@ -31,6 +33,22 @@ export class TrainingsController {
   @Get('categories')
   findCategories() {
     return this.trainingsService.findCategories();
+  }
+
+  @Get(':id/progress')
+  findProgress(
+    @Param('id') id: string,
+    @Query('visitorKey') visitorKey: string,
+  ) {
+    return this.trainingsService.findProgress(id, visitorKey);
+  }
+
+  @Put(':id/progress')
+  upsertProgress(
+    @Param('id') id: string,
+    @Body() dto: UpsertTrainingProgressDto,
+  ) {
+    return this.trainingsService.upsertProgress(id, dto);
   }
 
   @Get('admin/items')

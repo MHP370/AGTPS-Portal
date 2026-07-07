@@ -17,22 +17,66 @@ import {
   getAdminTrainingSources,
   getAdminTrainings,
   getPublishedTrainings,
+  getTrainingProgress,
   getTrainingCategories,
   trainingCategoriesQueryKey,
   trainingSourcesQueryKey,
   trainingsQueryKey,
+  upsertTrainingProgress,
   updateTrainingCategory,
   updateTrainingItem,
   updateTrainingSource,
   type CreateTrainingCategoryDto,
   type CreateTrainingItemDto,
   type CreateTrainingSourceDto,
+  type UpsertTrainingProgressDto,
 } from "@/lib/trainings";
+
+const TRAINING_VISITOR_KEY = "training_visitor_key";
+
+export function getTrainingVisitorKey() {
+  if (typeof window === "undefined") return "server";
+
+  const existing = localStorage.getItem(TRAINING_VISITOR_KEY);
+  if (existing) return existing;
+
+  const next =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  localStorage.setItem(TRAINING_VISITOR_KEY, next);
+  return next;
+}
 
 export function useTrainings() {
   return useQuery({
     queryKey: trainingsQueryKey,
     queryFn: getPublishedTrainings,
+  });
+}
+
+export function useTrainingProgress(trainingItemId?: string) {
+  return useQuery({
+    queryKey: [...trainingsQueryKey, trainingItemId, "progress"],
+    queryFn: () => getTrainingProgress(trainingItemId || "", getTrainingVisitorKey()),
+    enabled: Boolean(trainingItemId),
+  });
+}
+
+export function useUpsertTrainingProgress(trainingItemId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: Omit<UpsertTrainingProgressDto, "visitorKey">) =>
+      upsertTrainingProgress(trainingItemId || "", {
+        ...dto,
+        visitorKey: getTrainingVisitorKey(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...trainingsQueryKey, trainingItemId, "progress"],
+      });
+    },
   });
 }
 

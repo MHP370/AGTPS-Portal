@@ -10,10 +10,19 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { useTrainings } from "@/hooks/useTrainings";
-import type { TrainingFile } from "@/lib/trainings";
+import {
+  useTrainingProgress,
+  useTrainings,
+  useUpsertTrainingProgress,
+} from "@/hooks/useTrainings";
+import type { TrainingFile, TrainingProgress } from "@/lib/trainings";
 
 function getFileExtension(file?: Pick<TrainingFile, "fileUrl" | "fileType">) {
   const cleanUrl = file?.fileUrl.split("?")[0] ?? "";
@@ -65,11 +74,27 @@ function getViewerType(file?: Pick<TrainingFile, "fileUrl" | "fileType">) {
   return "document";
 }
 
-function TrainingFileViewer({ file }: { file?: TrainingFile }) {
+function TrainingFileViewer({
+  file,
+  progress,
+  onProgress,
+}: {
+  file?: TrainingFile;
+  progress?: TrainingProgress | null;
+  onProgress: (value: {
+    status?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+    progressPercent?: number;
+    lastPositionSeconds?: number;
+    durationSeconds?: number;
+    lastFileUrl?: string;
+  }) => void;
+}) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
   const [documentHtml, setDocumentHtml] = useState("");
   const [documentError, setDocumentError] = useState("");
+  const lastVideoProgressSentAt = useRef(0);
+  const lastViewedFileRef = useRef("");
   const viewerType = getViewerType(file);
 
   useEffect(() => {
@@ -148,6 +173,19 @@ function TrainingFileViewer({ file }: { file?: TrainingFile }) {
     };
   }, [file, viewerType]);
 
+  useEffect(() => {
+    if (!file || viewerType === "video") return;
+    if (lastViewedFileRef.current === file.fileUrl) return;
+
+    lastViewedFileRef.current = file.fileUrl;
+
+    onProgress({
+      status: "COMPLETED",
+      progressPercent: 100,
+      lastFileUrl: file.fileUrl,
+    });
+  }, [file, onProgress, viewerType]);
+
   if (!file) {
     return (
       <div className="grid min-h-96 place-items-center rounded-3xl border border-dashed border-slate-700 bg-slate-900 text-slate-400">
@@ -183,6 +221,50 @@ function TrainingFileViewer({ file }: { file?: TrainingFile }) {
               controls
               playsInline
               preload="metadata"
+              onLoadedMetadata={(event) => {
+                const video = event.currentTarget;
+                if (
+                  progress?.lastFileUrl === file.fileUrl &&
+                  progress.lastPositionSeconds &&
+                  progress.lastPositionSeconds < video.duration - 5
+                ) {
+                  video.currentTime = progress.lastPositionSeconds;
+                }
+              }}
+              onTimeUpdate={(event) => {
+                const now = Date.now();
+                if (now - lastVideoProgressSentAt.current < 5000) return;
+
+                const video = event.currentTarget;
+                if (!Number.isFinite(video.duration) || video.duration <= 0) {
+                  return;
+                }
+
+                const progressPercent = Math.min(
+                  100,
+                  Math.round((video.currentTime / video.duration) * 100),
+                );
+                lastVideoProgressSentAt.current = now;
+
+                onProgress({
+                  status:
+                    progressPercent >= 95 ? "COMPLETED" : "IN_PROGRESS",
+                  progressPercent,
+                  lastPositionSeconds: Math.floor(video.currentTime),
+                  durationSeconds: Math.floor(video.duration),
+                  lastFileUrl: file.fileUrl,
+                });
+              }}
+              onEnded={(event) => {
+                const video = event.currentTarget;
+                onProgress({
+                  status: "COMPLETED",
+                  progressPercent: 100,
+                  lastPositionSeconds: Math.floor(video.duration || 0),
+                  durationSeconds: Math.floor(video.duration || 0),
+                  lastFileUrl: file.fileUrl,
+                });
+              }}
               className="aspect-video w-full rounded-xl bg-black"
             />
           </div>
@@ -296,8 +378,16 @@ function TrainingFileViewer({ file }: { file?: TrainingFile }) {
 export default function TrainingDetailPage() {
   const params = useParams<{ id: string }>();
   const { data: trainings = [] } = useTrainings();
+  const { data: progress } = useTrainingProgress(params.id);
+  const { mutate: mutateProgress } = useUpsertTrainingProgress(params.id);
   const training = trainings.find((item) => item.id === params.id);
   const [selectedFileUrl, setSelectedFileUrl] = useState<string | null>(null);
+  const saveProgress = useCallback(
+    (value: Parameters<typeof mutateProgress>[0]) => {
+      mutateProgress(value);
+    },
+    [mutateProgress],
+  );
 
   if (!training) {
     return (
@@ -317,12 +407,9 @@ export default function TrainingDetailPage() {
 
   const primaryFile =
     training.files.find((file) => file.isPrimary) ?? training.files[0];
-  const selectedFile = useMemo(
-    () =>
-      training.files.find((file) => file.fileUrl === selectedFileUrl) ??
-      primaryFile,
-    [primaryFile, selectedFileUrl, training.files],
-  );
+  const selectedFile =
+    training.files.find((file) => file.fileUrl === selectedFileUrl) ??
+    primaryFile;
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-white">
@@ -374,9 +461,48 @@ export default function TrainingDetailPage() {
           </div>
         </section>
 
+        <section className="rounded-3xl border border-white/10 bg-slate-900 p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-black text-white">وضعیت پیشرفت شما</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {progress?.status === "COMPLETED"
+                  ? "این آموزش تکمیل شده است."
+                  : progress?.status === "IN_PROGRESS"
+                    ? "در حال مشاهده آموزش هستید."
+                    : "هنوز این آموزش را شروع نکرده‌اید."}
+              </p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-4 py-2 text-sm font-black text-cyan-100">
+              {progress?.progressPercent ?? 0}٪
+            </span>
+          </div>
+          <div className="h-3 overflow-hidden rounded-full bg-slate-800">
+            <div
+              className="h-full rounded-full bg-cyan-400 transition-all"
+              style={{
+                width: `${progress?.progressPercent ?? 0}%`,
+              }}
+            />
+          </div>
+          {progress?.lastPositionSeconds &&
+            progress.lastPositionSeconds > 0 && (
+              <p className="mt-3 text-xs text-slate-400">
+                ادامه از حدود دقیقه{" "}
+                {Math.floor(progress.lastPositionSeconds / 60).toLocaleString(
+                  "fa-IR",
+                )}
+              </p>
+            )}
+        </section>
+
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <section className="space-y-4">
-            <TrainingFileViewer file={selectedFile} />
+            <TrainingFileViewer
+              file={selectedFile}
+              progress={progress}
+              onProgress={saveProgress}
+            />
           </section>
 
           <aside className="space-y-4">

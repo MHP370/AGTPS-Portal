@@ -16,6 +16,11 @@ export type TrainingPublishStatus =
   | "PUBLISHED"
   | "ARCHIVED";
 
+export type TrainingProgressStatus =
+  | "NOT_STARTED"
+  | "IN_PROGRESS"
+  | "COMPLETED";
+
 export interface TrainingCategory {
   id: string;
   name: string;
@@ -81,6 +86,21 @@ export interface TrainingSource {
   updatedAt: string;
 }
 
+export interface TrainingProgress {
+  id: string;
+  trainingItemId: string;
+  visitorKey?: string | null;
+  status: TrainingProgressStatus;
+  progressPercent: number;
+  lastPositionSeconds?: number | null;
+  durationSeconds?: number | null;
+  lastFileUrl?: string | null;
+  completedAt?: string | null;
+  lastViewedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateTrainingCategoryDto {
   name: string;
   slug: string;
@@ -122,12 +142,40 @@ export interface CreateTrainingSourceDto {
   isActive?: boolean;
 }
 
+export interface UpsertTrainingProgressDto {
+  visitorKey: string;
+  status?: TrainingProgressStatus;
+  progressPercent?: number;
+  lastPositionSeconds?: number;
+  durationSeconds?: number;
+  lastFileUrl?: string;
+}
+
 export const trainingsQueryKey = ["trainings"];
 export const trainingCategoriesQueryKey = ["training-categories"];
 export const trainingSourcesQueryKey = ["training-sources"];
 
 export function getPublishedTrainings() {
   return api.get<TrainingItem[]>("/trainings");
+}
+
+export function getTrainingProgress(
+  trainingItemId: string,
+  visitorKey: string,
+) {
+  return api.get<TrainingProgress | null>(
+    `/trainings/${trainingItemId}/progress?visitorKey=${encodeURIComponent(visitorKey)}`,
+  );
+}
+
+export function upsertTrainingProgress(
+  trainingItemId: string,
+  dto: UpsertTrainingProgressDto,
+) {
+  return api.put<TrainingProgress>(
+    `/trainings/${trainingItemId}/progress`,
+    dto,
+  );
 }
 
 export function getAdminTrainings() {

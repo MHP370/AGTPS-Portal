@@ -67,6 +67,12 @@ enum TrainingPublishStatus {
   ARCHIVED
 }
 
+enum TrainingProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -85,6 +91,7 @@ model User {
   reminders    PortalReminder[]
   tasks        PortalTask[]
   downloads    PortalDownload[]
+  trainingProgress TrainingProgress[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -125,6 +132,7 @@ model DirectoryUser {
   meetingParticipants MeetingParticipant[]
   notifications PortalNotification[]
   pushSubscriptions PushSubscription[]
+  trainingProgress TrainingProgress[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -540,6 +548,7 @@ model TrainingItem {
   categoryId  String?
   category    TrainingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   files       TrainingFile[]
+  progress    TrainingProgress[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -578,6 +587,35 @@ model TrainingSource {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model TrainingProgress {
+  id          String @id @default(cuid())
+
+  trainingItemId String
+  userId      String?
+  directoryUserId String?
+  visitorKey  String?
+
+  status      TrainingProgressStatus @default(NOT_STARTED)
+  progressPercent Int @default(0)
+  lastPositionSeconds Int?
+  durationSeconds Int?
+  lastFileUrl String?
+  completedAt DateTime?
+  lastViewedAt DateTime @default(now())
+
+  trainingItem TrainingItem @relation(fields: [trainingItemId], references: [id], onDelete: Cascade)
+  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  directoryUser DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([trainingItemId, visitorKey])
+  @@index([trainingItemId])
+  @@index([userId])
+  @@index([directoryUserId])
 }
 
 model Slider {

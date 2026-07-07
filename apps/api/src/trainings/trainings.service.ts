@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { TrainingPublishStatus } from '@prisma/client';
+import {
+  TrainingProgressStatus,
+  TrainingPublishStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTrainingCategoryDto } from './dto/create-training-category.dto';
 import { CreateTrainingItemDto } from './dto/create-training-item.dto';
@@ -7,6 +10,7 @@ import { CreateTrainingSourceDto } from './dto/create-training-source.dto';
 import { UpdateTrainingCategoryDto } from './dto/update-training-category.dto';
 import { UpdateTrainingItemDto } from './dto/update-training-item.dto';
 import { UpdateTrainingSourceDto } from './dto/update-training-source.dto';
+import { UpsertTrainingProgressDto } from './dto/upsert-training-progress.dto';
 
 @Injectable()
 export class TrainingsService {
@@ -141,6 +145,61 @@ export class TrainingsService {
     return this.prisma.trainingItem.delete({
       where: {
         id,
+      },
+    });
+  }
+
+  findProgress(trainingItemId: string, visitorKey: string) {
+    return this.prisma.trainingProgress.findUnique({
+      where: {
+        trainingItemId_visitorKey: {
+          trainingItemId,
+          visitorKey,
+        },
+      },
+    });
+  }
+
+  upsertProgress(trainingItemId: string, dto: UpsertTrainingProgressDto) {
+    const progressPercent = Math.min(
+      100,
+      Math.max(0, Math.round(dto.progressPercent ?? 0)),
+    );
+    const status =
+      dto.status ??
+      (progressPercent >= 95
+        ? TrainingProgressStatus.COMPLETED
+        : progressPercent > 0
+          ? TrainingProgressStatus.IN_PROGRESS
+          : TrainingProgressStatus.NOT_STARTED);
+
+    return this.prisma.trainingProgress.upsert({
+      where: {
+        trainingItemId_visitorKey: {
+          trainingItemId,
+          visitorKey: dto.visitorKey,
+        },
+      },
+      update: {
+        status,
+        progressPercent,
+        lastPositionSeconds: dto.lastPositionSeconds,
+        durationSeconds: dto.durationSeconds,
+        lastFileUrl: dto.lastFileUrl,
+        lastViewedAt: new Date(),
+        completedAt:
+          status === TrainingProgressStatus.COMPLETED ? new Date() : undefined,
+      },
+      create: {
+        trainingItemId,
+        visitorKey: dto.visitorKey,
+        status,
+        progressPercent,
+        lastPositionSeconds: dto.lastPositionSeconds,
+        durationSeconds: dto.durationSeconds,
+        lastFileUrl: dto.lastFileUrl,
+        completedAt:
+          status === TrainingProgressStatus.COMPLETED ? new Date() : undefined,
       },
     });
   }
