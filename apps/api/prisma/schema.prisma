@@ -73,6 +73,27 @@ enum TrainingProgressStatus {
   COMPLETED
 }
 
+enum InPersonTrainingStatus {
+  PLANNED
+  OPEN
+  CLOSED
+  CANCELLED
+  COMPLETED
+}
+
+enum InPersonAttendanceStatus {
+  REGISTERED
+  ATTENDED
+  ABSENT
+  EXCUSED
+}
+
+enum InPersonTrainingResult {
+  PASSED
+  FAILED
+  NO_EXAM
+}
+
 model User {
   id          String   @id @default(cuid())
   username    String   @unique
@@ -92,6 +113,7 @@ model User {
   tasks        PortalTask[]
   downloads    PortalDownload[]
   trainingProgress TrainingProgress[]
+  inPersonTrainingParticipants InPersonTrainingParticipant[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -133,6 +155,7 @@ model DirectoryUser {
   notifications PortalNotification[]
   pushSubscriptions PushSubscription[]
   trainingProgress TrainingProgress[]
+  inPersonTrainingParticipants InPersonTrainingParticipant[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -516,6 +539,7 @@ model TrainingCategory {
   isActive    Boolean @default(true)
 
   trainings   TrainingItem[]
+  inPersonTrainings InPersonTraining[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -616,6 +640,64 @@ model TrainingProgress {
   @@index([trainingItemId])
   @@index([userId])
   @@index([directoryUserId])
+}
+
+model InPersonTraining {
+  id          String @id @default(cuid())
+
+  title       String
+  description String? @db.Text
+
+  categoryId  String?
+  category    TrainingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  instructorName String?
+  organizerDepartment String?
+  location    String?
+  startDate   DateTime
+  endDate     DateTime?
+  durationHours Float?
+  hasExam     Boolean @default(false)
+  hasCertificate Boolean @default(false)
+  status      InPersonTrainingStatus @default(PLANNED)
+
+  participants InPersonTrainingParticipant[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([startDate])
+  @@index([status])
+}
+
+model InPersonTrainingParticipant {
+  id          String @id @default(cuid())
+
+  trainingId  String
+  userId      String?
+  directoryUserId String?
+
+  displayName String
+  email       String?
+  attendanceStatus InPersonAttendanceStatus @default(REGISTERED)
+  score       Float?
+  result      InPersonTrainingResult @default(NO_EXAM)
+  certificateNumber String?
+  notes       String? @db.Text
+
+  training    InPersonTraining @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  directoryUser DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([trainingId])
+  @@index([userId])
+  @@index([directoryUserId])
+  @@index([attendanceStatus])
+  @@index([result])
 }
 
 model Slider {

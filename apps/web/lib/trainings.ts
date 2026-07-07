@@ -11,15 +11,18 @@ export type TrainingContentType =
   | "ATTACHMENT";
 
 export type TrainingPublishStatus =
-  | "NEEDS_REVIEW"
-  | "DRAFT"
-  | "PUBLISHED"
-  | "ARCHIVED";
+  "NEEDS_REVIEW" | "DRAFT" | "PUBLISHED" | "ARCHIVED";
 
 export type TrainingProgressStatus =
-  | "NOT_STARTED"
-  | "IN_PROGRESS"
-  | "COMPLETED";
+  "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+
+export type InPersonTrainingStatus =
+  "PLANNED" | "OPEN" | "CLOSED" | "CANCELLED" | "COMPLETED";
+
+export type InPersonAttendanceStatus =
+  "REGISTERED" | "ATTENDED" | "ABSENT" | "EXCUSED";
+
+export type InPersonTrainingResult = "PASSED" | "FAILED" | "NO_EXAM";
 
 export interface TrainingCategory {
   id: string;
@@ -101,6 +104,42 @@ export interface TrainingProgress {
   updatedAt: string;
 }
 
+export interface InPersonTraining {
+  id: string;
+  title: string;
+  description?: string | null;
+  categoryId?: string | null;
+  category?: TrainingCategory | null;
+  instructorName?: string | null;
+  organizerDepartment?: string | null;
+  location?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  durationHours?: number | null;
+  hasExam: boolean;
+  hasCertificate: boolean;
+  status: InPersonTrainingStatus;
+  participants: InPersonTrainingParticipant[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InPersonTrainingParticipant {
+  id: string;
+  trainingId: string;
+  userId?: string | null;
+  directoryUserId?: string | null;
+  displayName: string;
+  email?: string | null;
+  attendanceStatus: InPersonAttendanceStatus;
+  score?: number | null;
+  result: InPersonTrainingResult;
+  certificateNumber?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateTrainingCategoryDto {
   name: string;
   slug: string;
@@ -151,9 +190,37 @@ export interface UpsertTrainingProgressDto {
   lastFileUrl?: string;
 }
 
+export interface CreateInPersonTrainingDto {
+  title: string;
+  description?: string;
+  categoryId?: string | null;
+  instructorName?: string;
+  organizerDepartment?: string;
+  location?: string;
+  startDate: string;
+  endDate?: string | null;
+  durationHours?: number;
+  hasExam?: boolean;
+  hasCertificate?: boolean;
+  status?: InPersonTrainingStatus;
+}
+
+export interface CreateInPersonParticipantDto {
+  userId?: string | null;
+  directoryUserId?: string | null;
+  displayName: string;
+  email?: string;
+  attendanceStatus?: InPersonAttendanceStatus;
+  score?: number;
+  result?: InPersonTrainingResult;
+  certificateNumber?: string;
+  notes?: string;
+}
+
 export const trainingsQueryKey = ["trainings"];
 export const trainingCategoriesQueryKey = ["training-categories"];
 export const trainingSourcesQueryKey = ["training-sources"];
+export const inPersonTrainingsQueryKey = ["trainings", "in-person"];
 
 export function getPublishedTrainings() {
   return api.get<TrainingItem[]>("/trainings");
@@ -195,6 +262,49 @@ export function updateTrainingItem(
 
 export function deleteTrainingItem(id: string) {
   return api.delete<void>(`/trainings/items/${id}`);
+}
+
+export function getAdminInPersonTrainings() {
+  return api.get<InPersonTraining[]>("/trainings/admin/in-person");
+}
+
+export function createInPersonTraining(dto: CreateInPersonTrainingDto) {
+  return api.post<InPersonTraining>("/trainings/in-person", dto);
+}
+
+export function updateInPersonTraining(
+  id: string,
+  dto: Partial<CreateInPersonTrainingDto>,
+) {
+  return api.put<InPersonTraining>(`/trainings/in-person/${id}`, dto);
+}
+
+export function deleteInPersonTraining(id: string) {
+  return api.delete<void>(`/trainings/in-person/${id}`);
+}
+
+export function createInPersonParticipant(
+  trainingId: string,
+  dto: CreateInPersonParticipantDto,
+) {
+  return api.post<InPersonTrainingParticipant>(
+    `/trainings/in-person/${trainingId}/participants`,
+    dto,
+  );
+}
+
+export function updateInPersonParticipant(
+  id: string,
+  dto: Partial<CreateInPersonParticipantDto>,
+) {
+  return api.put<InPersonTrainingParticipant>(
+    `/trainings/in-person/participants/${id}`,
+    dto,
+  );
+}
+
+export function deleteInPersonParticipant(id: string) {
+  return api.delete<void>(`/trainings/in-person/participants/${id}`);
 }
 
 export function getTrainingCategories() {

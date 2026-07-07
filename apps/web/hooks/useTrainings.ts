@@ -1,31 +1,37 @@
 "use client";
 
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  createInPersonParticipant,
+  createInPersonTraining,
   createTrainingCategory,
   createTrainingItem,
   createTrainingSource,
+  deleteInPersonParticipant,
+  deleteInPersonTraining,
   deleteTrainingCategory,
   deleteTrainingItem,
   deleteTrainingSource,
+  getAdminInPersonTrainings,
   getAdminTrainingCategories,
   getAdminTrainingSources,
   getAdminTrainings,
   getPublishedTrainings,
   getTrainingProgress,
   getTrainingCategories,
+  inPersonTrainingsQueryKey,
   trainingCategoriesQueryKey,
   trainingSourcesQueryKey,
   trainingsQueryKey,
   upsertTrainingProgress,
+  updateInPersonParticipant,
+  updateInPersonTraining,
   updateTrainingCategory,
   updateTrainingItem,
   updateTrainingSource,
+  type CreateInPersonParticipantDto,
+  type CreateInPersonTrainingDto,
   type CreateTrainingCategoryDto,
   type CreateTrainingItemDto,
   type CreateTrainingSourceDto,
@@ -58,7 +64,8 @@ export function useTrainings() {
 export function useTrainingProgress(trainingItemId?: string) {
   return useQuery({
     queryKey: [...trainingsQueryKey, trainingItemId, "progress"],
-    queryFn: () => getTrainingProgress(trainingItemId || "", getTrainingVisitorKey()),
+    queryFn: () =>
+      getTrainingProgress(trainingItemId || "", getTrainingVisitorKey()),
     enabled: Boolean(trainingItemId),
   });
 }
@@ -108,6 +115,13 @@ export function useAdminTrainingSources() {
   });
 }
 
+export function useAdminInPersonTrainings() {
+  return useQuery({
+    queryKey: inPersonTrainingsQueryKey,
+    queryFn: getAdminInPersonTrainings,
+  });
+}
+
 export function useCreateTrainingItem() {
   const queryClient = useQueryClient();
 
@@ -147,12 +161,95 @@ export function useDeleteTrainingItem() {
   });
 }
 
+export function useCreateInPersonTraining() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: CreateInPersonTrainingDto) => createInPersonTraining(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+    },
+  });
+}
+
+export function useUpdateInPersonTraining() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: string;
+      dto: Partial<CreateInPersonTrainingDto>;
+    }) => updateInPersonTraining(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+    },
+  });
+}
+
+export function useDeleteInPersonTraining() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteInPersonTraining,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+    },
+  });
+}
+
+export function useCreateInPersonParticipant() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      trainingId,
+      dto,
+    }: {
+      trainingId: string;
+      dto: CreateInPersonParticipantDto;
+    }) => createInPersonParticipant(trainingId, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+    },
+  });
+}
+
+export function useUpdateInPersonParticipant() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: string;
+      dto: Partial<CreateInPersonParticipantDto>;
+    }) => updateInPersonParticipant(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+    },
+  });
+}
+
+export function useDeleteInPersonParticipant() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteInPersonParticipant,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+    },
+  });
+}
+
 export function useCreateTrainingCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (dto: CreateTrainingCategoryDto) =>
-      createTrainingCategory(dto),
+    mutationFn: (dto: CreateTrainingCategoryDto) => createTrainingCategory(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: trainingCategoriesQueryKey,
