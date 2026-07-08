@@ -42,6 +42,8 @@ import {
   useNotes,
   useReminders,
   useTasks,
+  useUpdateReminder,
+  useUpdateTask,
 } from "@/hooks/useWorkspace";
 import {
   hrNotices,
@@ -50,7 +52,10 @@ import {
   portalNavItems,
   systemStatuses,
 } from "@/lib/portal";
-import { getIranCalendarEvents, iranFixedCalendarEvents } from "@/lib/iran-calendar-events";
+import {
+  getIranCalendarEvents,
+  iranFixedCalendarEvents,
+} from "@/lib/iran-calendar-events";
 import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import {
   normalizePortalWidgets,
@@ -199,9 +204,20 @@ function SectionHeader({
   );
 }
 
-function GlassPanel({ children, className = "", id }: { children: React.ReactNode; className?: string; id?: string }) {
+function GlassPanel({
+  children,
+  className = "",
+  id,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}) {
   return (
-    <section id={id} className={`rounded-3xl border border-white/10 bg-slate-900/45 p-5 shadow-2xl shadow-black/25 backdrop-blur-2xl ${className}`}>
+    <section
+      id={id}
+      className={`rounded-3xl border border-white/10 bg-slate-900/45 p-5 shadow-2xl shadow-black/25 backdrop-blur-2xl ${className}`}
+    >
       {children}
     </section>
   );
@@ -223,9 +239,7 @@ export default function Home() {
   const [quickAction, setQuickAction] = useState<QuickAction | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickBody, setQuickBody] = useState("");
-  const [quickDate, setQuickDate] = useState(
-    toLocalDateKey(new Date()),
-  );
+  const [quickDate, setQuickDate] = useState(toLocalDateKey(new Date()));
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const { data: settings } = useSettings();
@@ -246,12 +260,12 @@ export default function Home() {
   const createNote = useCreateNote();
   const createReminder = useCreateReminder();
   const createTask = useCreateTask();
+  const updateReminder = useUpdateReminder();
+  const updateTask = useUpdateTask();
   const backgroundImageUrl =
     settings?.portalBackgroundImageUrl || "/images/logo/apgt-logo.png";
-  const overlayColor =
-    settings?.portalBackgroundOverlayColor || "#020617";
-  const overlayOpacity =
-    settings?.portalBackgroundOverlayOpacity ?? 0.72;
+  const overlayColor = settings?.portalBackgroundOverlayColor || "#020617";
+  const overlayOpacity = settings?.portalBackgroundOverlayOpacity ?? 0.72;
   const portalWidgetSettings = normalizePortalWidgets(settings?.portalWidgets);
   const portalWidgetOrder = new Map(
     portalWidgetSettings.map((widget) => [widget.id, widget.order]),
@@ -309,7 +323,7 @@ export default function Home() {
           body: item.body,
           meta: item.category
             ? `${item.category} · ${item.site?.name ?? "خبر سازمانی"}`
-            : item.site?.name ?? "خبر سازمانی",
+            : (item.site?.name ?? "خبر سازمانی"),
           image: item.image,
           attachmentUrl: item.attachmentUrl,
         }))
@@ -337,7 +351,9 @@ export default function Home() {
         new Date(first.startAt).getTime() - new Date(second.startAt).getTime(),
     );
   const selectedReminders = reminders
-    .filter((reminder) => isSameLocalDay(selectedCalendarDate, reminder.remindAt))
+    .filter((reminder) =>
+      isSameLocalDay(selectedCalendarDate, reminder.remindAt),
+    )
     .sort(
       (first, second) =>
         new Date(first.remindAt).getTime() -
@@ -379,10 +395,7 @@ export default function Home() {
                 jalaliDay,
               ),
             ),
-            occasions: getIranCalendarEvents(
-              selectedJalaliDate.jm,
-              jalaliDay,
-            ),
+            occasions: getIranCalendarEvents(selectedJalaliDate.jm, jalaliDay),
           };
         },
       )
@@ -527,7 +540,11 @@ export default function Home() {
             {visiblePortalNavItems.map((item, index) => {
               const Icon = item.icon;
               return (
-                <Link key={item.title} href={item.href} className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-cyan-400/10 hover:text-cyan-100 ${index === 0 ? "bg-cyan-400/15 text-cyan-100 shadow-[inset_0_-2px_0_rgba(34,211,238,0.8)]" : ""}`}>
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-cyan-400/10 hover:text-cyan-100 ${index === 0 ? "bg-cyan-400/15 text-cyan-100 shadow-[inset_0_-2px_0_rgba(34,211,238,0.8)]" : ""}`}
+                >
                   <Icon size={19} />
                   {item.title}
                 </Link>
@@ -561,7 +578,10 @@ export default function Home() {
                   فعال‌سازی اعلان
                 </button>
               )}
-            <Link href="/admin/dashboard" className="flex items-center gap-3 rounded-2xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-white shadow-[0_0_24px_rgba(14,165,233,0.18)] hover:bg-cyan-500/20">
+            <Link
+              href="/admin/dashboard"
+              className="flex items-center gap-3 rounded-2xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-white shadow-[0_0_24px_rgba(14,165,233,0.18)] hover:bg-cyan-500/20"
+            >
               پنل مدیریت
               <Settings size={22} />
             </Link>
@@ -574,135 +594,147 @@ export default function Home() {
               {
                 id: "announcements",
                 node: (
-            <GlassPanel id="announcements">
-              <SectionHeader
-                title="آخرین اطلاعیه ها"
-                onViewAll={() => setListModal("announcements")}
-              />
-              <div className="space-y-3">
-                {visibleAnnouncements.length > 0
-                  ? visibleAnnouncements.map((notice) => (
-                      <button
-                        key={notice.id}
-                        type="button"
-                        onClick={() =>
-                          setSelectedContent({
-                            title: notice.title,
-                            body: notice.body,
-                            meta: notice.category
-                              ? `${notice.category} · اولویت ${notice.priority}`
-                              : `اولویت ${notice.priority}`,
-                            attachmentUrl: notice.attachmentUrl,
-                          })
-                        }
-                        className="w-full rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <h3 className="font-bold">{notice.title}</h3>
-                          <span className="size-2.5 rounded-full bg-cyan-300" />
-                        </div>
-                        <p className="text-sm leading-7 text-slate-300">{notice.body}</p>
-                        <p className="mt-2 text-xs text-slate-500">
-                          اولویت {notice.priority}
-                        </p>
-                      </button>
-                    ))
-                  : managementNotices.map((notice) => (
-                      <button
-                        key={notice.title}
-                        type="button"
-                        onClick={() =>
-                          setSelectedContent({
-                            title: notice.title,
-                            body: notice.description,
-                            meta: notice.time,
-                          })
-                        }
-                        className="w-full rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-3">
-                          <h3 className="font-bold">{notice.title}</h3>
-                          <span className={`size-2.5 rounded-full ${notice.color}`} />
-                        </div>
-                        <p className="text-sm leading-7 text-slate-300">{notice.description}</p>
-                        <p className="mt-2 text-xs text-slate-500">{notice.time}</p>
-                      </button>
-                    ))}
-              </div>
-            </GlassPanel>
+                  <GlassPanel id="announcements">
+                    <SectionHeader
+                      title="آخرین اطلاعیه ها"
+                      onViewAll={() => setListModal("announcements")}
+                    />
+                    <div className="space-y-3">
+                      {visibleAnnouncements.length > 0
+                        ? visibleAnnouncements.map((notice) => (
+                            <button
+                              key={notice.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedContent({
+                                  title: notice.title,
+                                  body: notice.body,
+                                  meta: notice.category
+                                    ? `${notice.category} · اولویت ${notice.priority}`
+                                    : `اولویت ${notice.priority}`,
+                                  attachmentUrl: notice.attachmentUrl,
+                                })
+                              }
+                              className="w-full rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                            >
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <h3 className="font-bold">{notice.title}</h3>
+                                <span className="size-2.5 rounded-full bg-cyan-300" />
+                              </div>
+                              <p className="text-sm leading-7 text-slate-300">
+                                {notice.body}
+                              </p>
+                              <p className="mt-2 text-xs text-slate-500">
+                                اولویت {notice.priority}
+                              </p>
+                            </button>
+                          ))
+                        : managementNotices.map((notice) => (
+                            <button
+                              key={notice.title}
+                              type="button"
+                              onClick={() =>
+                                setSelectedContent({
+                                  title: notice.title,
+                                  body: notice.description,
+                                  meta: notice.time,
+                                })
+                              }
+                              className="w-full rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                            >
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <h3 className="font-bold">{notice.title}</h3>
+                                <span
+                                  className={`size-2.5 rounded-full ${notice.color}`}
+                                />
+                              </div>
+                              <p className="text-sm leading-7 text-slate-300">
+                                {notice.description}
+                              </p>
+                              <p className="mt-2 text-xs text-slate-500">
+                                {notice.time}
+                              </p>
+                            </button>
+                          ))}
+                    </div>
+                  </GlassPanel>
                 ),
               },
 
               {
                 id: "news",
                 node: (
-            <GlassPanel id="hr">
-              <SectionHeader
-                title="اخبار سایت‌ها"
-                onViewAll={() => setListModal("news")}
-              />
-              <div className="space-y-3">
-                {visibleNews.length > 0
-                  ? visibleNews.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() =>
-                          setSelectedContent({
-                            title: item.title,
-                            body: item.body,
-                            meta: item.category
-                              ? `${item.category} · ${item.site?.name ?? "خبر سازمانی"}`
-                              : item.site?.name ?? "خبر سازمانی",
-                            image: item.image,
-                            attachmentUrl: item.attachmentUrl,
-                          })
-                        }
-                        className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
-                      >
-                        <div
-                          className="grid size-14 shrink-0 place-items-center rounded-2xl bg-cover bg-center text-white"
-                          style={{
-                            backgroundImage: item.image
-                              ? `url(${item.image})`
-                              : undefined,
-                          }}
-                        >
-                          {!item.image && <CloudDownload size={24} />}
-                        </div>
-                        <div>
-                          <h3 className="font-bold">{item.title}</h3>
-                          <p className="mt-1 text-xs leading-6 text-slate-300">{item.body}</p>
-                          <p className="mt-1 text-[11px] text-slate-500">
-                            {item.site?.name ?? "خبر سازمانی"}
-                          </p>
-                        </div>
-                      </button>
-                    ))
-                  : hrNotices.map((notice) => (
-                      <button
-                        key={notice.title}
-                        type="button"
-                        onClick={() =>
-                          setSelectedContent({
-                            title: notice.title,
-                            body: notice.description,
-                            meta: notice.time,
-                          })
-                        }
-                        className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
-                      >
-                        <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-white">
-                          <CloudDownload size={24} />
-                        </div>
-                        <div>
-                          <h3 className="font-bold">{notice.title}</h3>
-                          <p className="mt-1 text-xs leading-6 text-slate-300">{notice.description}</p>
-                        </div>
-                      </button>
-                    ))}
-              </div>
-            </GlassPanel>
+                  <GlassPanel id="hr">
+                    <SectionHeader
+                      title="اخبار سایت‌ها"
+                      onViewAll={() => setListModal("news")}
+                    />
+                    <div className="space-y-3">
+                      {visibleNews.length > 0
+                        ? visibleNews.map((item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedContent({
+                                  title: item.title,
+                                  body: item.body,
+                                  meta: item.category
+                                    ? `${item.category} · ${item.site?.name ?? "خبر سازمانی"}`
+                                    : (item.site?.name ?? "خبر سازمانی"),
+                                  image: item.image,
+                                  attachmentUrl: item.attachmentUrl,
+                                })
+                              }
+                              className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                            >
+                              <div
+                                className="grid size-14 shrink-0 place-items-center rounded-2xl bg-cover bg-center text-white"
+                                style={{
+                                  backgroundImage: item.image
+                                    ? `url(${item.image})`
+                                    : undefined,
+                                }}
+                              >
+                                {!item.image && <CloudDownload size={24} />}
+                              </div>
+                              <div>
+                                <h3 className="font-bold">{item.title}</h3>
+                                <p className="mt-1 text-xs leading-6 text-slate-300">
+                                  {item.body}
+                                </p>
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                  {item.site?.name ?? "خبر سازمانی"}
+                                </p>
+                              </div>
+                            </button>
+                          ))
+                        : hrNotices.map((notice) => (
+                            <button
+                              key={notice.title}
+                              type="button"
+                              onClick={() =>
+                                setSelectedContent({
+                                  title: notice.title,
+                                  body: notice.description,
+                                  meta: notice.time,
+                                })
+                              }
+                              className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
+                            >
+                              <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/10 text-white">
+                                <CloudDownload size={24} />
+                              </div>
+                              <div>
+                                <h3 className="font-bold">{notice.title}</h3>
+                                <p className="mt-1 text-xs leading-6 text-slate-300">
+                                  {notice.description}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                    </div>
+                  </GlassPanel>
                 ),
               },
             ]).map((widget) => (
@@ -715,140 +747,161 @@ export default function Home() {
               {
                 id: "hero",
                 node: (
-            <GlassPanel className="mx-auto w-full max-w-3xl !p-3">
-              {heroSlider ? (
-                <Link
-                  href={heroSlider.url || "#announcements"}
-                  target={
-                    heroSlider.url?.startsWith("http") ? "_blank" : undefined
-                  }
-                  rel={
-                    heroSlider.url?.startsWith("http")
-                      ? "noreferrer"
-                      : undefined
-                  }
-                  className="relative block min-h-48 overflow-hidden rounded-2xl bg-cover bg-center p-5"
-                  style={{
-                    backgroundImage: `url(${heroSlider.image})`,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-950/45 to-transparent" />
-                  <div className="relative z-10 flex min-h-40 flex-col justify-end">
-                    <p className="text-sm font-black text-cyan-200">
-                      پیام مدیریت
-                    </p>
-                    <h1 className="mt-2 text-2xl font-black text-white">
-                      {heroSlider.title}
-                    </h1>
-                    <span className="mt-4 w-fit rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-black text-cyan-100">
-                      مشاهده جزئیات
-                    </span>
-                  </div>
-                </Link>
-              ) : (
-                <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
-                  <button className="grid size-10 place-items-center rounded-full text-slate-200 hover:bg-white/10" aria-label="بستن پیام"><X size={22} /></button>
-                  <div className="hidden h-36 w-56 rounded-2xl bg-gradient-to-br from-sky-200 via-slate-500 to-slate-900 md:block" />
-                  <div className="flex-1 py-4">
-                    <h1 className="text-2xl font-black">پیام مدیریت</h1>
-                    <p className="mt-3 text-xl font-bold">به پورتال سازمان خوش آمدید</p>
-                    <p className="mt-4 text-sm leading-7 text-slate-300">در تلاش هستیم تا با ارائه بهترین خدمات، بهره‌وری سازمان را افزایش دهیم.</p>
-                  </div>
-                  <Link href="#announcements" className="hidden rounded-xl bg-gradient-to-l from-violet-600 to-sky-500 px-6 py-3 text-sm font-black md:inline-flex">اطلاعات بیشتر</Link>
-                </div>
-              )}
-            </GlassPanel>
+                  <GlassPanel className="mx-auto w-full max-w-3xl !p-3">
+                    {heroSlider ? (
+                      <Link
+                        href={heroSlider.url || "#announcements"}
+                        target={
+                          heroSlider.url?.startsWith("http")
+                            ? "_blank"
+                            : undefined
+                        }
+                        rel={
+                          heroSlider.url?.startsWith("http")
+                            ? "noreferrer"
+                            : undefined
+                        }
+                        className="relative block min-h-48 overflow-hidden rounded-2xl bg-cover bg-center p-5"
+                        style={{
+                          backgroundImage: `url(${heroSlider.image})`,
+                        }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-950/45 to-transparent" />
+                        <div className="relative z-10 flex min-h-40 flex-col justify-end">
+                          <p className="text-sm font-black text-cyan-200">
+                            پیام مدیریت
+                          </p>
+                          <h1 className="mt-2 text-2xl font-black text-white">
+                            {heroSlider.title}
+                          </h1>
+                          <span className="mt-4 w-fit rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-black text-cyan-100">
+                            مشاهده جزئیات
+                          </span>
+                        </div>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
+                        <button
+                          className="grid size-10 place-items-center rounded-full text-slate-200 hover:bg-white/10"
+                          aria-label="بستن پیام"
+                        >
+                          <X size={22} />
+                        </button>
+                        <div className="hidden h-36 w-56 rounded-2xl bg-gradient-to-br from-sky-200 via-slate-500 to-slate-900 md:block" />
+                        <div className="flex-1 py-4">
+                          <h1 className="text-2xl font-black">پیام مدیریت</h1>
+                          <p className="mt-3 text-xl font-bold">
+                            به پورتال سازمان خوش آمدید
+                          </p>
+                          <p className="mt-4 text-sm leading-7 text-slate-300">
+                            در تلاش هستیم تا با ارائه بهترین خدمات، بهره‌وری
+                            سازمان را افزایش دهیم.
+                          </p>
+                        </div>
+                        <Link
+                          href="#announcements"
+                          className="hidden rounded-xl bg-gradient-to-l from-violet-600 to-sky-500 px-6 py-3 text-sm font-black md:inline-flex"
+                        >
+                          اطلاعات بیشتر
+                        </Link>
+                      </div>
+                    )}
+                  </GlassPanel>
                 ),
               },
 
               {
                 id: "map",
                 node: (
-            <IranPortalMap
-              selectedSiteId={selectedSiteId}
-              onSiteSelect={setSelectedSiteId}
-            />
+                  <IranPortalMap
+                    selectedSiteId={selectedSiteId}
+                    onSiteSelect={setSelectedSiteId}
+                  />
                 ),
               },
 
               {
                 id: "systems",
                 node: (
-            <GlassPanel id="systems" className="!p-4">
-              <PortalApplicationsGrid
-                selectedSiteId={selectedSiteId}
-                onSiteSelect={setSelectedSiteId}
-              />
-            </GlassPanel>
+                  <GlassPanel id="systems" className="!p-4">
+                    <PortalApplicationsGrid
+                      selectedSiteId={selectedSiteId}
+                      onSiteSelect={setSelectedSiteId}
+                    />
+                  </GlassPanel>
                 ),
               },
 
               {
                 id: "training",
                 node: (
-            <GlassPanel id="training">
-              <SectionHeader title="کتابخانه آموزش" viewAllHref="/trainings" />
-              <div className="grid gap-3 md:grid-cols-2">
-                {visibleTrainings.map((training) => {
-                  return (
-                    <Link
-                      key={training.id}
-                      href={`/trainings/${training.id}`}
-                      className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-right transition hover:border-cyan-300/40 hover:bg-white/[0.08]"
-                    >
-                      <div
-                        className="relative h-28 bg-slate-800 bg-cover bg-center"
-                        style={{
-                          backgroundImage: training.thumbnail
-                            ? `url(${training.thumbnail})`
-                            : undefined,
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-slate-950/10" />
-                        <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full bg-cyan-400/20 text-cyan-100 ring-1 ring-cyan-300/30">
-                          {training.contentType === "VIDEO" ? (
-                            <PlayCircle size={22} />
-                          ) : (
-                            <GraduationCap size={22} />
-                          )}
-                        </span>
+                  <GlassPanel id="training">
+                    <SectionHeader
+                      title="کتابخانه آموزش"
+                      viewAllHref="/trainings"
+                    />
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {visibleTrainings.map((training) => {
+                        return (
+                          <Link
+                            key={training.id}
+                            href={`/trainings/${training.id}`}
+                            className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-right transition hover:border-cyan-300/40 hover:bg-white/[0.08]"
+                          >
+                            <div
+                              className="relative h-28 bg-slate-800 bg-cover bg-center"
+                              style={{
+                                backgroundImage: training.thumbnail
+                                  ? `url(${training.thumbnail})`
+                                  : undefined,
+                              }}
+                            >
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-slate-950/10" />
+                              <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full bg-cyan-400/20 text-cyan-100 ring-1 ring-cyan-300/30">
+                                {training.contentType === "VIDEO" ? (
+                                  <PlayCircle size={22} />
+                                ) : (
+                                  <GraduationCap size={22} />
+                                )}
+                              </span>
+                            </div>
+                            <div className="p-4">
+                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-100">
+                                  {training.category?.name || "آموزش"}
+                                </span>
+                                {training.isRequired && (
+                                  <span className="rounded-full bg-rose-400/10 px-3 py-1 text-[11px] font-bold text-rose-100">
+                                    اجباری
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="line-clamp-1 font-black text-white">
+                                {training.title}
+                              </h3>
+                              <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
+                                {training.description ||
+                                  "محتوای آموزشی سازمانی"}
+                              </p>
+                              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                                <span>
+                                  {training.durationMinutes
+                                    ? `${training.durationMinutes} دقیقه`
+                                    : "بدون زمان"}
+                                </span>
+                                <span>{training.files.length} فایل</span>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    {visibleTrainings.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm leading-7 text-slate-300">
+                        هنوز آموزش منتشرشده‌ای برای نمایش در پرتال وجود ندارد.
                       </div>
-                      <div className="p-4">
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                          <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-100">
-                            {training.category?.name || "آموزش"}
-                          </span>
-                          {training.isRequired && (
-                            <span className="rounded-full bg-rose-400/10 px-3 py-1 text-[11px] font-bold text-rose-100">
-                              اجباری
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="line-clamp-1 font-black text-white">
-                          {training.title}
-                        </h3>
-                        <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
-                          {training.description || "محتوای آموزشی سازمانی"}
-                        </p>
-                        <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-                          <span>
-                            {training.durationMinutes
-                              ? `${training.durationMinutes} دقیقه`
-                              : "بدون زمان"}
-                          </span>
-                          <span>{training.files.length} فایل</span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-              {visibleTrainings.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm leading-7 text-slate-300">
-                  هنوز آموزش منتشرشده‌ای برای نمایش در پرتال وجود ندارد.
-                </div>
-              )}
-            </GlassPanel>
+                    )}
+                  </GlassPanel>
                 ),
               },
             ]).map((widget) => (
@@ -861,353 +914,420 @@ export default function Home() {
               {
                 id: "status",
                 node: (
-            <GlassPanel id="status">
-              <SectionHeader title="وضعیت سیستم ها" />
-              <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10">
-                {visibleSystemStatuses.map((item) => {
-                  const Icon =
-                    portalIconMap[item.icon || "CheckCircle2"] ??
-                    ShieldCheck;
-                  const uploadedIcon = isUploadedIcon(item.icon)
-                    ? item.icon
-                    : null;
-                  return (
-                    <div key={item.id} className="flex items-center justify-between bg-white/[0.03] px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="grid size-8 place-items-center rounded-lg bg-white/[0.04]"
-                          style={{ color: item.color || "#38bdf8" }}
-                        >
-                          {uploadedIcon ? (
-                            <img
-                              src={uploadedIcon}
-                              alt=""
-                              className="size-5 object-contain"
-                            />
-                          ) : (
-                            <Icon size={21} />
-                          )}
-                        </span>
-                        <span className="font-bold">{item.title}</span>
-                      </div>
-                      <span
-                        className="rounded-full px-3 py-1 text-xs font-bold"
-                        style={{
-                          backgroundColor: `${item.color || "#34d399"}22`,
-                          color: item.color || "#34d399",
-                        }}
-                      >
-                        {item.status}
-                      </span>
+                  <GlassPanel id="status">
+                    <SectionHeader title="وضعیت سیستم ها" />
+                    <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10">
+                      {visibleSystemStatuses.map((item) => {
+                        const Icon =
+                          portalIconMap[item.icon || "CheckCircle2"] ??
+                          ShieldCheck;
+                        const uploadedIcon = isUploadedIcon(item.icon)
+                          ? item.icon
+                          : null;
+                        return (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between bg-white/[0.03] px-4 py-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span
+                                className="grid size-8 place-items-center rounded-lg bg-white/[0.04]"
+                                style={{ color: item.color || "#38bdf8" }}
+                              >
+                                {uploadedIcon ? (
+                                  <img
+                                    src={uploadedIcon}
+                                    alt=""
+                                    className="size-5 object-contain"
+                                  />
+                                ) : (
+                                  <Icon size={21} />
+                                )}
+                              </span>
+                              <span className="font-bold">{item.title}</span>
+                            </div>
+                            <span
+                              className="rounded-full px-3 py-1 text-xs font-bold"
+                              style={{
+                                backgroundColor: `${item.color || "#34d399"}22`,
+                                color: item.color || "#34d399",
+                              }}
+                            >
+                              {item.status}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            </GlassPanel>
+                  </GlassPanel>
                 ),
               },
 
               {
                 id: "calendar",
                 node: (
-            <GlassPanel id="calendar">
-              <SectionHeader
-                title="تقویم جلسات"
-                onViewAll={() => setCalendarModalOpen(true)}
-              />
-              <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedCalendarDate((date) => addDays(date, -7))
-                  }
-                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
-                >
-                  هفته قبل
-                </button>
-                <div className="text-center">
-                  <p className="text-xs text-slate-400">روز انتخاب‌شده</p>
-                  <p className="mt-1 text-sm font-black text-cyan-100">
-                    {selectedDateLabel}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedCalendarDate((date) => addDays(date, 7))
-                  }
-                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
-                >
-                  هفته بعد
-                </button>
-              </div>
-              <div className="mb-4 grid grid-cols-7 gap-2">
-                {calendarDays.map((date) => {
-                  const jalali = getJalaliParts(date);
-                  const dateKey = toLocalDateKey(date);
-                  const isSelected = dateKey === selectedDateKey;
-                  const isToday = dateKey === todayKey;
-                  const dayOccasions = jalali
-                    ? getIranCalendarEvents(jalali.jm, jalali.jd)
-                    : [];
-                  const isHoliday = dayOccasions.some(
-                    (event) => event.isHoliday,
-                  );
-
-                  return (
-                    <button
-                      key={dateKey}
-                      type="button"
-                      onClick={() => setSelectedCalendarDate(date)}
-                      className={`min-w-0 rounded-2xl border p-2 text-center transition ${
-                        isSelected
-                          ? "border-cyan-300 bg-cyan-400/20 shadow-[0_0_22px_rgba(34,211,238,0.18)]"
-                          : "border-white/10 bg-white/[0.04] hover:border-cyan-300/30"
-                      }`}
-                    >
-                      <p
-                        className={`truncate text-[10px] ${
-                          isHoliday ? "text-rose-300" : "text-slate-400"
-                        }`}
+                  <GlassPanel id="calendar">
+                    <SectionHeader
+                      title="تقویم جلسات"
+                      onViewAll={() => setCalendarModalOpen(true)}
+                    />
+                    <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedCalendarDate((date) => addDays(date, -7))
+                        }
+                        className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
                       >
-                        {isToday ? "امروز" : getWeekdayName(date)}
-                      </p>
-                      <p
-                        className={`mt-1 text-lg font-black ${
-                          isHoliday ? "text-rose-200" : "text-white"
-                        }`}
+                        هفته قبل
+                      </button>
+                      <div className="text-center">
+                        <p className="text-xs text-slate-400">روز انتخاب‌شده</p>
+                        <p className="mt-1 text-sm font-black text-cyan-100">
+                          {selectedDateLabel}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedCalendarDate((date) => addDays(date, 7))
+                        }
+                        className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
                       >
-                        {jalali?.jd ?? "-"}
-                      </p>
-                      {(dayOccasions.length > 0 ||
-                        meetings.some((meeting) =>
-                          isSameLocalDay(date, meeting.startAt),
-                        ) ||
-                        tasks.some((task) =>
-                          isSameLocalDay(date, task.dueDate),
-                        ) ||
-                        reminders.some((reminder) =>
-                          isSameLocalDay(date, reminder.remindAt),
-                        )) && (
-                        <span className="mx-auto mt-1 block size-1.5 rounded-full bg-cyan-300" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="space-y-3">
-                {selectedOccasions.map((event) => (
-                  <div
-                    key={event.id}
-                    className={`rounded-2xl border p-4 ${
-                      event.isHoliday
-                        ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
-                        : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
-                    }`}
-                  >
-                    <h3 className="font-bold">{event.title}</h3>
-                    <p className="mt-1 text-xs opacity-80">
-                      {event.isHoliday ? "تعطیل رسمی" : "مناسبت تقویم ایران"}
-                    </p>
-                  </div>
-                ))}
+                        هفته بعد
+                      </button>
+                    </div>
+                    <div className="mb-4 grid grid-cols-7 gap-2">
+                      {calendarDays.map((date) => {
+                        const jalali = getJalaliParts(date);
+                        const dateKey = toLocalDateKey(date);
+                        const isSelected = dateKey === selectedDateKey;
+                        const isToday = dateKey === todayKey;
+                        const dayOccasions = jalali
+                          ? getIranCalendarEvents(jalali.jm, jalali.jd)
+                          : [];
+                        const isHoliday = dayOccasions.some(
+                          (event) => event.isHoliday,
+                        );
 
-                {selectedMeetings.map((meeting) => (
-                  <div
-                    key={meeting.id}
-                    className="flex items-center justify-between rounded-2xl border-r-2 border-cyan-400 bg-white/[0.04] p-4"
-                  >
-                        <div>
-                          <h3 className="font-bold">{meeting.title}</h3>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {meeting.location || "بدون محل"} - {meeting.participants.length} عضو
+                        return (
+                          <button
+                            key={dateKey}
+                            type="button"
+                            onClick={() => setSelectedCalendarDate(date)}
+                            className={`min-w-0 rounded-2xl border p-2 text-center transition ${
+                              isSelected
+                                ? "border-cyan-300 bg-cyan-400/20 shadow-[0_0_22px_rgba(34,211,238,0.18)]"
+                                : "border-white/10 bg-white/[0.04] hover:border-cyan-300/30"
+                            }`}
+                          >
+                            <p
+                              className={`truncate text-[10px] ${
+                                isHoliday ? "text-rose-300" : "text-slate-400"
+                              }`}
+                            >
+                              {isToday ? "امروز" : getWeekdayName(date)}
+                            </p>
+                            <p
+                              className={`mt-1 text-lg font-black ${
+                                isHoliday ? "text-rose-200" : "text-white"
+                              }`}
+                            >
+                              {jalali?.jd ?? "-"}
+                            </p>
+                            {(dayOccasions.length > 0 ||
+                              meetings.some((meeting) =>
+                                isSameLocalDay(date, meeting.startAt),
+                              ) ||
+                              tasks.some((task) =>
+                                isSameLocalDay(date, task.dueDate),
+                              ) ||
+                              reminders.some((reminder) =>
+                                isSameLocalDay(date, reminder.remindAt),
+                              )) && (
+                              <span className="mx-auto mt-1 block size-1.5 rounded-full bg-cyan-300" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="space-y-3">
+                      {selectedOccasions.map((event) => (
+                        <div
+                          key={event.id}
+                          className={`rounded-2xl border p-4 ${
+                            event.isHoliday
+                              ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
+                              : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                          }`}
+                        >
+                          <h3 className="font-bold">{event.title}</h3>
+                          <p className="mt-1 text-xs opacity-80">
+                            {event.isHoliday
+                              ? "تعطیل رسمی"
+                              : "مناسبت تقویم ایران"}
                           </p>
                         </div>
-                        <span className="font-mono text-lg">
-                          {getPersianTime(meeting.startAt)}
-                        </span>
-                  </div>
-                ))}
+                      ))}
 
-                {selectedReminders.map((reminder) => (
-                  <div
-                    key={reminder.id}
-                    className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4"
-                  >
-                    <h3 className="font-bold text-amber-100">
-                      {reminder.title}
-                    </h3>
-                    <p className="mt-1 text-xs text-amber-100/75">
-                      یادآوری در {getPersianTime(reminder.remindAt)}
-                    </p>
-                  </div>
-                ))}
+                      {selectedMeetings.map((meeting) => (
+                        <div
+                          key={meeting.id}
+                          className="flex items-center justify-between rounded-2xl border-r-2 border-cyan-400 bg-white/[0.04] p-4"
+                        >
+                          <div>
+                            <h3 className="font-bold">{meeting.title}</h3>
+                            <p className="mt-1 text-xs text-slate-400">
+                              {meeting.location || "بدون محل"} -{" "}
+                              {meeting.participants.length} عضو
+                            </p>
+                          </div>
+                          <span className="font-mono text-lg">
+                            {getPersianTime(meeting.startAt)}
+                          </span>
+                        </div>
+                      ))}
 
-                {selectedTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4"
-                  >
-                    <h3 className="font-bold text-emerald-100">
-                      {task.title}
-                    </h3>
-                    <p className="mt-1 text-xs text-emerald-100/75">
-                      اولویت {task.priority}
-                    </p>
-                  </div>
-                ))}
+                      {selectedReminders.map((reminder) => (
+                        <div
+                          key={reminder.id}
+                          className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4"
+                        >
+                          <h3 className="font-bold text-amber-100">
+                            {reminder.title}
+                          </h3>
+                          <p className="mt-1 text-xs text-amber-100/75">
+                            یادآوری در {getPersianTime(reminder.remindAt)}
+                          </p>
+                        </div>
+                      ))}
 
-                {selectedNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4"
-                  >
-                    <h3 className="font-bold text-violet-100">{note.title}</h3>
-                    <p className="mt-1 line-clamp-2 text-xs leading-6 text-violet-100/75">
-                      {note.body}
-                    </p>
-                  </div>
-                ))}
+                      {selectedTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4"
+                        >
+                          <h3 className="font-bold text-emerald-100">
+                            {task.title}
+                          </h3>
+                          <p className="mt-1 text-xs text-emerald-100/75">
+                            اولویت {task.priority}
+                          </p>
+                        </div>
+                      ))}
 
-                {!selectedDayHasItems && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300">
-                    برای این روز جلسه، مناسبت، یادآوری، تسک یا یادداشتی ثبت
-                    نشده است.
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => openQuickAction("reminder")}
-                  className="rounded-xl bg-amber-400/15 px-3 py-2 text-xs font-bold text-amber-100 hover:bg-amber-400/25"
-                >
-                  افزودن یادآوری
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openQuickAction("task")}
-                  className="rounded-xl bg-emerald-400/15 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-400/25"
-                >
-                  افزودن تسک
-                </button>
-              </div>
-            </GlassPanel>
+                      {selectedNotes.map((note) => (
+                        <div
+                          key={note.id}
+                          className="rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4"
+                        >
+                          <h3 className="font-bold text-violet-100">
+                            {note.title}
+                          </h3>
+                          <p className="mt-1 line-clamp-2 text-xs leading-6 text-violet-100/75">
+                            {note.body}
+                          </p>
+                        </div>
+                      ))}
+
+                      {!selectedDayHasItems && (
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300">
+                          برای این روز جلسه، مناسبت، یادآوری، تسک یا یادداشتی
+                          ثبت نشده است.
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openQuickAction("reminder")}
+                        className="rounded-xl bg-amber-400/15 px-3 py-2 text-xs font-bold text-amber-100 hover:bg-amber-400/25"
+                      >
+                        افزودن یادآوری
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openQuickAction("task")}
+                        className="rounded-xl bg-emerald-400/15 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-400/25"
+                      >
+                        افزودن تسک
+                      </button>
+                    </div>
+                  </GlassPanel>
                 ),
               },
 
               {
                 id: "workspace",
                 node: (
-            <GlassPanel id="workspace">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-black text-white">
-                  دفترچه و کارهای من
-                </h2>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openQuickAction("note")}
-                    className="grid size-8 place-items-center rounded-full bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/25"
-                    aria-label="افزودن یادداشت"
-                  >
-                    <Plus size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openQuickAction("reminder")}
-                    className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-100 hover:bg-amber-400/25"
-                  >
-                    یادآوری
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openQuickAction("task")}
-                    className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-100 hover:bg-emerald-400/25"
-                  >
-                    تسک
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {visibleNotes.map((note) => (
-                  <div key={note.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <h3 className="font-bold text-cyan-100">{note.title}</h3>
-                    <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
-                      {note.body}
-                    </p>
-                  </div>
-                ))}
-
-                {visibleReminders.map((reminder) => (
-                  <div key={reminder.id} className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
-                    <h3 className="font-bold text-amber-100">{reminder.title}</h3>
-                    <p className="mt-1 text-xs text-amber-100/75">
-                      {new Date(reminder.remindAt).toLocaleString("fa-IR")}
-                    </p>
-                  </div>
-                ))}
-
-                {visibleTasks.map((task) => (
-                  <div key={task.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                    <div>
-                      <h3 className="font-bold">{task.title}</h3>
-                      <p className="mt-1 text-xs text-slate-400">
-                        اولویت {task.priority}
-                      </p>
+                  <GlassPanel id="workspace">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <h2 className="text-lg font-black text-white">
+                        دفترچه و کارهای من
+                      </h2>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openQuickAction("note")}
+                          className="grid size-8 place-items-center rounded-full bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/25"
+                          aria-label="افزودن یادداشت"
+                        >
+                          <Plus size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openQuickAction("reminder")}
+                          className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-100 hover:bg-amber-400/25"
+                        >
+                          یادآوری
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openQuickAction("task")}
+                          className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-100 hover:bg-emerald-400/25"
+                        >
+                          تسک
+                        </button>
+                      </div>
                     </div>
-                    <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-200">
-                      {task.status === "TODO"
-                        ? "برای انجام"
-                        : "در حال انجام"}
-                    </span>
-                  </div>
-                ))}
+                    <div className="space-y-3">
+                      {visibleNotes.map((note) => (
+                        <div
+                          key={note.id}
+                          className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                        >
+                          <h3 className="font-bold text-cyan-100">
+                            {note.title}
+                          </h3>
+                          <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
+                            {note.body}
+                          </p>
+                        </div>
+                      ))}
 
-                {visibleNotes.length === 0 &&
-                  visibleReminders.length === 0 &&
-                  visibleTasks.length === 0 && (
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300">
-                      هنوز یادداشت، یادآوری یا کاری ثبت نشده است.
+                      {visibleReminders.map((reminder) => (
+                        <div
+                          key={reminder.id}
+                          className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className="font-bold text-amber-100">
+                                {reminder.title}
+                              </h3>
+                              <p className="mt-1 text-xs text-amber-100/75">
+                                {new Date(reminder.remindAt).toLocaleString(
+                                  "fa-IR",
+                                )}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateReminder.mutate({
+                                  id: reminder.id,
+                                  dto: { completed: true },
+                                })
+                              }
+                              className="shrink-0 rounded-full bg-amber-300/20 px-3 py-1 text-[11px] font-black text-amber-50 hover:bg-amber-300/30"
+                            >
+                              انجام شد
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {visibleTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                        >
+                          <div>
+                            <h3 className="font-bold">{task.title}</h3>
+                            <p className="mt-1 text-xs text-slate-400">
+                              اولویت {task.priority}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-200">
+                            {task.status === "TODO"
+                              ? "برای انجام"
+                              : "در حال انجام"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateTask.mutate({
+                                id: task.id,
+                                dto: { status: "DONE" },
+                              })
+                            }
+                            className="shrink-0 rounded-full bg-emerald-400/10 px-3 py-1 text-[11px] font-black text-emerald-100 hover:bg-emerald-400/20"
+                          >
+                            انجام شد
+                          </button>
+                        </div>
+                      ))}
+
+                      {visibleNotes.length === 0 &&
+                        visibleReminders.length === 0 &&
+                        visibleTasks.length === 0 && (
+                          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300">
+                            هنوز یادداشت، یادآوری یا کاری ثبت نشده است.
+                          </div>
+                        )}
                     </div>
-                  )}
-              </div>
-            </GlassPanel>
+                  </GlassPanel>
                 ),
               },
 
               {
                 id: "downloads",
                 node: (
-            <GlassPanel id="downloads">
-              <SectionHeader title="دانلود نرم افزارها" />
-              <div className="grid grid-cols-2 gap-3">
-                {visibleDownloads.map((item) => {
-                  const Icon =
-                    portalIconMap[item.icon || "CloudDownload"] ??
-                    CloudDownload;
-                  const uploadedIcon = isUploadedIcon(item.icon)
-                    ? item.icon
-                    : null;
-                  return (
-                    <Link key={item.id} href={item.fileUrl} target={item.fileUrl === "#" ? undefined : "_blank"} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.05] p-4 hover:bg-white/10">
-                      <div className="flex items-center gap-3">
-                        {uploadedIcon ? (
-                          <img
-                            src={uploadedIcon}
-                            alt=""
-                            className="size-8 rounded-lg object-contain"
-                          />
-                        ) : (
-                          <Icon size={30} className={item.color || "text-cyan-300"} />
-                        )}
-                        <div><h3 className="text-sm font-black">{item.title}</h3><p className="mt-1 text-xs text-slate-400">{item.version || item.category || "دانلود"}</p></div></div>
-                      <Download size={18} className="text-cyan-300" />
-                    </Link>
-                  );
-                })}
-              </div>
-            </GlassPanel>
+                  <GlassPanel id="downloads">
+                    <SectionHeader title="دانلود نرم افزارها" />
+                    <div className="grid grid-cols-2 gap-3">
+                      {visibleDownloads.map((item) => {
+                        const Icon =
+                          portalIconMap[item.icon || "CloudDownload"] ??
+                          CloudDownload;
+                        const uploadedIcon = isUploadedIcon(item.icon)
+                          ? item.icon
+                          : null;
+                        return (
+                          <Link
+                            key={item.id}
+                            href={item.fileUrl}
+                            target={item.fileUrl === "#" ? undefined : "_blank"}
+                            className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.05] p-4 hover:bg-white/10"
+                          >
+                            <div className="flex items-center gap-3">
+                              {uploadedIcon ? (
+                                <img
+                                  src={uploadedIcon}
+                                  alt=""
+                                  className="size-8 rounded-lg object-contain"
+                                />
+                              ) : (
+                                <Icon
+                                  size={30}
+                                  className={item.color || "text-cyan-300"}
+                                />
+                              )}
+                              <div>
+                                <h3 className="text-sm font-black">
+                                  {item.title}
+                                </h3>
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {item.version || item.category || "دانلود"}
+                                </p>
+                              </div>
+                            </div>
+                            <Download size={18} className="text-cyan-300" />
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </GlassPanel>
                 ),
               },
             ]).map((widget) => (
@@ -1220,7 +1340,9 @@ export default function Home() {
           <span>تمامی حقوق محفوظ است - واحد فناوری اطلاعات</span>
           <span className="h-4 w-px bg-white/20" />
           <span>نسخه 3.2.0</span>
-          <span className="inline-flex items-center gap-1 text-cyan-300">مشاهده تقویم کامل <ChevronLeft size={14} /></span>
+          <span className="inline-flex items-center gap-1 text-cyan-300">
+            مشاهده تقویم کامل <ChevronLeft size={14} />
+          </span>
         </footer>
       </div>
 
@@ -1452,7 +1574,9 @@ export default function Home() {
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={() => setSelectedCalendarDate((date) => addDays(date, -30))}
+                  onClick={() =>
+                    setSelectedCalendarDate((date) => addDays(date, -30))
+                  }
                   className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
                 >
                   ماه قبل
@@ -1464,7 +1588,9 @@ export default function Home() {
                 </h3>
                 <button
                   type="button"
-                  onClick={() => setSelectedCalendarDate((date) => addDays(date, 30))}
+                  onClick={() =>
+                    setSelectedCalendarDate((date) => addDays(date, 30))
+                  }
                   className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
                 >
                   ماه بعد
@@ -1514,9 +1640,7 @@ export default function Home() {
                         {meetingsCount > 0 && workCount > 0 ? "، " : ""}
                         {workCount > 0 && `${workCount} کار`}
                         {day.occasions.length > 0 && (
-                          <span className="block text-rose-200">
-                            مناسبت
-                          </span>
+                          <span className="block text-rose-200">مناسبت</span>
                         )}
                       </span>
                     </button>
@@ -1571,7 +1695,11 @@ export default function Home() {
               : "افزودن تسک"
         }
       >
-        <form onSubmit={submitQuickAction} className="space-y-4 text-right" dir="rtl">
+        <form
+          onSubmit={submitQuickAction}
+          className="space-y-4 text-right"
+          dir="rtl"
+        >
           <Input
             value={quickTitle}
             onChange={(event) => setQuickTitle(event.target.value)}

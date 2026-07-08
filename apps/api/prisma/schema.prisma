@@ -95,85 +95,85 @@ enum InPersonTrainingResult {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  username    String   @unique
-  email       String   @unique
-  password    String
+  id       String @id @default(cuid())
+  username String @unique
+  email    String @unique
+  password String
 
-  firstName   String?
-  lastName    String?
+  firstName String?
+  lastName  String?
 
-  isActive    Boolean  @default(true)
+  isActive Boolean @default(true)
 
-  roles        UserRole[]
-  organizedMeetings Meeting[] @relation("MeetingOrganizer")
-  meetingParticipants MeetingParticipant[]
-  notes        PortalNote[]
-  reminders    PortalReminder[]
-  tasks        PortalTask[]
-  downloads    PortalDownload[]
-  trainingProgress TrainingProgress[]
+  roles                        UserRole[]
+  organizedMeetings            Meeting[]                     @relation("MeetingOrganizer")
+  meetingParticipants          MeetingParticipant[]
+  notes                        PortalNote[]
+  reminders                    PortalReminder[]
+  tasks                        PortalTask[]
+  downloads                    PortalDownload[]
+  trainingProgress             TrainingProgress[]
   inPersonTrainingParticipants InPersonTrainingParticipant[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  title       String
+  id    String @id @default(cuid())
+  name  String @unique
+  title String
 
-  users       UserRole[]
-  permissions RolePermission[]
+  users           UserRole[]
+  permissions     RolePermission[]
   directoryGroups DirectoryGroupRole[]
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Permission {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  title       String
+  id    String @id @default(cuid())
+  name  String @unique
+  title String
 
-  roles       RolePermission[]
+  roles RolePermission[]
 }
 
 model DirectoryUser {
-  id          String @id @default(cuid())
-  username    String @unique
+  id          String          @id @default(cuid())
+  username    String          @unique
   displayName String
   email       String?
   department  String?
   title       String?
   source      DirectorySource @default(INTERNAL)
-  isActive    Boolean @default(true)
+  isActive    Boolean         @default(true)
 
-  groupMemberships DirectoryGroupMember[]
-  organizedMeetings Meeting[] @relation("DirectoryMeetingOrganizer")
-  meetingParticipants MeetingParticipant[]
-  notifications PortalNotification[]
-  pushSubscriptions PushSubscription[]
-  trainingProgress TrainingProgress[]
+  groupMemberships             DirectoryGroupMember[]
+  organizedMeetings            Meeting[]                     @relation("DirectoryMeetingOrganizer")
+  meetingParticipants          MeetingParticipant[]
+  notifications                PortalNotification[]
+  pushSubscriptions            PushSubscription[]
+  trainingProgress             TrainingProgress[]
   inPersonTrainingParticipants InPersonTrainingParticipant[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DirectoryGroup {
-  id          String @id @default(cuid())
-  name        String @unique
+  id          String          @id @default(cuid())
+  name        String          @unique
   title       String
   description String?
   source      DirectorySource @default(INTERNAL)
-  isActive    Boolean @default(true)
+  isActive    Boolean         @default(true)
 
-  members     DirectoryGroupMember[]
-  roles       DirectoryGroupRole[]
+  members DirectoryGroupMember[]
+  roles   DirectoryGroupRole[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DirectoryGroupMember {
@@ -181,7 +181,7 @@ model DirectoryGroupMember {
   userId  String
 
   group DirectoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user  DirectoryUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  DirectoryUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([groupId, userId])
 }
@@ -191,7 +191,7 @@ model DirectoryGroupRole {
   roleId  String
 
   group DirectoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  role  Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  role  Role           @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([groupId, roleId])
 }
@@ -210,16 +210,16 @@ model RolePermission {
   roleId       String
   permissionId String
 
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@id([roleId, permissionId])
 }
 
 model Site {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
+  id   String @id @default(cuid())
+  code String @unique
+  name String
 
   description String?
   baseUrl     String?
@@ -228,169 +228,169 @@ model Site {
   phone       String?
   email       String?
 
-  latitude    Float?
-  longitude   Float?
+  latitude  Float?
+  longitude Float?
 
-  logo        String?
-  image       String?
-  color       String?
+  logo  String?
+  image String?
+  color String?
 
-  sortOrder   Int      @default(0)
+  sortOrder Int @default(0)
 
-  isActive    Boolean  @default(true)
+  isActive Boolean @default(true)
 
   applicationSites ApplicationSite[]
   news             News[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ApplicationCategory {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  name        String
-  slug        String   @unique
+  name String
+  slug String @unique
 
   icon        String?
   color       String?
   description String?
 
-  sortOrder   Int      @default(0)
+  sortOrder Int @default(0)
 
-  isActive    Boolean  @default(true)
+  isActive Boolean @default(true)
 
   applications Application[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Application {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  key         String   @unique
-  slug        String   @unique
+  key  String @unique
+  slug String @unique
 
   title       String
   description String?
 
-  icon        String?
+  icon String?
 
-  color       String?
+  color String?
 
-  status      ApplicationStatus @default(ACTIVE)
+  status ApplicationStatus @default(ACTIVE)
 
   networkType NetworkType @default(INTRANET)
 
-  version     String?
+  version String?
 
-  owner       String?
+  owner String?
 
   supportDepartment String?
 
-  guideUrl    String?
+  guideUrl String?
 
-  isFeatured  Boolean @default(false)
+  isFeatured Boolean @default(false)
 
-  isNew       Boolean @default(false)
+  isNew Boolean @default(false)
 
   openInNewTab Boolean @default(true)
 
-  sortOrder   Int @default(0)
+  sortOrder Int @default(0)
 
-  isActive    Boolean @default(true)
+  isActive Boolean @default(true)
 
-  categoryId  String
-  category    ApplicationCategory @relation(fields: [categoryId], references: [id])
+  categoryId String
+  category   ApplicationCategory @relation(fields: [categoryId], references: [id])
 
-  sites       ApplicationSite[]
+  sites ApplicationSite[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ApplicationSite {
-  id            String @id @default(cuid())
+  id String @id @default(cuid())
 
   applicationId String
   siteId        String
 
-  url           String
+  url String
 
-  isActive      Boolean @default(true)
+  isActive Boolean @default(true)
 
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
-  site          Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([applicationId, siteId])
 }
 
 model News {
-  id          String   @id @default(cuid())
-  title       String
-  body        String   @db.Text
-  category    String?
+  id            String  @id @default(cuid())
+  title         String
+  body          String  @db.Text
+  category      String?
   attachmentUrl String?
-  image       String?
-  published   Boolean  @default(true)
+  image         String?
+  published     Boolean @default(true)
 
-  siteId      String
-  site        Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteId String
+  site   Site   @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Announcement {
-  id          String   @id @default(cuid())
-  title       String
-  body        String   @db.Text
-  category    String?
+  id            String  @id @default(cuid())
+  title         String
+  body          String  @db.Text
+  category      String?
   attachmentUrl String?
 
-  startDate   DateTime
-  endDate     DateTime?
+  startDate DateTime
+  endDate   DateTime?
 
-  priority    Int      @default(1)
+  priority Int @default(1)
 
-  published   Boolean  @default(true)
+  published Boolean @default(true)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Meeting {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String? @db.Text
   location    String?
 
-  startAt     DateTime
-  endAt       DateTime?
+  startAt DateTime
+  endAt   DateTime?
 
-  status      MeetingStatus @default(SCHEDULED)
+  status      MeetingStatus     @default(SCHEDULED)
   visibility  MeetingVisibility @default(PUBLIC)
-  isPublished Boolean @default(true)
+  isPublished Boolean           @default(true)
 
-  organizerId String?
-  organizer   User? @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  organizerId              String?
+  organizer                User?          @relation("MeetingOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
   organizerDirectoryUserId String?
-  organizerDirectoryUser DirectoryUser? @relation("DirectoryMeetingOrganizer", fields: [organizerDirectoryUserId], references: [id], onDelete: SetNull)
+  organizerDirectoryUser   DirectoryUser? @relation("DirectoryMeetingOrganizer", fields: [organizerDirectoryUserId], references: [id], onDelete: SetNull)
 
-  participants MeetingParticipant[]
+  participants  MeetingParticipant[]
   notifications PortalNotification[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model MeetingParticipant {
-  id          String @id @default(cuid())
-  meetingId   String
-  userId      String?
+  id              String  @id @default(cuid())
+  meetingId       String
+  userId          String?
   directoryUserId String?
 
   displayName String
@@ -399,96 +399,102 @@ model MeetingParticipant {
   notificationSent Boolean @default(false)
   responseStatus   String?
 
-  meeting     Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  meeting       Meeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   directoryUser DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model PortalNotification {
-  id          String @id @default(cuid())
-  type        NotificationType
-  title       String
-  body        String? @db.Text
+  id    String           @id @default(cuid())
+  type  NotificationType
+  title String
+  body  String?          @db.Text
 
   recipientDirectoryUserId String?
-  recipientEmail String?
+  recipientEmail           String?
 
   meetingId   String?
+  reminderId  String?
+  taskId      String?
   scheduledAt DateTime?
   sentAt      DateTime?
   readAt      DateTime?
 
-  recipientDirectoryUser DirectoryUser? @relation(fields: [recipientDirectoryUserId], references: [id], onDelete: SetNull)
-  meeting     Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  recipientDirectoryUser DirectoryUser?  @relation(fields: [recipientDirectoryUserId], references: [id], onDelete: SetNull)
+  meeting                Meeting?        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  reminder               PortalReminder? @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  task                   PortalTask?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model PushSubscription {
-  id          String @id @default(cuid())
-  endpoint    String @unique @db.Text
-  p256dh      String
-  auth        String
-  userAgent   String?
+  id        String  @id @default(cuid())
+  endpoint  String  @unique @db.Text
+  p256dh    String
+  auth      String
+  userAgent String?
 
   recipientDirectoryUserId String?
-  recipientEmail String?
+  recipientEmail           String?
 
   recipientDirectoryUser DirectoryUser? @relation(fields: [recipientDirectoryUserId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PortalNote {
-  id          String @id @default(cuid())
-  ownerId     String?
-  title       String
-  body        String @db.Text
-  color       String?
-  isPinned    Boolean @default(false)
+  id       String  @id @default(cuid())
+  ownerId  String?
+  title    String
+  body     String  @db.Text
+  color    String?
+  isPinned Boolean @default(false)
 
-  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PortalReminder {
-  id          String @id @default(cuid())
-  ownerId     String?
-  title       String
-  description String? @db.Text
-  remindAt    DateTime
+  id                  String   @id @default(cuid())
+  ownerId             String?
+  title               String
+  description         String?  @db.Text
+  remindAt            DateTime
   notifyBeforeMinutes Int?
-  completed   Boolean @default(false)
+  completed           Boolean  @default(false)
 
-  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner         User?                @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  notifications PortalNotification[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PortalTask {
-  id          String @id @default(cuid())
-  ownerId     String?
-  title       String
-  description String? @db.Text
-  dueDate     DateTime?
+  id                  String     @id @default(cuid())
+  ownerId             String?
+  title               String
+  description         String?    @db.Text
+  dueDate             DateTime?
   notifyBeforeMinutes Int?
-  status      TaskStatus @default(TODO)
-  priority    Int @default(1)
+  status              TaskStatus @default(TODO)
+  priority            Int        @default(1)
 
-  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner         User?                @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  notifications PortalNotification[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PortalDownload {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String? @db.Text
   version     String?
@@ -496,145 +502,145 @@ model PortalDownload {
   category    String?
   icon        String?
   color       String?
-  sortOrder   Int @default(0)
+  sortOrder   Int     @default(0)
   isActive    Boolean @default(true)
 
-  ownerId     String?
-  owner       User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PortalModule {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
-  key         String @unique
+  key         String  @unique
   title       String
   description String? @db.Text
 
-  icon        String?
-  route       String?
-  permission  String?
+  icon       String?
+  route      String?
+  permission String?
 
   isCore      Boolean @default(false)
   isInstalled Boolean @default(true)
   isEnabled   Boolean @default(true)
 
-  sortOrder   Int @default(0)
+  sortOrder Int @default(0)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingCategory {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
   name        String
-  slug        String @unique
+  slug        String  @unique
   description String? @db.Text
   color       String?
   icon        String?
-  sortOrder   Int @default(0)
+  sortOrder   Int     @default(0)
   isActive    Boolean @default(true)
 
-  trainings   TrainingItem[]
+  trainings         TrainingItem[]
   inPersonTrainings InPersonTraining[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingItem {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
   title       String
-  slug        String @unique
+  slug        String  @unique
   description String? @db.Text
 
   contentType TrainingContentType @default(VIDEO)
-  sourceType  String @default("PORTAL_UPLOAD")
+  sourceType  String              @default("PORTAL_UPLOAD")
   sourcePath  String?
   fileUrl     String?
   externalUrl String?
   thumbnail   String?
 
-  instructor  String?
-  department  String?
-  level       String?
+  instructor      String?
+  department      String?
+  level           String?
   durationMinutes Int?
-  tags        String[] @default([])
+  tags            String[] @default([])
 
-  isRequired  Boolean @default(false)
-  status      TrainingPublishStatus @default(DRAFT)
-  isActive    Boolean @default(true)
+  isRequired Boolean               @default(false)
+  status     TrainingPublishStatus @default(DRAFT)
+  isActive   Boolean               @default(true)
 
-  categoryId  String?
-  category    TrainingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  files       TrainingFile[]
-  progress    TrainingProgress[]
+  categoryId String?
+  category   TrainingCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  files      TrainingFile[]
+  progress   TrainingProgress[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingFile {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
-  trainingId  String
-  title       String
-  fileUrl     String
-  fileType    String?
-  fileSize    Int?
-  sortOrder   Int @default(0)
-  isPrimary   Boolean @default(false)
+  trainingId String
+  title      String
+  fileUrl    String
+  fileType   String?
+  fileSize   Int?
+  sortOrder  Int     @default(0)
+  isPrimary  Boolean @default(false)
 
-  training    TrainingItem @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  training TrainingItem @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingSource {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
-  name        String
-  type        String @default("SMB")
-  basePath    String
-  description String? @db.Text
-  username    String?
-  password    String?
-  isActive    Boolean @default(true)
-  lastSyncAt  DateTime?
+  name           String
+  type           String    @default("SMB")
+  basePath       String
+  description    String?   @db.Text
+  username       String?
+  password       String?
+  isActive       Boolean   @default(true)
+  lastSyncAt     DateTime?
   lastSyncStatus String?
-  lastSyncError String? @db.Text
+  lastSyncError  String?   @db.Text
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TrainingProgress {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
-  trainingItemId String
-  userId      String?
+  trainingItemId  String
+  userId          String?
   directoryUserId String?
-  visitorKey  String?
+  visitorKey      String?
 
-  status      TrainingProgressStatus @default(NOT_STARTED)
-  progressPercent Int @default(0)
+  status              TrainingProgressStatus @default(NOT_STARTED)
+  progressPercent     Int                    @default(0)
   lastPositionSeconds Int?
-  durationSeconds Int?
-  lastFileUrl String?
-  completedAt DateTime?
-  lastViewedAt DateTime @default(now())
+  durationSeconds     Int?
+  lastFileUrl         String?
+  completedAt         DateTime?
+  lastViewedAt        DateTime               @default(now())
 
-  trainingItem TrainingItem @relation(fields: [trainingItemId], references: [id], onDelete: Cascade)
-  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  trainingItem  TrainingItem   @relation(fields: [trainingItemId], references: [id], onDelete: Cascade)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   directoryUser DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([trainingItemId, visitorKey])
   @@index([trainingItemId])
@@ -643,28 +649,28 @@ model TrainingProgress {
 }
 
 model InPersonTraining {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
   title       String
   description String? @db.Text
 
-  categoryId  String?
-  category    TrainingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId String?
+  category   TrainingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  instructorName String?
+  instructorName      String?
   organizerDepartment String?
-  location    String?
-  startDate   DateTime
-  endDate     DateTime?
-  durationHours Float?
-  hasExam     Boolean @default(false)
-  hasCertificate Boolean @default(false)
-  status      InPersonTrainingStatus @default(PLANNED)
+  location            String?
+  startDate           DateTime
+  endDate             DateTime?
+  durationHours       Float?
+  hasExam             Boolean                @default(false)
+  hasCertificate      Boolean                @default(false)
+  status              InPersonTrainingStatus @default(PLANNED)
 
   participants InPersonTrainingParticipant[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([categoryId])
   @@index([startDate])
@@ -672,26 +678,26 @@ model InPersonTraining {
 }
 
 model InPersonTrainingParticipant {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
-  trainingId  String
-  userId      String?
+  trainingId      String
+  userId          String?
   directoryUserId String?
 
-  displayName String
-  email       String?
-  attendanceStatus InPersonAttendanceStatus @default(REGISTERED)
-  score       Float?
-  result      InPersonTrainingResult @default(NO_EXAM)
+  displayName       String
+  email             String?
+  attendanceStatus  InPersonAttendanceStatus @default(REGISTERED)
+  score             Float?
+  result            InPersonTrainingResult   @default(NO_EXAM)
   certificateNumber String?
-  notes       String? @db.Text
+  notes             String?                  @db.Text
 
-  training    InPersonTraining @relation(fields: [trainingId], references: [id], onDelete: Cascade)
-  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-  directoryUser DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+  training      InPersonTraining @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  user          User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  directoryUser DirectoryUser?   @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([trainingId])
   @@index([userId])
@@ -701,62 +707,62 @@ model InPersonTrainingParticipant {
 }
 
 model Slider {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  title       String
-  image       String
-  url         String?
+  title String
+  image String
+  url   String?
 
-  sortOrder   Int      @default(0)
+  sortOrder Int @default(0)
 
-  isActive    Boolean  @default(true)
+  isActive Boolean @default(true)
 }
 
 model Setting {
-  id           Int    @id @default(1)
+  id Int @id @default(1)
 
-  companyName  String
+  companyName String
 
-  logo         String?
+  logo String?
 
   primaryColor String?
 
-  portalBackgroundImageUrl String?
-  portalBackgroundOverlayColor String?
+  portalBackgroundImageUrl       String?
+  portalBackgroundOverlayColor   String?
   portalBackgroundOverlayOpacity Float?
-  portalWidgets Json?
+  portalWidgets                  Json?
 
-  footerText   String?
+  footerText String?
 
-  activeDirectoryEnabled Boolean @default(false)
-  activeDirectoryUrl String?
-  activeDirectoryDomain String?
-  activeDirectoryBaseDn String?
-  activeDirectoryBindDn String?
-  activeDirectoryBindPassword String?
-  activeDirectoryUserSearchBase String?
+  activeDirectoryEnabled         Boolean   @default(false)
+  activeDirectoryUrl             String?
+  activeDirectoryDomain          String?
+  activeDirectoryBaseDn          String?
+  activeDirectoryBindDn          String?
+  activeDirectoryBindPassword    String?
+  activeDirectoryUserSearchBase  String?
   activeDirectoryGroupSearchBase String?
-  activeDirectoryLastStatus String?
-  activeDirectoryLastError String? @db.Text
-  activeDirectoryLastCheckedAt DateTime?
+  activeDirectoryLastStatus      String?
+  activeDirectoryLastError       String?   @db.Text
+  activeDirectoryLastCheckedAt   DateTime?
 
-  trainingMaxUploadSizeMb Int @default(2048)
+  trainingMaxUploadSizeMb       Int    @default(2048)
   trainingAllowedFileExtensions String @default("mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z")
 }
 
 model SystemStatus {
-  id          String @id @default(cuid())
+  id String @id @default(cuid())
 
   title       String
   status      String
   description String? @db.Text
 
-  icon        String?
-  color       String?
+  icon  String?
+  color String?
 
-  sortOrder   Int @default(0)
-  isActive    Boolean @default(true)
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

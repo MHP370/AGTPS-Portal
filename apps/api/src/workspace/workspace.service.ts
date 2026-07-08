@@ -25,10 +25,7 @@ export class WorkspaceService {
       where: {
         ownerId,
       },
-      orderBy: [
-        { isPinned: 'desc' },
-        { updatedAt: 'desc' },
-      ],
+      orderBy: [{ isPinned: 'desc' }, { updatedAt: 'desc' }],
     });
   }
 
@@ -74,37 +71,36 @@ export class WorkspaceService {
   }
 
   createReminder(user: AuthenticatedUser, dto: CreateReminderDto) {
-    return this.prisma.portalReminder.create({
-      data: {
-        ...dto,
-        ownerId: user.id,
-        remindAt: new Date(dto.remindAt),
-        ...(dto.notifyBeforeMinutes !== undefined && {
-          notifyBeforeMinutes: dto.notifyBeforeMinutes,
-        }),
-      },
-    }).then(async (reminder) => {
-      await this.createNotification({
-        type: NotificationType.REMINDER,
-        title: 'یادآوری',
-        body: reminder.title,
-        recipientEmail: user.email,
-        scheduledAt: this.getScheduledNotificationTime(
-          reminder.remindAt,
-          reminder.notifyBeforeMinutes,
-        ),
-      });
+    return this.prisma.portalReminder
+      .create({
+        data: {
+          ...dto,
+          ownerId: user.id,
+          remindAt: new Date(dto.remindAt),
+          ...(dto.notifyBeforeMinutes !== undefined && {
+            notifyBeforeMinutes: dto.notifyBeforeMinutes,
+          }),
+        },
+      })
+      .then(async (reminder) => {
+        await this.createNotification({
+          type: NotificationType.REMINDER,
+          title: 'یادآوری',
+          body: reminder.title,
+          recipientEmail: user.email,
+          reminderId: reminder.id,
+          scheduledAt: this.getScheduledNotificationTime(
+            reminder.remindAt,
+            reminder.notifyBeforeMinutes,
+          ),
+        });
 
-      return reminder;
-    });
+        return reminder;
+      });
   }
 
-  updateReminder(
-    ownerId: string,
-    id: string,
-    dto: UpdateReminderDto,
-  ) {
-    return this.prisma.portalReminder.update({
+  async updateReminder(ownerId: string, id: string, dto: UpdateReminderDto) {
+    const reminder = await this.prisma.portalReminder.update({
       where: {
         id,
         ownerId,
@@ -116,6 +112,10 @@ export class WorkspaceService {
         }),
       },
     });
+
+    await this.syncReminderNotification(ownerId, reminder);
+
+    return reminder;
   }
 
   removeReminder(ownerId: string, id: string) {
@@ -134,43 +134,43 @@ export class WorkspaceService {
       where: {
         ownerId,
       },
-      orderBy: [
-        { priority: 'desc' },
-        { dueDate: 'asc' },
-      ],
+      orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }],
     });
   }
 
   createTask(user: AuthenticatedUser, dto: CreateTaskDto) {
-    return this.prisma.portalTask.create({
-      data: {
-        ...dto,
-        ownerId: user.id,
-        dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-        ...(dto.notifyBeforeMinutes !== undefined && {
-          notifyBeforeMinutes: dto.notifyBeforeMinutes,
-        }),
-      },
-    }).then(async (task) => {
-      if (task.dueDate) {
-        await this.createNotification({
-          type: NotificationType.TASK,
-          title: 'یادآوری کار',
-          body: task.title,
-          recipientEmail: user.email,
-          scheduledAt: this.getScheduledNotificationTime(
-            task.dueDate,
-            task.notifyBeforeMinutes,
-          ),
-        });
-      }
+    return this.prisma.portalTask
+      .create({
+        data: {
+          ...dto,
+          ownerId: user.id,
+          dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+          ...(dto.notifyBeforeMinutes !== undefined && {
+            notifyBeforeMinutes: dto.notifyBeforeMinutes,
+          }),
+        },
+      })
+      .then(async (task) => {
+        if (task.dueDate) {
+          await this.createNotification({
+            type: NotificationType.TASK,
+            title: 'یادآوری کار',
+            body: task.title,
+            recipientEmail: user.email,
+            taskId: task.id,
+            scheduledAt: this.getScheduledNotificationTime(
+              task.dueDate,
+              task.notifyBeforeMinutes,
+            ),
+          });
+        }
 
-      return task;
-    });
+        return task;
+      });
   }
 
-  updateTask(ownerId: string, id: string, dto: UpdateTaskDto) {
-    return this.prisma.portalTask.update({
+  async updateTask(ownerId: string, id: string, dto: UpdateTaskDto) {
+    const task = await this.prisma.portalTask.update({
       where: {
         id,
         ownerId,
@@ -182,6 +182,10 @@ export class WorkspaceService {
         }),
       },
     });
+
+    await this.syncTaskNotification(ownerId, task);
+
+    return task;
   }
 
   removeTask(ownerId: string, id: string) {
@@ -208,9 +212,141 @@ export class WorkspaceService {
     body: string;
     recipientEmail?: string;
     scheduledAt: Date;
+    reminderId?: string;
+    taskId?: string;
   }) {
     return this.prisma.portalNotification.create({
       data,
+    });
+  }
+
+  private async syncReminderNotification(
+    ownerId: string,
+    reminder: {
+      id: string;
+      title: string;
+      remindAt: Date;
+      notifyBeforeMinutes: number | null;
+      completed: boolean;
+    },
+  ) {
+    const owner = await this.prisma.user.findUnique({
+      where: {
+        id: ownerId,
+      },
+      select: {
+        email: true,
+      },
+    });
+
+    await this.prisma.portalNotification.upsert({
+      where: {
+        id:
+          (
+            await this.prisma.portalNotification.findFirst({
+              where: {
+                reminderId: reminder.id,
+              },
+              select: {
+                id: true,
+              },
+            })
+          )?.id ?? '__missing_reminder_notification__',
+      },
+      update: {
+        title: 'یادآوری',
+        body: reminder.title,
+        recipientEmail: owner?.email,
+        scheduledAt: this.getScheduledNotificationTime(
+          reminder.remindAt,
+          reminder.notifyBeforeMinutes,
+        ),
+        sentAt: reminder.completed ? new Date() : null,
+        readAt: reminder.completed ? new Date() : null,
+      },
+      create: {
+        type: NotificationType.REMINDER,
+        title: 'یادآوری',
+        body: reminder.title,
+        recipientEmail: owner?.email,
+        reminderId: reminder.id,
+        scheduledAt: this.getScheduledNotificationTime(
+          reminder.remindAt,
+          reminder.notifyBeforeMinutes,
+        ),
+        sentAt: reminder.completed ? new Date() : null,
+        readAt: reminder.completed ? new Date() : null,
+      },
+    });
+  }
+
+  private async syncTaskNotification(
+    ownerId: string,
+    task: {
+      id: string;
+      title: string;
+      dueDate: Date | null;
+      notifyBeforeMinutes: number | null;
+      status: string;
+    },
+  ) {
+    if (!task.dueDate) {
+      await this.prisma.portalNotification.deleteMany({
+        where: {
+          taskId: task.id,
+        },
+      });
+      return;
+    }
+
+    const owner = await this.prisma.user.findUnique({
+      where: {
+        id: ownerId,
+      },
+      select: {
+        email: true,
+      },
+    });
+    const isDone = task.status === 'DONE';
+
+    await this.prisma.portalNotification.upsert({
+      where: {
+        id:
+          (
+            await this.prisma.portalNotification.findFirst({
+              where: {
+                taskId: task.id,
+              },
+              select: {
+                id: true,
+              },
+            })
+          )?.id ?? '__missing_task_notification__',
+      },
+      update: {
+        title: 'یادآوری کار',
+        body: task.title,
+        recipientEmail: owner?.email,
+        scheduledAt: this.getScheduledNotificationTime(
+          task.dueDate,
+          task.notifyBeforeMinutes,
+        ),
+        sentAt: isDone ? new Date() : null,
+        readAt: isDone ? new Date() : null,
+      },
+      create: {
+        type: NotificationType.TASK,
+        title: 'یادآوری کار',
+        body: task.title,
+        recipientEmail: owner?.email,
+        taskId: task.id,
+        scheduledAt: this.getScheduledNotificationTime(
+          task.dueDate,
+          task.notifyBeforeMinutes,
+        ),
+        sentAt: isDone ? new Date() : null,
+        readAt: isDone ? new Date() : null,
+      },
     });
   }
 }
