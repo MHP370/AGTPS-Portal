@@ -428,11 +428,13 @@ function getApplicationIcon(application: Application) {
 interface IranPortalMapProps {
   selectedSiteId?: string | null;
   onSiteSelect?: (siteId: string) => void;
+  showApplications?: boolean;
 }
 
 export default function IranPortalMap({
   selectedSiteId,
   onSiteSelect,
+  showApplications = true,
 }: IranPortalMapProps) {
   const { data: sites = [], isLoading, isError } = useSites();
   const { data: applications = [], isLoading: isApplicationsLoading } =
@@ -454,7 +456,9 @@ export default function IranPortalMap({
   const hoveredProvince = hoveredProvinceName
     ? provinceShapes.find((province) => province.name === hoveredProvinceName)
     : undefined;
-  const siteApplications = getSiteApplications(applications, siteModal?.id);
+  const siteApplications = showApplications
+    ? getSiteApplications(applications, siteModal?.id)
+    : [];
 
   return (
     <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] bg-slate-950/10 p-4 md:min-h-[560px]">
@@ -935,7 +939,12 @@ export default function IranPortalMap({
             {siteModal?.subtitle}
           </p>
 
-          {isApplicationsLoading ? (
+          {!showApplications ? (
+            <div className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-7 text-amber-100">
+              ماژول سامانه‌ها غیرفعال است؛ لینک‌های سامانه‌های این سایت نمایش
+              داده نمی‌شوند.
+            </div>
+          ) : isApplicationsLoading ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
               در حال دریافت سامانه‌ها...
             </div>

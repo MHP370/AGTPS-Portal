@@ -1092,6 +1092,7 @@ export default function Home() {
                     <IranPortalMap
                       selectedSiteId={selectedSiteId}
                       onSiteSelect={setSelectedSiteId}
+                      showApplications={moduleIsEnabled("applications")}
                     />
                   ),
                 },
