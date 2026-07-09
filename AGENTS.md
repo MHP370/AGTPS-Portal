@@ -76,6 +76,55 @@ Important local API base URL:
 - When a feature is finalized, update or add database seed data if the feature needs default records, demo data, permissions, roles, settings, or lookup values to work well after a fresh setup.
 - When a feature page becomes crowded or has multiple workflows, split it into tabs, submenus, or child pages. Do not keep unrelated workflows such as create forms, lists, settings, users, reports, and history all visible on one screen.
 
+## Project UI Rules
+
+AGTPS Portal should be built as a modern Next.js website with:
+
+- Next.js App Router.
+- TypeScript.
+- Tailwind CSS.
+- shadcn/ui style components.
+- 21st.dev templates/components when useful.
+- Motion for React for animations.
+
+Design rules:
+
+- First create a design system before coding major UI work.
+- Use UI/UX Pro Max thinking:
+  - Define layout pattern.
+  - Define color palette.
+  - Define typography.
+  - Define spacing scale.
+  - Define animation rules.
+  - Define accessibility checklist.
+- Use polished, production-ready UI.
+- Do not create generic AI-looking purple gradient UI unless requested.
+- Use responsive design for 375px, 768px, 1024px, and 1440px.
+- Use visible focus states.
+- Respect `prefers-reduced-motion`.
+- Use SVG icons from `lucide-react`, not emojis.
+- Use Motion only for meaningful animations:
+  - Hero entrance.
+  - Card hover.
+  - Section reveal.
+  - Page transitions.
+  - Micro interactions.
+
+Code rules:
+
+- Components go in `/components`.
+- Reusable UI goes in `/components/ui`.
+- Pages go in `/app`.
+- Keep components small and clean.
+- Use TypeScript types.
+- After changes, run lint/build.
+
+Design guidance skill:
+
+- Keep the UI/UX Pro Max skill repository beside the project at `.ai-skills/ui-ux-pro-max-skill`.
+- When design guidance is needed, read `AGENTS.md` and `.ai-skills/ui-ux-pro-max-skill/README.md` before proposing or implementing UI structure.
+- Use this skill as design guidance; it does not replace the existing project architecture rules.
+
 ## Implemented Modules
 
 Authentication:

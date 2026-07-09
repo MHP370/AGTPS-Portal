@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import {
+  AnimatePresence,
+  motion,
+  type Transition,
+  useReducedMotion,
+} from "framer-motion";
+import {
   Bell,
   ChevronLeft,
   CloudDownload,
@@ -85,6 +91,18 @@ type PortalWidgetEntry = {
 
 type QuickAction = "note" | "reminder" | "task";
 type CalendarView = "day" | "month" | "year";
+
+const calendarViewLabels: Record<CalendarView, string> = {
+  day: "روزانه",
+  month: "ماهانه",
+  year: "سالانه",
+};
+
+const calendarViewMotion = {
+  initial: { opacity: 0, y: 12, filter: "blur(6px)" },
+  animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+  exit: { opacity: 0, y: -8, filter: "blur(4px)" },
+};
 
 const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
   hero: "sliders",
@@ -227,6 +245,7 @@ function GlassPanel({
 }
 
 export default function Home() {
+  const reduceMotion = useReducedMotion();
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
@@ -428,6 +447,48 @@ export default function Home() {
         };
       })
     : [];
+  const selectedYearMonthCalendars = selectedJalaliDate
+    ? jalaliMonthNames.map((monthName, index) => {
+        const month = index + 1;
+        const days = Array.from(
+          {
+            length: getJalaliMonthLength(selectedJalaliDate.jy, month),
+          },
+          (_, dayIndex) => {
+            const jalaliDay = dayIndex + 1;
+            const gregorianDate = fromLocalDateKey(
+              jalaliToGregorian(selectedJalaliDate.jy, month, jalaliDay),
+            );
+            const occasions = getIranCalendarEvents(month, jalaliDay);
+            const meetingsCount = meetings.filter((meeting) =>
+              isSameLocalDay(gregorianDate, meeting.startAt),
+            ).length;
+            const workCount =
+              reminders.filter((reminder) =>
+                isSameLocalDay(gregorianDate, reminder.remindAt),
+              ).length +
+              tasks.filter((task) =>
+                isSameLocalDay(gregorianDate, task.dueDate),
+              ).length;
+
+            return {
+              jalaliDay,
+              gregorianDate,
+              occasions,
+              meetingsCount,
+              workCount,
+              isHoliday: occasions.some((event) => event.isHoliday),
+            };
+          },
+        );
+
+        return {
+          month,
+          monthName,
+          days,
+        };
+      })
+    : [];
   const visibleNotes = notes.slice(0, 2);
   const visibleReminders = reminders
     .filter((reminder) => !reminder.completed)
@@ -478,6 +539,9 @@ export default function Home() {
             "#60a5fa",
           ][index % 6],
         }));
+  const calendarMotionTransition: Transition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.22, ease: [0.16, 1, 0.3, 1] };
 
   useEffect(() => {
     const syncAuthUser = () => setAuthUser(getStoredAuthUser());
@@ -1026,31 +1090,42 @@ export default function Home() {
                       title="تقویم جلسات"
                       onViewAll={() => setCalendarModalOpen(true)}
                     />
-                    <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedCalendarDate((date) => addDays(date, -7))
-                        }
-                        className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
-                      >
-                        هفته قبل
-                      </button>
+                    <div className="mb-4 grid gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedCalendarDate((date) => addDays(date, -7))
+                          }
+                          className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                        >
+                          هفته قبل
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCalendarDate(new Date())}
+                          className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-400/20 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                        >
+                          امروز
+                        </button>
+                      </div>
                       <div className="text-center">
                         <p className="text-xs text-slate-400">روز انتخاب‌شده</p>
                         <p className="mt-1 text-sm font-black text-cyan-100">
                           {selectedDateLabel}
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedCalendarDate((date) => addDays(date, 7))
-                        }
-                        className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
-                      >
-                        هفته بعد
-                      </button>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedCalendarDate((date) => addDays(date, 7))
+                          }
+                          className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                        >
+                          هفته بعد
+                        </button>
+                      </div>
                     </div>
                     <div className="mb-4 grid grid-cols-7 gap-2">
                       {calendarDays.map((date) => {
@@ -1066,10 +1141,15 @@ export default function Home() {
                         );
 
                         return (
-                          <button
+                          <motion.button
                             key={dateKey}
                             type="button"
                             onClick={() => setSelectedCalendarDate(date)}
+                            whileHover={reduceMotion ? undefined : { y: -2 }}
+                            whileTap={
+                              reduceMotion ? undefined : { scale: 0.96 }
+                            }
+                            transition={calendarMotionTransition}
                             className={`min-w-0 rounded-2xl border p-2 text-center transition ${
                               isSelected
                                 ? "border-cyan-300 bg-cyan-400/20 shadow-[0_0_22px_rgba(34,211,238,0.18)]"
@@ -1102,14 +1182,23 @@ export default function Home() {
                               )) && (
                               <span className="mx-auto mt-1 block size-1.5 rounded-full bg-cyan-300" />
                             )}
-                          </button>
+                          </motion.button>
                         );
                       })}
                     </div>
-                    <div className="space-y-3">
+                    <motion.div
+                      key={selectedDateKey}
+                      variants={calendarViewMotion}
+                      initial="initial"
+                      animate="animate"
+                      transition={calendarMotionTransition}
+                      className="space-y-3"
+                    >
                       {selectedOccasions.map((event) => (
-                        <div
+                        <motion.div
                           key={event.id}
+                          whileHover={reduceMotion ? undefined : { x: -2 }}
+                          transition={calendarMotionTransition}
                           className={`rounded-2xl border p-4 ${
                             event.isHoliday
                               ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
@@ -1122,12 +1211,14 @@ export default function Home() {
                               ? "تعطیل رسمی"
                               : "مناسبت تقویم ایران"}
                           </p>
-                        </div>
+                        </motion.div>
                       ))}
 
                       {selectedMeetings.map((meeting) => (
-                        <div
+                        <motion.div
                           key={meeting.id}
+                          whileHover={reduceMotion ? undefined : { x: -2 }}
+                          transition={calendarMotionTransition}
                           className="flex items-center justify-between rounded-2xl border-r-2 border-cyan-400 bg-white/[0.04] p-4"
                         >
                           <div>
@@ -1140,12 +1231,14 @@ export default function Home() {
                           <span className="font-mono text-lg">
                             {getPersianTime(meeting.startAt)}
                           </span>
-                        </div>
+                        </motion.div>
                       ))}
 
                       {selectedReminders.map((reminder) => (
-                        <div
+                        <motion.div
                           key={reminder.id}
+                          whileHover={reduceMotion ? undefined : { x: -2 }}
+                          transition={calendarMotionTransition}
                           className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4"
                         >
                           <h3 className="font-bold text-amber-100">
@@ -1154,12 +1247,14 @@ export default function Home() {
                           <p className="mt-1 text-xs text-amber-100/75">
                             یادآوری در {getPersianTime(reminder.remindAt)}
                           </p>
-                        </div>
+                        </motion.div>
                       ))}
 
                       {selectedTasks.map((task) => (
-                        <div
+                        <motion.div
                           key={task.id}
+                          whileHover={reduceMotion ? undefined : { x: -2 }}
+                          transition={calendarMotionTransition}
                           className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4"
                         >
                           <h3 className="font-bold text-emerald-100">
@@ -1168,12 +1263,14 @@ export default function Home() {
                           <p className="mt-1 text-xs text-emerald-100/75">
                             اولویت {task.priority}
                           </p>
-                        </div>
+                        </motion.div>
                       ))}
 
                       {selectedNotes.map((note) => (
-                        <div
+                        <motion.div
                           key={note.id}
+                          whileHover={reduceMotion ? undefined : { x: -2 }}
+                          transition={calendarMotionTransition}
                           className="rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4"
                         >
                           <h3 className="font-bold text-violet-100">
@@ -1182,16 +1279,23 @@ export default function Home() {
                           <p className="mt-1 line-clamp-2 text-xs leading-6 text-violet-100/75">
                             {note.body}
                           </p>
-                        </div>
+                        </motion.div>
                       ))}
 
                       {!selectedDayHasItems && (
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300">
+                        <motion.div
+                          initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                          animate={
+                            reduceMotion ? undefined : { opacity: 1, y: 0 }
+                          }
+                          transition={calendarMotionTransition}
+                          className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-7 text-slate-300"
+                        >
                           برای این روز جلسه، مناسبت، یادآوری، تسک یا یادداشتی
                           ثبت نشده است.
-                        </div>
+                        </motion.div>
                       )}
-                    </div>
+                    </motion.div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -1529,211 +1633,317 @@ export default function Home() {
         open={calendarModalOpen}
         onOpenChange={setCalendarModalOpen}
         title="تقویم کامل"
+        className="max-w-6xl bg-slate-950/95"
       >
         <div className="space-y-5 text-right" dir="rtl">
           <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2">
-            {[
-              { value: "day", label: "روزانه" },
-              { value: "month", label: "ماهانه" },
-              { value: "year", label: "سالانه" },
-            ].map((view) => (
+            {(Object.keys(calendarViewLabels) as CalendarView[]).map((view) => (
               <button
-                key={view.value}
+                key={view}
                 type="button"
-                onClick={() => setCalendarView(view.value as CalendarView)}
-                className={`rounded-xl px-3 py-2 text-sm font-black transition ${
-                  calendarView === view.value
-                    ? "bg-cyan-400/20 text-cyan-100"
+                onClick={() => setCalendarView(view)}
+                className={`relative overflow-hidden rounded-xl px-3 py-2 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
+                  calendarView === view
+                    ? "text-cyan-50"
                     : "text-slate-300 hover:bg-white/10"
                 }`}
               >
-                {view.label}
+                {calendarView === view && (
+                  <motion.span
+                    layoutId="calendar-view-active"
+                    className="absolute inset-0 rounded-xl bg-cyan-400/20"
+                    transition={calendarMotionTransition}
+                  />
+                )}
+                <span className="relative z-10">
+                  {calendarViewLabels[view]}
+                </span>
               </button>
             ))}
           </div>
 
-          {calendarView === "day" && (
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
-                <p className="text-xs text-cyan-100/75">روز انتخاب‌شده</p>
-                <h3 className="mt-1 text-lg font-black text-cyan-50">
-                  {selectedDateLabel}
-                </h3>
-              </div>
-
-              {selectedOccasions.map((event) => (
-                <div
-                  key={event.id}
-                  className={`rounded-2xl border p-4 ${
-                    event.isHoliday
-                      ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
-                      : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
-                  }`}
-                >
-                  <h3 className="font-bold">{event.title}</h3>
-                  <p className="mt-1 text-xs opacity-80">
-                    {event.isHoliday ? "تعطیل رسمی" : "مناسبت تقویم ایران"}
-                  </p>
+          <AnimatePresence mode="wait">
+            {calendarView === "day" && (
+              <motion.div
+                key="calendar-day"
+                variants={calendarViewMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={calendarMotionTransition}
+                className="space-y-3"
+              >
+                <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+                  <p className="text-xs text-cyan-100/75">روز انتخاب‌شده</p>
+                  <h3 className="mt-1 text-lg font-black text-cyan-50">
+                    {selectedDateLabel}
+                  </h3>
                 </div>
-              ))}
 
-              {selectedMeetings.map((meeting) => (
-                <div
-                  key={meeting.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-black text-white">{meeting.title}</h3>
-                    <span className="font-mono text-cyan-100">
-                      {getPersianTime(meeting.startAt)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs leading-6 text-slate-400">
-                    {meeting.location || "بدون محل"} -{" "}
-                    {meeting.participants.length} عضو
-                  </p>
-                </div>
-              ))}
+                {selectedOccasions.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    whileHover={reduceMotion ? undefined : { x: -2 }}
+                    transition={calendarMotionTransition}
+                    className={`rounded-2xl border p-4 ${
+                      event.isHoliday
+                        ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
+                        : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                    }`}
+                  >
+                    <h3 className="font-bold">{event.title}</h3>
+                    <p className="mt-1 text-xs opacity-80">
+                      {event.isHoliday ? "تعطیل رسمی" : "مناسبت تقویم ایران"}
+                    </p>
+                  </motion.div>
+                ))}
 
-              {[...selectedReminders, ...selectedTasks, ...selectedNotes].map(
-                (item) => (
-                  <div
-                    key={item.id}
+                {selectedMeetings.map((meeting) => (
+                  <motion.div
+                    key={meeting.id}
+                    whileHover={reduceMotion ? undefined : { x: -2 }}
+                    transition={calendarMotionTransition}
                     className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                   >
-                    <h3 className="font-bold text-white">{item.title}</h3>
-                    {"body" in item && (
-                      <p className="mt-1 text-xs leading-6 text-slate-300">
-                        {item.body}
-                      </p>
-                    )}
-                    {"description" in item && item.description && (
-                      <p className="mt-1 text-xs leading-6 text-slate-300">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-                ),
-              )}
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-black text-white">{meeting.title}</h3>
+                      <span className="font-mono text-cyan-100">
+                        {getPersianTime(meeting.startAt)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-6 text-slate-400">
+                      {meeting.location || "بدون محل"} -{" "}
+                      {meeting.participants.length} عضو
+                    </p>
+                  </motion.div>
+                ))}
 
-              {!selectedDayHasItems && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
-                  برای این روز موردی ثبت نشده است.
-                </div>
-              )}
-            </div>
-          )}
-
-          {calendarView === "month" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedCalendarDate((date) => addDays(date, -30))
-                  }
-                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
-                >
-                  ماه قبل
-                </button>
-                <h3 className="text-base font-black text-white">
-                  {selectedJalaliDate
-                    ? `${jalaliMonthNames[selectedJalaliDate.jm - 1]} ${selectedJalaliDate.jy}`
-                    : ""}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedCalendarDate((date) => addDays(date, 30))
-                  }
-                  className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
-                >
-                  ماه بعد
-                </button>
-              </div>
-              <div className="grid grid-cols-7 gap-2">
-                {selectedMonthDays.map((day) => {
-                  const dayKey = toLocalDateKey(day.gregorianDate);
-                  const meetingsCount = meetings.filter((meeting) =>
-                    isSameLocalDay(day.gregorianDate, meeting.startAt),
-                  ).length;
-                  const workCount =
-                    reminders.filter((reminder) =>
-                      isSameLocalDay(day.gregorianDate, reminder.remindAt),
-                    ).length +
-                    tasks.filter((task) =>
-                      isSameLocalDay(day.gregorianDate, task.dueDate),
-                    ).length;
-                  const isSelected = dayKey === selectedDateKey;
-                  const isHoliday = day.occasions.some(
-                    (event) => event.isHoliday,
-                  );
-
-                  return (
-                    <button
-                      key={dayKey}
-                      type="button"
-                      onClick={() => {
-                        setSelectedCalendarDate(day.gregorianDate);
-                        setCalendarView("day");
-                      }}
-                      className={`min-h-16 rounded-xl border p-2 text-right transition ${
-                        isSelected
-                          ? "border-cyan-300 bg-cyan-400/20"
-                          : "border-white/10 bg-white/[0.04] hover:border-cyan-300/30"
-                      }`}
+                {[...selectedReminders, ...selectedTasks, ...selectedNotes].map(
+                  (item) => (
+                    <motion.div
+                      key={item.id}
+                      whileHover={reduceMotion ? undefined : { x: -2 }}
+                      transition={calendarMotionTransition}
+                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
                     >
-                      <span
-                        className={`text-sm font-black ${
-                          isHoliday ? "text-rose-200" : "text-white"
-                        }`}
-                      >
-                        {day.jalaliDay}
-                      </span>
-                      <span className="mt-2 block text-[10px] leading-5 text-slate-400">
-                        {meetingsCount > 0 && `${meetingsCount} جلسه`}
-                        {meetingsCount > 0 && workCount > 0 ? "، " : ""}
-                        {workCount > 0 && `${workCount} کار`}
-                        {day.occasions.length > 0 && (
-                          <span className="block text-rose-200">مناسبت</span>
-                        )}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                      <h3 className="font-bold text-white">{item.title}</h3>
+                      {"body" in item && (
+                        <p className="mt-1 text-xs leading-6 text-slate-300">
+                          {item.body}
+                        </p>
+                      )}
+                      {"description" in item && item.description && (
+                        <p className="mt-1 text-xs leading-6 text-slate-300">
+                          {item.description}
+                        </p>
+                      )}
+                    </motion.div>
+                  ),
+                )}
 
-          {calendarView === "year" && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {selectedYearMonths.map((month) => (
-                <button
-                  key={month.month}
-                  type="button"
-                  onClick={() => {
-                    if (!selectedJalaliDate) return;
-                    setSelectedCalendarDate(
-                      fromLocalDateKey(
-                        jalaliToGregorian(
-                          selectedJalaliDate.jy,
-                          month.month,
-                          1,
-                        ),
-                      ),
+                {!selectedDayHasItems && (
+                  <motion.div
+                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                    transition={calendarMotionTransition}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300"
+                  >
+                    برای این روز موردی ثبت نشده است.
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+
+            {calendarView === "month" && (
+              <motion.div
+                key="calendar-month"
+                variants={calendarViewMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={calendarMotionTransition}
+                className="space-y-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedCalendarDate((date) => addDays(date, -30))
+                    }
+                    className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                  >
+                    ماه قبل
+                  </button>
+                  <h3 className="text-base font-black text-white">
+                    {selectedJalaliDate
+                      ? `${jalaliMonthNames[selectedJalaliDate.jm - 1]} ${selectedJalaliDate.jy}`
+                      : ""}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedCalendarDate((date) => addDays(date, 30))
+                    }
+                    className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                  >
+                    ماه بعد
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                  {selectedMonthDays.map((day) => {
+                    const dayKey = toLocalDateKey(day.gregorianDate);
+                    const meetingsCount = meetings.filter((meeting) =>
+                      isSameLocalDay(day.gregorianDate, meeting.startAt),
+                    ).length;
+                    const workCount =
+                      reminders.filter((reminder) =>
+                        isSameLocalDay(day.gregorianDate, reminder.remindAt),
+                      ).length +
+                      tasks.filter((task) =>
+                        isSameLocalDay(day.gregorianDate, task.dueDate),
+                      ).length;
+                    const isSelected = dayKey === selectedDateKey;
+                    const isToday = dayKey === todayKey;
+                    const isHoliday = day.occasions.some(
+                      (event) => event.isHoliday,
                     );
-                    setCalendarView("month");
-                  }}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-right transition hover:border-cyan-300/30 hover:bg-white/[0.08]"
-                >
-                  <h3 className="font-black text-white">{month.monthName}</h3>
-                  <p className="mt-2 text-xs leading-6 text-slate-400">
-                    {month.eventsCount} مناسبت، {month.meetingsCount} جلسه
-                  </p>
-                </button>
-              ))}
-            </div>
-          )}
+
+                    return (
+                      <motion.button
+                        key={dayKey}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCalendarDate(day.gregorianDate);
+                          setCalendarView("day");
+                        }}
+                        whileHover={reduceMotion ? undefined : { y: -2 }}
+                        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                        transition={calendarMotionTransition}
+                        className={`min-h-20 rounded-xl border p-2 text-right transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
+                          isSelected
+                            ? "border-cyan-300 bg-cyan-400/20 shadow-[0_0_24px_rgba(34,211,238,0.18)]"
+                            : "border-white/10 bg-white/[0.04] hover:border-cyan-300/30"
+                        } ${isToday ? "ring-1 ring-cyan-300/40" : ""}`}
+                      >
+                        <span
+                          className={`text-sm font-black ${
+                            isHoliday ? "text-rose-200" : "text-white"
+                          }`}
+                        >
+                          {day.jalaliDay}
+                        </span>
+                        <span className="mt-2 block text-[10px] leading-5 text-slate-400">
+                          {meetingsCount > 0 && `${meetingsCount} جلسه`}
+                          {meetingsCount > 0 && workCount > 0 ? "، " : ""}
+                          {workCount > 0 && `${workCount} کار`}
+                          {day.occasions.length > 0 && (
+                            <span className="block text-rose-200">مناسبت</span>
+                          )}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {calendarView === "year" && (
+              <motion.div
+                key="calendar-year"
+                variants={calendarViewMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={calendarMotionTransition}
+                className="space-y-4"
+              >
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                  <div>
+                    <p className="text-xs text-cyan-100/70">نمای سالانه</p>
+                    <h3 className="mt-1 text-lg font-black text-white">
+                      سال {selectedJalaliDate?.jy}
+                    </h3>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {selectedYearMonthCalendars.map((month) => (
+                    <motion.section
+                      key={month.month}
+                      whileHover={reduceMotion ? undefined : { y: -3 }}
+                      transition={calendarMotionTransition}
+                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.18)]"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!selectedJalaliDate) return;
+                          setSelectedCalendarDate(
+                            fromLocalDateKey(
+                              jalaliToGregorian(
+                                selectedJalaliDate.jy,
+                                month.month,
+                                1,
+                              ),
+                            ),
+                          );
+                          setCalendarView("month");
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-right transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                      >
+                        <span className="font-black text-white">
+                          {month.monthName}
+                        </span>
+                        <span className="text-[11px] font-bold text-cyan-100/70">
+                          مشاهده ماه
+                        </span>
+                      </button>
+                      <div className="mt-3 grid grid-cols-7 gap-1">
+                        {month.days.map((day) => {
+                          const dayKey = toLocalDateKey(day.gregorianDate);
+                          const isSelected = dayKey === selectedDateKey;
+                          const isToday = dayKey === todayKey;
+                          const hasItems =
+                            day.meetingsCount > 0 ||
+                            day.workCount > 0 ||
+                            day.occasions.length > 0;
+
+                          return (
+                            <button
+                              key={dayKey}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCalendarDate(day.gregorianDate);
+                                setCalendarView("day");
+                              }}
+                              className={`relative aspect-square rounded-lg text-[11px] font-black transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
+                                isSelected
+                                  ? "bg-cyan-400 text-slate-950"
+                                  : day.isHoliday
+                                    ? "bg-rose-400/12 text-rose-100 hover:bg-rose-400/20"
+                                    : "bg-white/[0.035] text-slate-200 hover:bg-cyan-400/12"
+                              } ${isToday ? "ring-1 ring-cyan-300/50" : ""}`}
+                            >
+                              {day.jalaliDay}
+                              {hasItems && (
+                                <span
+                                  className={`absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full ${
+                                    day.isHoliday
+                                      ? "bg-rose-200"
+                                      : "bg-cyan-300"
+                                  }`}
+                                />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.section>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Dialog>
 
