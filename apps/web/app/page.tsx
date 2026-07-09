@@ -141,6 +141,13 @@ const notificationTypeMeta: Record<
   },
 };
 
+const notificationModuleKeys: Record<string, string> = {
+  MEETING_INVITE: "meetings",
+  MEETING_UPDATE: "meetings",
+  REMINDER: "workspace",
+  TASK: "workspace",
+};
+
 const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
   hero: "sliders",
   announcements: "announcements",
@@ -649,6 +656,12 @@ export default function Home() {
   function openNotification(notification: PortalNotification) {
     if (!notification.readAt) {
       markNotificationRead.mutate(notification.id);
+    }
+
+    const requiredModuleKey = notificationModuleKeys[notification.type];
+
+    if (requiredModuleKey && !moduleIsEnabled(requiredModuleKey)) {
+      return;
     }
 
     const targetDate = getNotificationTargetDate(notification);
@@ -1760,6 +1773,10 @@ export default function Home() {
               };
               const Icon = meta.icon;
               const targetDate = getNotificationTargetDate(notification);
+              const requiredModuleKey =
+                notificationModuleKeys[notification.type];
+              const actionEnabled =
+                !requiredModuleKey || moduleIsEnabled(requiredModuleKey);
 
               return (
                 <button
@@ -1767,9 +1784,11 @@ export default function Home() {
                   type="button"
                   onClick={() => openNotification(notification)}
                   className={`w-full rounded-2xl border p-4 text-right transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
-                    notification.readAt
-                      ? "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06]"
-                      : "border-cyan-300/30 bg-cyan-400/10 text-white hover:bg-cyan-400/15"
+                    !actionEnabled
+                      ? "cursor-not-allowed border-white/10 bg-white/[0.025] text-slate-500"
+                      : notification.readAt
+                        ? "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06]"
+                        : "border-cyan-300/30 bg-cyan-400/10 text-white hover:bg-cyan-400/15"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -1801,9 +1820,14 @@ export default function Home() {
                             "fa-IR",
                           )}
                         </span>
-                        {targetDate && (
+                        {targetDate && actionEnabled && (
                           <span className="text-cyan-200/80">
                             باز کردن در تقویم
+                          </span>
+                        )}
+                        {!actionEnabled && (
+                          <span className="text-amber-200/80">
+                            ماژول مقصد غیرفعال است
                           </span>
                         )}
                       </span>
