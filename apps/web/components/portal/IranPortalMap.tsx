@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { ExternalLink, MonitorCog } from "lucide-react";
 
 import iranProvinces from "@/lib/geo/iran-provinces.json";
@@ -62,6 +62,12 @@ type MapSite = {
   provinceName?: string;
 };
 
+type CityLight = {
+  coordinate: Coordinate;
+  radius: number;
+  opacity: number;
+};
+
 type SiteModal = {
   id: string;
   title: string;
@@ -72,11 +78,11 @@ const mapWidth = 760;
 const mapHeight = 640;
 const mapPadding = 34;
 const mapPerspective = {
-  translateX: 28,
+  translateX: 12,
   translateY: 58,
-  skewX: -8,
-  scaleX: 0.97,
-  scaleY: 0.84,
+  skewX: -5,
+  scaleX: 0.99,
+  scaleY: 0.86,
 };
 const mapPerspectiveTransform = `translate(${mapPerspective.translateX} ${mapPerspective.translateY}) skewX(${mapPerspective.skewX}) scale(${mapPerspective.scaleX} ${mapPerspective.scaleY})`;
 const mapPerspectiveOrigin = "380px 350px";
@@ -134,6 +140,39 @@ const knownSiteColors: Record<string, string> = {
   tehran: "#22d3ee",
   "دفتر تهران": "#22d3ee",
 };
+
+const cityLightSeeds: CityLight[] = [
+  { coordinate: [51.389, 35.6892], radius: 4.8, opacity: 0.95 },
+  { coordinate: [51.6675, 32.6539], radius: 3.5, opacity: 0.72 },
+  { coordinate: [59.6062, 36.2605], radius: 3.3, opacity: 0.68 },
+  { coordinate: [46.2919, 38.0962], radius: 3.1, opacity: 0.68 },
+  { coordinate: [57.0728, 30.2839], radius: 2.8, opacity: 0.52 },
+  { coordinate: [48.6692, 31.3183], radius: 2.9, opacity: 0.6 },
+  { coordinate: [52.5837, 29.5918], radius: 2.7, opacity: 0.58 },
+  { coordinate: [49.5832, 37.2808], radius: 2.5, opacity: 0.54 },
+  { coordinate: [50.0041, 36.2688], radius: 2.2, opacity: 0.5 },
+  { coordinate: [50.8764, 34.6416], radius: 2.2, opacity: 0.52 },
+  { coordinate: [47.065, 34.3142], radius: 2.2, opacity: 0.5 },
+  { coordinate: [54.3675, 31.8974], radius: 2.1, opacity: 0.46 },
+  { coordinate: [56.2667, 27.1832], radius: 2.3, opacity: 0.54 },
+  { coordinate: [52.6155, 27.4761], radius: 2.7, opacity: 0.72 },
+  { coordinate: [50.8385, 28.9234], radius: 2.2, opacity: 0.56 },
+  { coordinate: [60.8629, 29.4963], radius: 1.9, opacity: 0.42 },
+  { coordinate: [48.515, 36.6736], radius: 1.9, opacity: 0.42 },
+  { coordinate: [44.6783, 37.5527], radius: 1.9, opacity: 0.42 },
+  { coordinate: [53.0601, 36.5633], radius: 1.8, opacity: 0.38 },
+  { coordinate: [54.4342, 36.8416], radius: 1.8, opacity: 0.38 },
+  { coordinate: [51.587, 35.3219], radius: 2.4, opacity: 0.5 },
+  { coordinate: [50.9915, 35.8327], radius: 2.8, opacity: 0.62 },
+  { coordinate: [51.1508, 35.7047], radius: 2.2, opacity: 0.5 },
+  { coordinate: [52.5311, 29.6103], radius: 1.5, opacity: 0.36 },
+  { coordinate: [52.33, 29.75], radius: 1.3, opacity: 0.32 },
+  { coordinate: [51.8, 32.3], radius: 1.3, opacity: 0.32 },
+  { coordinate: [50.5, 36.0], radius: 1.4, opacity: 0.34 },
+  { coordinate: [49.0, 37.0], radius: 1.3, opacity: 0.34 },
+  { coordinate: [46.7, 38.1], radius: 1.3, opacity: 0.34 },
+  { coordinate: [59.0, 36.2], radius: 1.4, opacity: 0.34 },
+];
 
 const fallbackSites = [
   {
@@ -453,6 +492,15 @@ export default function IranPortalMap({
     () => buildMapSites(sites, project, features),
     [features, project, sites],
   );
+  const cityLights = useMemo(
+    () =>
+      cityLightSeeds.map((light, index) => ({
+        ...light,
+        id: `city-light-${index}`,
+        point: project(light.coordinate),
+      })),
+    [project],
+  );
   const hoveredProvince = hoveredProvinceName
     ? provinceShapes.find((province) => province.name === hoveredProvinceName)
     : undefined;
@@ -466,7 +514,7 @@ export default function IranPortalMap({
       <div className="absolute inset-x-12 bottom-10 h-20 rounded-[50%] bg-cyan-400/16 blur-3xl" />
       <svg
         viewBox={`0 0 ${mapWidth} ${mapHeight}`}
-        className="relative z-10 h-full min-h-[390px] w-full drop-shadow-[0_0_28px_rgba(56,189,248,0.42)]"
+        className="relative z-10 h-full min-h-[390px] w-full"
         role="img"
         aria-label="نقشه تعاملی استان‌های ایران"
       >
@@ -489,35 +537,26 @@ export default function IranPortalMap({
             <stop offset="42%" stopColor="#22d3ee" stopOpacity="0.08" />
             <stop offset="100%" stopColor="#020617" stopOpacity="0" />
           </radialGradient>
-          <linearGradient id="mountainHighlight" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#dbeafe" stopOpacity="0.62" />
-            <stop offset="45%" stopColor="#7dd3fc" stopOpacity="0.26" />
-            <stop offset="100%" stopColor="#0f172a" stopOpacity="0.2" />
-          </linearGradient>
-          <linearGradient id="mountainShadow" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#020617" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#082f49" stopOpacity="0.28" />
-          </linearGradient>
           <filter
             id="mapCastShadow"
-            x="-20%"
-            y="-20%"
-            width="140%"
-            height="150%"
+            x="-12%"
+            y="-10%"
+            width="124%"
+            height="130%"
           >
             <feDropShadow
-              dx="0"
-              dy="22"
-              stdDeviation="12"
+              dx="-2"
+              dy="16"
+              stdDeviation="7"
               floodColor="#020617"
-              floodOpacity="0.7"
+              floodOpacity="0.55"
             />
             <feDropShadow
               dx="0"
-              dy="7"
-              stdDeviation="3"
+              dy="3"
+              stdDeviation="2"
               floodColor="#38bdf8"
-              floodOpacity="0.35"
+              floodOpacity="0.24"
             />
           </filter>
           <filter id="outerNeon" x="-30%" y="-30%" width="160%" height="160%">
@@ -533,10 +572,17 @@ export default function IranPortalMap({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          <filter id="terrainRelief" x="-5%" y="-5%" width="110%" height="110%">
+          <filter
+            id="terrainRelief"
+            x="-5%"
+            y="-5%"
+            width="110%"
+            height="110%"
+            colorInterpolationFilters="sRGB"
+          >
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.025 0.06"
+              baseFrequency="0.032 0.072"
               numOctaves="4"
               seed="24"
               result="terrainNoise"
@@ -544,12 +590,12 @@ export default function IranPortalMap({
             <feDiffuseLighting
               in="terrainNoise"
               lightingColor="#e0f2fe"
-              surfaceScale="4.2"
+              surfaceScale="5.5"
               result="terrainLightMap"
             >
               <feDistantLight azimuth="310" elevation="34" />
             </feDiffuseLighting>
-            <feComponentTransfer in="terrainLightMap">
+            <feComponentTransfer in="terrainLightMap" result="reliefLight">
               <feFuncR
                 type="gamma"
                 amplitude="0.7"
@@ -563,8 +609,28 @@ export default function IranPortalMap({
                 offset="0"
               />
               <feFuncB type="gamma" amplitude="1" exponent="1.1" offset="0" />
-              <feFuncA type="table" tableValues="0 0.58" />
+              <feFuncA type="table" tableValues="0 0.7" />
             </feComponentTransfer>
+            <feComposite in="reliefLight" in2="SourceAlpha" operator="in" />
+          </filter>
+          <filter
+            id="cityLightGlow"
+            x="-200%"
+            y="-200%"
+            width="500%"
+            height="500%"
+          >
+            <feGaussianBlur stdDeviation="2.8" result="blur" />
+            <feColorMatrix
+              in="blur"
+              type="matrix"
+              values="1 0 0 0 0.95 0 1 0 0 0.78 0 0 1 0 0.35 0 0 0 0.9 0"
+              result="warmGlow"
+            />
+            <feMerge>
+              <feMergeNode in="warmGlow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
           </filter>
           <filter id="provinceGlow">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -575,16 +641,16 @@ export default function IranPortalMap({
           </filter>
           <filter
             id="markerGlow"
-            x="-120%"
-            y="-120%"
-            width="340%"
-            height="340%"
+            x="-150%"
+            y="-150%"
+            width="400%"
+            height="400%"
           >
-            <feGaussianBlur stdDeviation="7" result="blur" />
+            <feGaussianBlur stdDeviation="8" result="blur" />
             <feColorMatrix
               in="blur"
               type="matrix"
-              values="0 0 0 0 0.1 0 0 0 0 0.85 0 0 0 0 1 0 0 0 0.95 0"
+              values="0 0 0 0 0.12 0 0 0 0 0.78 0 0 0 0 1 0 0 0 0.95 0"
               result="glow"
             />
             <feMerge>
@@ -668,7 +734,7 @@ export default function IranPortalMap({
                   d={province.path}
                   role="img"
                   aria-label={`استان ${province.nameFa}`}
-                  className="origin-center transition duration-200 hover:scale-[1.018]"
+                  className="province-shape origin-center transition duration-200"
                   fill={
                     isHovered
                       ? "url(#hoveredProvinceFill)"
@@ -699,76 +765,32 @@ export default function IranPortalMap({
                 key={`terrain-${province.name}`}
                 d={province.path}
                 fill="#ffffff"
-                opacity="0.18"
+                opacity="0.16"
                 filter="url(#terrainRelief)"
                 pointerEvents="none"
               />
             ))}
             <g clipPath="url(#iranMapClip)" pointerEvents="none">
-              <path
-                d="M98 128 C136 166 156 216 190 260 C226 306 252 360 290 410 C318 448 354 486 392 528"
-                fill="none"
-                stroke="url(#mountainShadow)"
-                strokeWidth="12"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.72"
-              />
-              <path
-                d="M90 118 C130 155 150 208 184 251 C220 299 246 350 284 400 C313 438 350 476 388 520"
-                fill="none"
-                stroke="url(#mountainHighlight)"
-                strokeWidth="4.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.88"
-              />
-              <path
-                d="M112 140 C150 176 170 226 202 266 C236 308 268 360 306 408"
-                fill="none"
-                stroke="#bae6fd"
-                strokeOpacity="0.34"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-
-              <path
-                d="M142 126 C205 98 278 105 340 128 C396 149 450 139 508 110"
-                fill="none"
-                stroke="url(#mountainShadow)"
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.58"
-              />
-              <path
-                d="M136 116 C202 91 276 96 342 119 C397 138 448 130 504 102"
-                fill="none"
-                stroke="url(#mountainHighlight)"
-                strokeWidth="4.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.78"
-              />
-
-              <path
-                d="M510 182 C560 236 584 304 566 374 C552 430 584 494 642 540"
-                fill="none"
-                stroke="url(#mountainShadow)"
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.46"
-              />
-              <path
-                d="M502 174 C550 226 572 296 556 364 C544 418 576 482 636 530"
-                fill="none"
-                stroke="url(#mountainHighlight)"
-                strokeWidth="3.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.58"
-              />
+              {cityLights.map((light) => (
+                <g
+                  key={light.id}
+                  transform={`translate(${light.point.x.toFixed(1)} ${light.point.y.toFixed(1)})`}
+                  opacity={light.opacity}
+                  filter="url(#cityLightGlow)"
+                >
+                  <circle
+                    r={light.radius * 3.2}
+                    fill="#f59e0b"
+                    opacity="0.12"
+                  />
+                  <circle
+                    r={light.radius * 1.6}
+                    fill="#fde68a"
+                    opacity="0.35"
+                  />
+                  <circle r={light.radius * 0.46} fill="#fefce8" />
+                </g>
+              ))}
             </g>
             {hoveredProvince && (
               <g
@@ -801,6 +823,7 @@ export default function IranPortalMap({
         {mapSites.map((site) => {
           const isSelected = selectedSiteId === site.id;
           const labelWidth = Math.max(102, site.title.length * 11);
+          const markerIndex = mapSites.findIndex((item) => item.id === site.id);
 
           return (
             <g
@@ -808,9 +831,14 @@ export default function IranPortalMap({
               role="button"
               tabIndex={0}
               aria-label={site.title}
-              className="cursor-pointer outline-none transition hover:opacity-100"
+              className="map-marker cursor-pointer outline-none transition hover:opacity-100"
               transform={`translate(${site.visualPoint.x.toFixed(1)} ${site.visualPoint.y.toFixed(1)})`}
-              filter="url(#markerGlow)"
+              style={
+                {
+                  "--marker-color": site.color,
+                  "--marker-delay": `${180 + markerIndex * 120}ms`,
+                } as CSSProperties
+              }
               onClick={() => {
                 onSiteSelect?.(site.id);
                 setSiteModal({
@@ -831,84 +859,208 @@ export default function IranPortalMap({
                 }
               }}
             >
-              <rect
-                x="-28"
-                y="-72"
-                width={labelWidth + 78}
-                height="92"
-                fill="transparent"
-              />
-              <ellipse
-                cx="0"
-                cy="0"
-                rx={isSelected ? 22 : 18}
-                ry={isSelected ? 7 : 5}
-                fill={site.color}
-                opacity="0.36"
-              />
-              <ellipse
-                cx="0"
-                cy="-2"
-                rx={isSelected ? 13 : 10}
-                ry={isSelected ? 4.5 : 3.5}
-                fill="none"
-                stroke={site.color}
-                strokeWidth="2"
-                opacity="0.72"
-              />
-              <line
-                x1="0"
-                y1="-3"
-                x2="0"
-                y2="-25"
-                stroke={site.color}
-                strokeWidth="3.2"
-                strokeLinecap="round"
-                opacity="0.78"
-              />
-              <path
-                d="M0 -62 C-10 -62 -17 -54 -17 -45 C-17 -32 0 -1 0 -1 C0 -1 17 -32 17 -45 C17 -54 10 -62 0 -62Z"
-                fill={site.color}
-                stroke="#ffffff"
-                strokeWidth="2.4"
-              />
-              <circle cx="0" cy="-45" r="6" fill="#ffffff" opacity="0.92" />
-              <circle cx="0" cy="-45" r="2.8" fill={site.color} />
-              <line
-                x1="17"
-                y1="-45"
-                x2="36"
-                y2="-45"
-                stroke="#cbd5e1"
-                strokeOpacity="0.75"
-                strokeWidth="1.2"
-              />
-              <g transform="translate(36 -62)">
+              <g className="map-marker-inner">
                 <rect
-                  x="0"
-                  y="0"
-                  width={labelWidth}
-                  height="34"
-                  rx="6"
-                  fill="#0f172a"
-                  opacity="0.88"
-                  stroke="#e2e8f0"
-                  strokeOpacity="0.5"
+                  x="-28"
+                  y="-76"
+                  width={labelWidth + 78}
+                  height="100"
+                  fill="transparent"
                 />
-                <text
-                  x={labelWidth / 2}
-                  y="22"
-                  textAnchor="middle"
-                  className="fill-white text-[13px] font-black"
-                >
-                  {site.title}
-                </text>
+                <ellipse
+                  className="marker-pulse"
+                  cx="0"
+                  cy="0"
+                  rx={isSelected ? 24 : 19}
+                  ry={isSelected ? 8 : 6}
+                  fill={site.color}
+                  opacity="0.4"
+                />
+                <circle
+                  className="marker-halo"
+                  cx="0"
+                  cy="-45"
+                  r="30"
+                  fill={site.color}
+                  opacity="0.18"
+                />
+                <ellipse
+                  cx="0"
+                  cy="-2"
+                  rx={isSelected ? 14 : 11}
+                  ry={isSelected ? 5 : 4}
+                  fill="none"
+                  stroke={site.color}
+                  strokeWidth="2.4"
+                  opacity="0.8"
+                />
+                <line
+                  x1="0"
+                  y1="-3"
+                  x2="0"
+                  y2="-25"
+                  stroke={site.color}
+                  strokeWidth="3.4"
+                  strokeLinecap="round"
+                  opacity="0.86"
+                />
+                <path
+                  d="M0 -64 C-11 -64 -19 -55 -19 -45 C-19 -30 0 -1 0 -1 C0 -1 19 -30 19 -45 C19 -55 11 -64 0 -64Z"
+                  fill={site.color}
+                  stroke={site.color}
+                  strokeWidth="1.4"
+                />
+                <circle cx="0" cy="-45" r="8.5" fill="#082f49" opacity="0.72" />
+                <circle cx="0" cy="-45" r="3.6" fill="#f8fdff" opacity="0.98" />
+                <line
+                  x1="18"
+                  y1="-45"
+                  x2="36"
+                  y2="-45"
+                  stroke={site.color}
+                  strokeOpacity="0.84"
+                  strokeWidth="1.4"
+                />
+                <g transform="translate(36 -62)">
+                  <rect
+                    x="0"
+                    y="0"
+                    width={labelWidth}
+                    height="34"
+                    rx="6"
+                    fill="#0f172a"
+                    opacity="0.9"
+                    stroke={site.color}
+                    strokeOpacity="0.72"
+                  />
+                  <text
+                    x={labelWidth / 2}
+                    y="22"
+                    textAnchor="middle"
+                    className="fill-white text-[13px] font-black"
+                  >
+                    {site.title}
+                  </text>
+                </g>
               </g>
               <title>{`${site.title} - ${site.subtitle}`}</title>
             </g>
           );
         })}
       </svg>
+
+      <style jsx>{`
+        .province-shape {
+          transform-origin: center;
+          transform-box: fill-box;
+          transition:
+            transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+            stroke-width 180ms ease,
+            opacity 180ms ease;
+          will-change: transform;
+        }
+
+        .province-shape:hover {
+          transform: translateY(-5px) scale(1.018);
+        }
+
+        .map-marker-inner {
+          animation: marker-drop 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation-delay: var(--marker-delay);
+          transform-origin: 0 0;
+          transform-box: fill-box;
+          will-change: transform, opacity;
+        }
+
+        .map-marker:hover .map-marker-inner,
+        .map-marker:focus .map-marker-inner {
+          animation:
+            marker-drop 0ms both,
+            marker-wiggle 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .marker-pulse {
+          animation: marker-pulse 1800ms ease-in-out infinite;
+          transform-origin: center;
+          transform-box: fill-box;
+        }
+
+        .marker-halo {
+          animation: marker-halo 1500ms ease-in-out infinite;
+          transform-origin: center;
+          transform-box: fill-box;
+          filter: drop-shadow(0 0 12px var(--marker-color));
+        }
+
+        @keyframes marker-drop {
+          0% {
+            opacity: 0;
+            transform: translateY(-38px) scale(0.86);
+          }
+          62% {
+            opacity: 1;
+            transform: translateY(5px) scale(1.04);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes marker-wiggle {
+          0%,
+          100% {
+            transform: translateY(0) rotate(0deg) scale(1);
+          }
+          22% {
+            transform: translateY(-7px) rotate(-3deg) scale(1.04);
+          }
+          44% {
+            transform: translateY(1px) rotate(3deg) scale(1.02);
+          }
+          68% {
+            transform: translateY(-3px) rotate(-1.5deg) scale(1.03);
+          }
+        }
+
+        @keyframes marker-pulse {
+          0%,
+          100% {
+            opacity: 0.26;
+            transform: scale(0.86);
+          }
+          50% {
+            opacity: 0.56;
+            transform: scale(1.18);
+          }
+        }
+
+        @keyframes marker-halo {
+          0%,
+          100% {
+            opacity: 0.12;
+            transform: scale(0.9);
+          }
+          50% {
+            opacity: 0.34;
+            transform: scale(1.18);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .province-shape,
+          .map-marker-inner,
+          .marker-pulse,
+          .marker-halo {
+            animation: none;
+            transition: none;
+          }
+
+          .province-shape:hover {
+            transform: none;
+          }
+        }
+      `}</style>
 
       <div className="absolute right-5 top-5 z-20 rounded-full border border-white/15 bg-slate-950/70 px-4 py-2 text-xs font-bold text-slate-200 backdrop-blur-xl">
         {isLoading
