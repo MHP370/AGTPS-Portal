@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getPushConfig,
+  getNotificationTargetUrl,
   subscribeToPushNotifications,
   type PortalNotification,
 } from "@/lib/notifications";
@@ -24,9 +25,7 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-export function useBrowserNotifications(
-  notifications: PortalNotification[],
-) {
+export function useBrowserNotifications(notifications: PortalNotification[]) {
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -42,9 +41,7 @@ export function useBrowserNotifications(
   }, []);
 
   const isSupported = useMemo(
-    () =>
-      typeof window !== "undefined" &&
-      "Notification" in window,
+    () => typeof window !== "undefined" && "Notification" in window,
     [],
   );
 
@@ -88,18 +85,14 @@ export function useBrowserNotifications(
     const config = await getPushConfig();
     if (!config.enabled || !config.publicKey) return;
 
-    const registration = await navigator.serviceWorker.register(
-      "/sw.js",
-    );
+    const registration = await navigator.serviceWorker.register("/sw.js");
     const existingSubscription =
       await registration.pushManager.getSubscription();
     const subscription =
       existingSubscription ??
       (await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          config.publicKey,
-        ),
+        applicationServerKey: urlBase64ToUint8Array(config.publicKey),
       }));
     const currentUser = getStoredAuthUser();
 
@@ -112,11 +105,7 @@ export function useBrowserNotifications(
   }
 
   useEffect(() => {
-    if (
-      !isPushSupported ||
-      permission !== "granted" ||
-      !pushEnabled
-    ) {
+    if (!isPushSupported || permission !== "granted" || !pushEnabled) {
       return;
     }
 
@@ -144,6 +133,7 @@ export function useBrowserNotifications(
         browserNotification.onclick = () => {
           window.focus();
           browserNotification.close();
+          window.location.assign(getNotificationTargetUrl(notification));
         };
       });
   }, [isSupported, notifications, permission]);

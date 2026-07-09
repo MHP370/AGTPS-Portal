@@ -1,4 +1,6 @@
 import { api } from "./api";
+import type { Meeting } from "./meetings";
+import type { PortalReminder, PortalTask } from "./workspace";
 
 export interface PortalNotification {
   id: string;
@@ -9,6 +11,12 @@ export interface PortalNotification {
   scheduledAt?: string | null;
   sentAt?: string | null;
   readAt?: string | null;
+  meetingId?: string | null;
+  reminderId?: string | null;
+  taskId?: string | null;
+  meeting?: Meeting | null;
+  reminder?: PortalReminder | null;
+  task?: PortalTask | null;
   createdAt: string;
 }
 
@@ -18,6 +26,38 @@ export interface PushConfig {
 }
 
 export const notificationsQueryKey = ["notifications"];
+
+export function getNotificationTargetDate(notification: PortalNotification) {
+  if (notification.meeting?.startAt) {
+    return notification.meeting.startAt;
+  }
+
+  if (notification.reminder?.remindAt) {
+    return notification.reminder.remindAt;
+  }
+
+  if (notification.task?.dueDate) {
+    return notification.task.dueDate;
+  }
+
+  return null;
+}
+
+export function getNotificationTargetUrl(notification: PortalNotification) {
+  if (notification.meetingId) {
+    return `/?notification=${notification.meetingId}&type=meeting`;
+  }
+
+  if (notification.reminderId) {
+    return `/?notification=${notification.reminderId}&type=reminder`;
+  }
+
+  if (notification.taskId) {
+    return `/?notification=${notification.taskId}&type=task`;
+  }
+
+  return "/";
+}
 
 export function getNotifications() {
   return api.get<PortalNotification[]>("/notifications");

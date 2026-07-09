@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   AnimatePresence,
   motion,
@@ -9,11 +9,14 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import {
+  AlarmClock,
   Bell,
+  CalendarClock,
   ChevronLeft,
   CloudDownload,
   Download,
   GraduationCap,
+  ListTodo,
   LogOut,
   Plus,
   PlayCircle,
@@ -76,6 +79,10 @@ import {
   jalaliMonthNames,
   jalaliToGregorian,
 } from "@/lib/jalali";
+import {
+  getNotificationTargetDate,
+  type PortalNotification,
+} from "@/lib/notifications";
 
 type PortalContentItem = {
   title: string;
@@ -102,6 +109,36 @@ const calendarViewMotion = {
   initial: { opacity: 0, y: 12, filter: "blur(6px)" },
   animate: { opacity: 1, y: 0, filter: "blur(0px)" },
   exit: { opacity: 0, y: -8, filter: "blur(4px)" },
+};
+
+const notificationTypeMeta: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    icon: typeof Bell;
+  }
+> = {
+  MEETING_INVITE: {
+    label: "دعوت جلسه",
+    color: "text-cyan-200 bg-cyan-400/10 border-cyan-300/20",
+    icon: CalendarClock,
+  },
+  MEETING_UPDATE: {
+    label: "به‌روزرسانی جلسه",
+    color: "text-cyan-200 bg-cyan-400/10 border-cyan-300/20",
+    icon: CalendarClock,
+  },
+  REMINDER: {
+    label: "یادآوری",
+    color: "text-amber-200 bg-amber-400/10 border-amber-300/20",
+    icon: AlarmClock,
+  },
+  TASK: {
+    label: "تسک",
+    color: "text-emerald-200 bg-emerald-400/10 border-emerald-300/20",
+    icon: ListTodo,
+  },
 };
 
 const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
@@ -265,6 +302,7 @@ export default function Home() {
   const [quickDate, setQuickDate] = useState(toLocalDateKey(new Date()));
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
+  const handledNotificationDeepLink = useRef(false);
   const { data: settings } = useSettings();
   const { data: enabledModules } = useEnabledPortalModules();
   const { data: sliders = [] } = useSliders();
@@ -563,6 +601,57 @@ export default function Home() {
     setAuthUser(null);
     window.dispatchEvent(new Event("auth-user-updated"));
   }
+
+  function openNotification(notification: PortalNotification) {
+    if (!notification.readAt) {
+      markNotificationRead.mutate(notification.id);
+    }
+
+    const targetDate = getNotificationTargetDate(notification);
+
+    if (targetDate) {
+      const date = new Date(targetDate);
+
+      if (!Number.isNaN(date.getTime())) {
+        setSelectedCalendarDate(date);
+        setCalendarView("day");
+        setCalendarModalOpen(true);
+      }
+    }
+
+    setNotificationsOpen(false);
+  }
+
+  useEffect(() => {
+    if (
+      handledNotificationDeepLink.current ||
+      typeof window === "undefined" ||
+      notifications.length === 0
+    ) {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    const notificationTargetId = url.searchParams.get("notification");
+
+    if (!notificationTargetId) return;
+
+    const notification = notifications.find(
+      (item) =>
+        item.id === notificationTargetId ||
+        item.meetingId === notificationTargetId ||
+        item.reminderId === notificationTargetId ||
+        item.taskId === notificationTargetId,
+    );
+
+    if (!notification) return;
+
+    handledNotificationDeepLink.current = true;
+    openNotification(notification);
+    url.searchParams.delete("notification");
+    url.searchParams.delete("type");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  }, [notifications]);
 
   async function submitQuickAction(event: React.FormEvent) {
     event.preventDefault();
@@ -1594,30 +1683,66 @@ export default function Home() {
               نوتیفیکیشنی وجود ندارد.
             </div>
           ) : (
-            notifications.map((notification) => (
-              <button
-                key={notification.id}
-                type="button"
-                onClick={() => {
-                  if (!notification.readAt) {
-                    markNotificationRead.mutate(notification.id);
-                  }
-                }}
-                className={`w-full rounded-2xl border p-4 text-right transition ${
-                  notification.readAt
-                    ? "border-white/10 bg-white/[0.03] text-slate-400"
-                    : "border-cyan-300/30 bg-cyan-400/10 text-white"
-                }`}
-              >
-                <div className="font-black">{notification.title}</div>
-                {notification.body && (
-                  <p className="mt-2 text-sm leading-7">{notification.body}</p>
-                )}
-                <p className="mt-2 text-xs text-slate-500">
-                  {new Date(notification.createdAt).toLocaleString("fa-IR")}
-                </p>
-              </button>
-            ))
+            notifications.map((notification) => {
+              const meta = notificationTypeMeta[notification.type] ?? {
+                label: "اعلان",
+                color: "text-slate-200 bg-white/[0.04] border-white/10",
+                icon: Bell,
+              };
+              const Icon = meta.icon;
+              const targetDate = getNotificationTargetDate(notification);
+
+              return (
+                <button
+                  key={notification.id}
+                  type="button"
+                  onClick={() => openNotification(notification)}
+                  className={`w-full rounded-2xl border p-4 text-right transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
+                    notification.readAt
+                      ? "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06]"
+                      : "border-cyan-300/30 bg-cyan-400/10 text-white hover:bg-cyan-400/15"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={`grid size-10 shrink-0 place-items-center rounded-xl border ${meta.color}`}
+                    >
+                      <Icon size={20} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-black">{notification.title}</span>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${meta.color}`}
+                        >
+                          {meta.label}
+                        </span>
+                        {!notification.readAt && (
+                          <span className="size-2 rounded-full bg-cyan-300" />
+                        )}
+                      </span>
+                      {notification.body && (
+                        <span className="mt-2 block text-sm leading-7">
+                          {notification.body}
+                        </span>
+                      )}
+                      <span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span>
+                          {new Date(notification.createdAt).toLocaleString(
+                            "fa-IR",
+                          )}
+                        </span>
+                        {targetDate && (
+                          <span className="text-cyan-200/80">
+                            باز کردن در تقویم
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </Dialog>

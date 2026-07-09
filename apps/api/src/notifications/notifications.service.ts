@@ -16,9 +16,7 @@ type AuthenticatedUser = {
 } | null;
 
 @Injectable()
-export class NotificationsService
-  implements OnModuleInit, OnModuleDestroy
-{
+export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsService.name);
   private readonly vapidPublicKey?: string;
   private readonly vapidPrivateKey?: string;
@@ -28,12 +26,8 @@ export class NotificationsService
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    this.vapidPublicKey = this.configService.get<string>(
-      'VAPID_PUBLIC_KEY',
-    );
-    this.vapidPrivateKey = this.configService.get<string>(
-      'VAPID_PRIVATE_KEY',
-    );
+    this.vapidPublicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
+    this.vapidPrivateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
 
     if (this.vapidPublicKey && this.vapidPrivateKey) {
       webPush.setVapidDetails(
@@ -75,21 +69,23 @@ export class NotificationsService
         AND: [
           recipientWhere,
           {
-        OR: [
-          {
-            scheduledAt: null,
-          },
-          {
-            scheduledAt: {
-              lte: new Date(),
-            },
-          },
-        ],
+            OR: [
+              {
+                scheduledAt: null,
+              },
+              {
+                scheduledAt: {
+                  lte: new Date(),
+                },
+              },
+            ],
           },
         ],
       },
       include: {
         meeting: true,
+        reminder: true,
+        task: true,
         recipientDirectoryUser: true,
       },
       orderBy: {
@@ -108,9 +104,27 @@ export class NotificationsService
     });
   }
 
-  private async getNotificationRecipientWhere(
-    currentUser?: AuthenticatedUser,
-  ) {
+  private getNotificationTargetUrl(notification: {
+    meetingId: string | null;
+    reminderId: string | null;
+    taskId: string | null;
+  }) {
+    if (notification.meetingId) {
+      return `/?notification=${notification.meetingId}&type=meeting`;
+    }
+
+    if (notification.reminderId) {
+      return `/?notification=${notification.reminderId}&type=reminder`;
+    }
+
+    if (notification.taskId) {
+      return `/?notification=${notification.taskId}&type=task`;
+    }
+
+    return '/';
+  }
+
+  private async getNotificationRecipientWhere(currentUser?: AuthenticatedUser) {
     if (!currentUser) {
       return {
         recipientDirectoryUserId: null,
@@ -122,12 +136,8 @@ export class NotificationsService
       where: {
         isActive: true,
         OR: [
-          ...(currentUser.username
-            ? [{ username: currentUser.username }]
-            : []),
-          ...(currentUser.email
-            ? [{ email: currentUser.email }]
-            : []),
+          ...(currentUser.username ? [{ username: currentUser.username }] : []),
+          ...(currentUser.email ? [{ email: currentUser.email }] : []),
         ],
       },
     });
@@ -196,32 +206,30 @@ export class NotificationsService
       return;
     }
 
-    const notifications =
-      await this.prisma.portalNotification.findMany({
-        where: {
-          sentAt: null,
-          OR: [
-            {
-              scheduledAt: null,
+    const notifications = await this.prisma.portalNotification.findMany({
+      where: {
+        sentAt: null,
+        OR: [
+          {
+            scheduledAt: null,
+          },
+          {
+            scheduledAt: {
+              lte: new Date(),
             },
-            {
-              scheduledAt: {
-                lte: new Date(),
-              },
-            },
-          ],
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-        take: 25,
-      });
+          },
+        ],
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      take: 25,
+    });
 
     for (const notification of notifications) {
-      const subscriptions =
-        await this.prisma.pushSubscription.findMany({
-          where: this.getSubscriptionRecipientWhere(notification),
-        });
+      const subscriptions = await this.prisma.pushSubscription.findMany({
+        where: this.getSubscriptionRecipientWhere(notification),
+      });
 
       await Promise.all(
         subscriptions.map((subscription) =>
@@ -229,7 +237,7 @@ export class NotificationsService
             title: notification.title,
             body: notification.body ?? 'اعلان جدید در پورتال',
             notificationId: notification.id,
-            url: '/',
+            url: this.getNotificationTargetUrl(notification),
           }),
         ),
       );
@@ -251,8 +259,7 @@ export class NotificationsService
   }) {
     if (notification.recipientDirectoryUserId) {
       return {
-        recipientDirectoryUserId:
-          notification.recipientDirectoryUserId,
+        recipientDirectoryUserId: notification.recipientDirectoryUserId,
       };
     }
 
@@ -295,9 +302,7 @@ export class NotificationsService
       );
     } catch (error) {
       const statusCode =
-        typeof error === 'object' &&
-        error &&
-        'statusCode' in error
+        typeof error === 'object' && error && 'statusCode' in error
           ? error.statusCode
           : undefined;
 
@@ -310,9 +315,7 @@ export class NotificationsService
         return;
       }
 
-      this.logger.warn(
-        `Push notification failed for ${subscription.id}`,
-      );
+      this.logger.warn(`Push notification failed for ${subscription.id}`);
     }
   }
 }
