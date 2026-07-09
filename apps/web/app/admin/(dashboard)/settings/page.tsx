@@ -48,6 +48,8 @@ const activeDirectoryStatusLabels: Record<string, string> = {
   missing_config: "تنظیمات ناقص",
 };
 
+const fixedCenterWidgetIds = new Set(["hero", "map", "systems"]);
+
 function SettingsSection({
   title,
   description,
@@ -126,21 +128,16 @@ function IconFormField({
 }
 
 export default function SettingsPage() {
-  const {
-    data: settings,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useSettings();
+  const { data: settings, isLoading, isError, error, refetch } = useSettings();
   const updateSettings = useUpdateSettings();
   const testActiveDirectory = useTestActiveDirectoryConnection();
 
   const [companyName, setCompanyName] = useState("AGTPS Portal");
   const [logo, setLogo] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#22d3ee");
-  const [backgroundImageUrl, setBackgroundImageUrl] =
-    useState(defaultBackgroundImage);
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState(
+    defaultBackgroundImage,
+  );
   const [overlayColor, setOverlayColor] = useState("#020617");
   const [overlayOpacity, setOverlayOpacity] = useState("0.78");
   const [portalWidgets, setPortalWidgets] = useState<PortalWidgetSetting[]>(
@@ -157,12 +154,10 @@ export default function SettingsPage() {
   const [adGroupSearchBase, setAdGroupSearchBase] = useState("");
   const [trainingMaxUploadSizeMb, setTrainingMaxUploadSizeMb] =
     useState("2048");
-  const [
-    trainingAllowedFileExtensions,
-    setTrainingAllowedFileExtensions,
-  ] = useState(
-    "mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z",
-  );
+  const [trainingAllowedFileExtensions, setTrainingAllowedFileExtensions] =
+    useState(
+      "mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z",
+    );
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -176,9 +171,7 @@ export default function SettingsPage() {
       settings.portalBackgroundImageUrl || defaultBackgroundImage,
     );
     setOverlayColor(settings.portalBackgroundOverlayColor || "#020617");
-    setOverlayOpacity(
-      String(settings.portalBackgroundOverlayOpacity ?? 0.78),
-    );
+    setOverlayOpacity(String(settings.portalBackgroundOverlayOpacity ?? 0.78));
     setPortalWidgets(normalizePortalWidgets(settings.portalWidgets));
     setFooterText(settings.footerText ?? "");
     setAdEnabled(Boolean(settings.activeDirectoryEnabled));
@@ -247,8 +240,7 @@ export default function SettingsPage() {
         companyName: companyName.trim(),
         logo: logo.trim() || undefined,
         primaryColor: primaryColor.trim() || undefined,
-        portalBackgroundImageUrl:
-          backgroundImageUrl.trim() || undefined,
+        portalBackgroundImageUrl: backgroundImageUrl.trim() || undefined,
         portalBackgroundOverlayColor: overlayColor.trim() || undefined,
         portalBackgroundOverlayOpacity: parsedOverlayOpacity,
         portalWidgets: normalizePortalWidgetsForSave(portalWidgets),
@@ -262,10 +254,8 @@ export default function SettingsPage() {
           adBindPassword === savedPasswordMarker
             ? savedPasswordMarker
             : adBindPassword.trim() || undefined,
-        activeDirectoryUserSearchBase:
-          adUserSearchBase.trim() || undefined,
-        activeDirectoryGroupSearchBase:
-          adGroupSearchBase.trim() || undefined,
+        activeDirectoryUserSearchBase: adUserSearchBase.trim() || undefined,
+        activeDirectoryGroupSearchBase: adGroupSearchBase.trim() || undefined,
         trainingMaxUploadSizeMb: parsedTrainingMaxUploadSizeMb,
         trainingAllowedFileExtensions:
           trainingAllowedFileExtensions.trim() || undefined,
@@ -273,9 +263,7 @@ export default function SettingsPage() {
       setSuccess("تنظیمات ذخیره شد.");
     } catch (err) {
       setFormError(
-        err instanceof Error
-          ? err.message
-          : "ذخیره تنظیمات انجام نشد.",
+        err instanceof Error ? err.message : "ذخیره تنظیمات انجام نشد.",
       );
     }
   }
@@ -333,9 +321,7 @@ export default function SettingsPage() {
   if (isError) {
     return (
       <div className="space-y-4 rounded-xl border border-red-900/60 bg-red-950/30 p-5 text-red-200">
-        <h1 className="text-xl font-semibold">
-          بارگذاری تنظیمات انجام نشد
-        </h1>
+        <h1 className="text-xl font-semibold">بارگذاری تنظیمات انجام نشد</h1>
         <p className="text-sm text-red-200/80">
           {(error as Error | undefined)?.message ||
             "ارتباط با سرویس برقرار نشد."}
@@ -494,9 +480,7 @@ export default function SettingsPage() {
 
           <div className="flex justify-end">
             <Button type="submit" disabled={updateSettings.isPending}>
-              {updateSettings.isPending
-                ? "در حال ذخیره..."
-                : "ذخیره تنظیمات"}
+              {updateSettings.isPending ? "در حال ذخیره..." : "ذخیره تنظیمات"}
             </Button>
           </div>
         </SettingsSection>
@@ -544,6 +528,13 @@ export default function SettingsPage() {
                   : widget.column === "center"
                     ? "ستون مرکزی"
                     : "ستون چپ محتوای پورتال";
+              const isFixedCenterWidget = fixedCenterWidgetIds.has(widget.id);
+              const widgetDescription =
+                widget.id === "systems"
+                  ? "با غیرفعال کردن این گزینه، سامانه‌های زیر نقشه از صفحه اصلی مخفی می‌شوند."
+                  : isFixedCenterWidget
+                    ? "جای این ویجت در ستون وسط ثابت است."
+                    : "ترتیب این ویجت از همین بخش قابل تغییر است.";
 
               return (
                 <div
@@ -556,11 +547,12 @@ export default function SettingsPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="font-black text-white">
-                        {widget.title}
-                      </h3>
+                      <h3 className="font-black text-white">{widget.title}</h3>
                       <p className="mt-1 text-xs text-slate-400">
                         {columnLabel}
+                      </p>
+                      <p className="mt-2 text-xs leading-6 text-slate-500">
+                        {widgetDescription}
                       </p>
                     </div>
                     <button
@@ -571,9 +563,7 @@ export default function SettingsPage() {
                           ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
                           : "border-slate-700 bg-slate-900 text-slate-400"
                       }`}
-                      aria-label={
-                        widget.enabled ? "غیرفعال کردن" : "فعال کردن"
-                      }
+                      aria-label={widget.enabled ? "غیرفعال کردن" : "فعال کردن"}
                     >
                       {widget.enabled ? (
                         <Eye size={18} />
@@ -588,7 +578,7 @@ export default function SettingsPage() {
                       type="button"
                       size="sm"
                       variant="secondary"
-                      disabled={index === 0}
+                      disabled={index === 0 || isFixedCenterWidget}
                       onClick={() => moveWidget(widget.id, "up")}
                       className="gap-2"
                     >
@@ -599,7 +589,10 @@ export default function SettingsPage() {
                       type="button"
                       size="sm"
                       variant="secondary"
-                      disabled={index === portalWidgets.length - 1}
+                      disabled={
+                        index === portalWidgets.length - 1 ||
+                        isFixedCenterWidget
+                      }
                       onClick={() => moveWidget(widget.id, "down")}
                       className="gap-2"
                     >
@@ -780,9 +773,9 @@ export default function SettingsPage() {
           <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-300">
             <div>
               آخرین بررسی:{" "}
-              {new Date(
-                settings.activeDirectoryLastCheckedAt,
-              ).toLocaleString("fa-IR")}
+              {new Date(settings.activeDirectoryLastCheckedAt).toLocaleString(
+                "fa-IR",
+              )}
             </div>
             {settings.activeDirectoryLastError && (
               <div className="mt-2 text-red-200">
@@ -798,9 +791,7 @@ export default function SettingsPage() {
             form="portal-settings-form"
             disabled={updateSettings.isPending}
           >
-            {updateSettings.isPending
-              ? "در حال ذخیره..."
-              : "ذخیره تنظیمات AD"}
+            {updateSettings.isPending ? "در حال ذخیره..." : "ذخیره تنظیمات AD"}
           </Button>
           <Button
             type="button"
@@ -808,9 +799,7 @@ export default function SettingsPage() {
             onClick={() => void testConnection()}
             disabled={testActiveDirectory.isPending}
           >
-            {testActiveDirectory.isPending
-              ? "در حال تست..."
-              : "تست اتصال"}
+            {testActiveDirectory.isPending ? "در حال تست..." : "تست اتصال"}
           </Button>
         </div>
       </SettingsSection>

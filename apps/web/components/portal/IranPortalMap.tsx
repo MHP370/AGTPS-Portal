@@ -1,10 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  ExternalLink,
-  MonitorCog,
-} from "lucide-react";
+import { ExternalLink, MonitorCog } from "lucide-react";
 
 import iranProvinces from "@/lib/geo/iran-provinces.json";
 import { Dialog } from "@/components/ui/Dialog";
@@ -171,12 +168,8 @@ function getAllCoordinates(features: ProvinceFeature[]) {
 
 function createProjection(features: ProvinceFeature[]) {
   const coordinates = getAllCoordinates(features);
-  const minLatitude = Math.min(
-    ...coordinates.map(([, latitude]) => latitude),
-  );
-  const maxLatitude = Math.max(
-    ...coordinates.map(([, latitude]) => latitude),
-  );
+  const minLatitude = Math.min(...coordinates.map(([, latitude]) => latitude));
+  const maxLatitude = Math.max(...coordinates.map(([, latitude]) => latitude));
   const centerLatitude = ((minLatitude + maxLatitude) / 2) * (Math.PI / 180);
   const longitudeScale = Math.cos(centerLatitude);
   const projected = coordinates.map(([longitude, latitude]) => ({
@@ -191,10 +184,8 @@ function createProjection(features: ProvinceFeature[]) {
     (mapWidth - mapPadding * 2) / (maxX - minX),
     (mapHeight - mapPadding * 2) / (maxY - minY),
   );
-  const offsetX =
-    (mapWidth - (maxX - minX) * scale) / 2 - minX * scale;
-  const offsetY =
-    (mapHeight - (maxY - minY) * scale) / 2 + maxY * scale;
+  const offsetX = (mapWidth - (maxX - minX) * scale) / 2 - minX * scale;
+  const offsetY = (mapHeight - (maxY - minY) * scale) / 2 + maxY * scale;
 
   return ([longitude, latitude]: Coordinate): ProjectedPoint => ({
     x: longitude * longitudeScale * scale + offsetX,
@@ -246,10 +237,7 @@ function getRingCentroid(ring: Ring): Coordinate {
     return ring[0];
   }
 
-  return [
-    longitudeSum / (3 * twiceArea),
-    latitudeSum / (3 * twiceArea),
-  ];
+  return [longitudeSum / (3 * twiceArea), latitudeSum / (3 * twiceArea)];
 }
 
 function getRingArea(ring: Ring) {
@@ -277,10 +265,7 @@ function normalize(value: string) {
 }
 
 function getSiteCoordinate(site: Site): Coordinate | undefined {
-  if (
-    typeof site.longitude === "number" &&
-    typeof site.latitude === "number"
-  ) {
+  if (typeof site.longitude === "number" && typeof site.latitude === "number") {
     return [site.longitude, site.latitude];
   }
 
@@ -309,8 +294,7 @@ function pointInRing(point: Coordinate, ring: Ring) {
     const intersects =
       yi > latitude !== yj > latitude &&
       longitude <
-        ((xj - xi) * (latitude - yi)) / (yj - yi || Number.EPSILON) +
-          xi;
+        ((xj - xi) * (latitude - yi)) / (yj - yi || Number.EPSILON) + xi;
 
     if (intersects) inside = !inside;
   }
@@ -374,8 +358,7 @@ function applyMapPerspective(point: ProjectedPoint): ProjectedPoint {
   const scaledX = point.x * mapPerspective.scaleX;
   const scaledY = point.y * mapPerspective.scaleY;
   const skewedX =
-    scaledX +
-    Math.tan((mapPerspective.skewX * Math.PI) / 180) * scaledY;
+    scaledX + Math.tan((mapPerspective.skewX * Math.PI) / 180) * scaledY;
 
   return {
     x: skewedX + mapPerspective.translateX,
@@ -403,37 +386,31 @@ function buildMapSites(
   }
 
   return activeSites.reduce<MapSite[]>((items, site) => {
-      const coordinate = getSiteCoordinate(site);
+    const coordinate = getSiteCoordinate(site);
 
-      if (!coordinate) return items;
+    if (!coordinate) return items;
 
-      items.push({
-        id: site.id,
-        title: site.name,
-        subtitle: site.address || site.description || site.code,
-        color: getSiteColor(site),
-        point: project(coordinate),
-        visualPoint: applyMapPerspective(project(coordinate)),
-        provinceName: getProvinceForCoordinate(coordinate, features),
-      });
+    items.push({
+      id: site.id,
+      title: site.name,
+      subtitle: site.address || site.description || site.code,
+      color: getSiteColor(site),
+      point: project(coordinate),
+      visualPoint: applyMapPerspective(project(coordinate)),
+      provinceName: getProvinceForCoordinate(coordinate, features),
+    });
 
-      return items;
-    }, []);
+    return items;
+  }, []);
 }
 
-function getApplicationSite(
-  application: Application,
-  siteId: string,
-) {
+function getApplicationSite(application: Application, siteId: string) {
   return application.sites.find(
     (site) => site.isActive && site.site.id === siteId,
   );
 }
 
-function getSiteApplications(
-  applications: Application[],
-  siteId?: string,
-) {
+function getSiteApplications(applications: Application[], siteId?: string) {
   if (!siteId) return [];
 
   return applications.filter(
@@ -444,7 +421,7 @@ function getSiteApplications(
 
 function getApplicationIcon(application: Application) {
   return application.icon
-    ? portalIconMap[application.icon] ?? MonitorCog
+    ? (portalIconMap[application.icon] ?? MonitorCog)
     : MonitorCog;
 }
 
@@ -460,8 +437,9 @@ export default function IranPortalMap({
   const { data: sites = [], isLoading, isError } = useSites();
   const { data: applications = [], isLoading: isApplicationsLoading } =
     usePortalApplications();
-  const [hoveredProvinceName, setHoveredProvinceName] =
-    useState<string | null>(null);
+  const [hoveredProvinceName, setHoveredProvinceName] = useState<string | null>(
+    null,
+  );
   const [siteModal, setSiteModal] = useState<SiteModal>(null);
   const features = (iranProvinces as unknown as GeoJsonFeatureCollection)
     .features;
@@ -474,17 +452,12 @@ export default function IranPortalMap({
     [features, project, sites],
   );
   const hoveredProvince = hoveredProvinceName
-    ? provinceShapes.find(
-        (province) => province.name === hoveredProvinceName,
-      )
+    ? provinceShapes.find((province) => province.name === hoveredProvinceName)
     : undefined;
-  const siteApplications = getSiteApplications(
-    applications,
-    siteModal?.id,
-  );
+  const siteApplications = getSiteApplications(applications, siteModal?.id);
 
   return (
-    <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] border border-cyan-300/10 bg-slate-950/20 p-4 md:min-h-[560px]">
+    <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] bg-slate-950/10 p-4 md:min-h-[560px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_45%_42%,rgba(34,211,238,0.2),transparent_32%),radial-gradient(circle_at_58%_78%,rgba(251,191,36,0.11),transparent_18%),linear-gradient(rgba(56,189,248,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.07)_1px,transparent_1px)] bg-[size:100%_100%,100%_100%,56px_56px,56px_56px]" />
       <div className="absolute inset-x-12 bottom-10 h-20 rounded-[50%] bg-cyan-400/16 blur-3xl" />
       <svg
@@ -521,9 +494,27 @@ export default function IranPortalMap({
             <stop offset="0%" stopColor="#020617" stopOpacity="0.4" />
             <stop offset="100%" stopColor="#082f49" stopOpacity="0.28" />
           </linearGradient>
-          <filter id="mapCastShadow" x="-20%" y="-20%" width="140%" height="150%">
-            <feDropShadow dx="0" dy="22" stdDeviation="12" floodColor="#020617" floodOpacity="0.7" />
-            <feDropShadow dx="0" dy="7" stdDeviation="3" floodColor="#38bdf8" floodOpacity="0.35" />
+          <filter
+            id="mapCastShadow"
+            x="-20%"
+            y="-20%"
+            width="140%"
+            height="150%"
+          >
+            <feDropShadow
+              dx="0"
+              dy="22"
+              stdDeviation="12"
+              floodColor="#020617"
+              floodOpacity="0.7"
+            />
+            <feDropShadow
+              dx="0"
+              dy="7"
+              stdDeviation="3"
+              floodColor="#38bdf8"
+              floodOpacity="0.35"
+            />
           </filter>
           <filter id="outerNeon" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="4" result="blur" />
@@ -555,8 +546,18 @@ export default function IranPortalMap({
               <feDistantLight azimuth="310" elevation="34" />
             </feDiffuseLighting>
             <feComponentTransfer in="terrainLightMap">
-              <feFuncR type="gamma" amplitude="0.7" exponent="1.28" offset="0" />
-              <feFuncG type="gamma" amplitude="0.85" exponent="1.18" offset="0" />
+              <feFuncR
+                type="gamma"
+                amplitude="0.7"
+                exponent="1.28"
+                offset="0"
+              />
+              <feFuncG
+                type="gamma"
+                amplitude="0.85"
+                exponent="1.18"
+                offset="0"
+              />
               <feFuncB type="gamma" amplitude="1" exponent="1.1" offset="0" />
               <feFuncA type="table" tableValues="0 0.58" />
             </feComponentTransfer>
@@ -568,7 +569,13 @@ export default function IranPortalMap({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          <filter id="markerGlow" x="-120%" y="-120%" width="340%" height="340%">
+          <filter
+            id="markerGlow"
+            x="-120%"
+            y="-120%"
+            width="340%"
+            height="340%"
+          >
             <feGaussianBlur stdDeviation="7" result="blur" />
             <feColorMatrix
               in="blur"
@@ -582,7 +589,9 @@ export default function IranPortalMap({
             </feMerge>
           </filter>
           <clipPath id="iranMapClip">
-            <path d={provinceShapes.map((province) => province.path).join(" ")} />
+            <path
+              d={provinceShapes.map((province) => province.path).join(" ")}
+            />
           </clipPath>
         </defs>
 
@@ -691,10 +700,7 @@ export default function IranPortalMap({
                 pointerEvents="none"
               />
             ))}
-            <g
-              clipPath="url(#iranMapClip)"
-              pointerEvents="none"
-            >
+            <g clipPath="url(#iranMapClip)" pointerEvents="none">
               <path
                 d="M98 128 C136 166 156 216 190 260 C226 306 252 360 290 410 C318 448 354 486 392 528"
                 fill="none"
@@ -785,7 +791,6 @@ export default function IranPortalMap({
                 </text>
               </g>
             )}
-
           </g>
         </g>
 
@@ -863,19 +868,8 @@ export default function IranPortalMap({
                 stroke="#ffffff"
                 strokeWidth="2.4"
               />
-              <circle
-                cx="0"
-                cy="-45"
-                r="6"
-                fill="#ffffff"
-                opacity="0.92"
-              />
-              <circle
-                cx="0"
-                cy="-45"
-                r="2.8"
-                fill={site.color}
-              />
+              <circle cx="0" cy="-45" r="6" fill="#ffffff" opacity="0.92" />
+              <circle cx="0" cy="-45" r="2.8" fill={site.color} />
               <line
                 x1="17"
                 y1="-45"
@@ -966,14 +960,12 @@ export default function IranPortalMap({
                     key={application.id}
                     href={applicationSite?.url || "#"}
                     target={
-                      application.openInNewTab &&
-                      applicationSite?.url
+                      application.openInNewTab && applicationSite?.url
                         ? "_blank"
                         : undefined
                     }
                     rel={
-                      application.openInNewTab &&
-                      applicationSite?.url
+                      application.openInNewTab && applicationSite?.url
                         ? "noreferrer"
                         : undefined
                     }

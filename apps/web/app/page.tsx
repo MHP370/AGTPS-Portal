@@ -154,6 +154,15 @@ const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
   downloads: "downloads",
 };
 
+const fixedCenterWidgetOrder: PortalWidgetId[] = [
+  "hero",
+  "map",
+  "systems",
+  "training",
+];
+
+const dismissedHeroStorageKey = "portal-hero-dismissed";
+
 function pad(value: number) {
   return String(value).padStart(2, "0");
 }
@@ -302,6 +311,7 @@ export default function Home() {
   const [quickDate, setQuickDate] = useState(toLocalDateKey(new Date()));
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
+  const [heroDismissed, setHeroDismissed] = useState(false);
   const handledNotificationDeepLink = useRef(false);
   const { data: settings } = useSettings();
   const { data: enabledModules } = useEnabledPortalModules();
@@ -352,6 +362,16 @@ export default function Home() {
         (first, second) =>
           (portalWidgetOrder.get(first.id) ?? 0) -
           (portalWidgetOrder.get(second.id) ?? 0),
+      );
+  const getFixedCenterWidgets = (widgets: PortalWidgetEntry[]) =>
+    fixedCenterWidgetOrder
+      .map((id) => widgets.find((widget) => widget.id === id))
+      .filter((widget): widget is PortalWidgetEntry => Boolean(widget))
+      .filter(
+        (widget) =>
+          enabledPortalWidgets.has(widget.id) &&
+          moduleIsEnabled(portalWidgetModuleKeys[widget.id]) &&
+          (widget.id !== "hero" || !heroDismissed),
       );
   const visiblePortalNavItems = portalNavItems.filter((item) =>
     moduleIsEnabled(item.moduleKey),
@@ -573,6 +593,14 @@ export default function Home() {
   const calendarMotionTransition: Transition = reduceMotion
     ? { duration: 0 }
     : { duration: 0.22, ease: [0.16, 1, 0.3, 1] };
+  const portalLayoutTransition: Transition = reduceMotion
+    ? { duration: 0 }
+    : {
+        layout: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
+        opacity: { duration: 0.12, ease: "linear" },
+        y: { duration: 0.14, ease: [0.22, 1, 0.36, 1] },
+        scale: { duration: 0.14, ease: [0.22, 1, 0.36, 1] },
+      };
 
   useEffect(() => {
     const syncAuthUser = () => setAuthUser(getStoredAuthUser());
@@ -586,6 +614,22 @@ export default function Home() {
       window.removeEventListener("focus", syncAuthUser);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    setHeroDismissed(
+      window.sessionStorage.getItem(dismissedHeroStorageKey) === "true",
+    );
+  }, []);
+
+  function dismissHeroSlider() {
+    setHeroDismissed(true);
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(dismissedHeroStorageKey, "true");
+    }
+  }
 
   function openQuickAction(action: QuickAction) {
     setQuickAction(action);
@@ -943,171 +987,196 @@ export default function Home() {
             ))}
           </aside>
 
-          <section className="relative flex flex-col justify-between gap-5">
-            {sortPortalWidgets([
-              {
-                id: "hero",
-                node: (
-                  <GlassPanel className="mx-auto w-full max-w-3xl !p-3">
-                    {heroSlider ? (
-                      <Link
-                        href={heroSlider.url || "#announcements"}
-                        target={
-                          heroSlider.url?.startsWith("http")
-                            ? "_blank"
-                            : undefined
-                        }
-                        rel={
-                          heroSlider.url?.startsWith("http")
-                            ? "noreferrer"
-                            : undefined
-                        }
-                        className="relative block min-h-48 overflow-hidden rounded-2xl bg-cover bg-center p-5"
-                        style={{
-                          backgroundImage: `url(${heroSlider.image})`,
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-950/45 to-transparent" />
-                        <div className="relative z-10 flex min-h-40 flex-col justify-end">
-                          <p className="text-sm font-black text-cyan-200">
-                            پیام مدیریت
-                          </p>
-                          <h1 className="mt-2 text-2xl font-black text-white">
-                            {heroSlider.title}
-                          </h1>
-                          <span className="mt-4 w-fit rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-black text-cyan-100">
-                            مشاهده جزئیات
-                          </span>
-                        </div>
-                      </Link>
-                    ) : (
-                      <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
+          <section className="relative flex flex-col gap-5">
+            <AnimatePresence initial={false} mode="popLayout">
+              {getFixedCenterWidgets([
+                {
+                  id: "hero",
+                  node: (
+                    <motion.div
+                      layout
+                      initial={reduceMotion ? false : { opacity: 0, y: -12 }}
+                      animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                      exit={
+                        reduceMotion
+                          ? undefined
+                          : { opacity: 0, scale: 0.98, y: -10 }
+                      }
+                      transition={portalLayoutTransition}
+                      className="overflow-hidden"
+                    >
+                      <GlassPanel className="relative mx-auto w-full max-w-3xl !p-3">
                         <button
-                          className="grid size-10 place-items-center rounded-full text-slate-200 hover:bg-white/10"
-                          aria-label="بستن پیام"
+                          type="button"
+                          onClick={dismissHeroSlider}
+                          className="absolute left-6 top-6 z-20 grid size-9 place-items-center rounded-full border border-white/15 bg-slate-950/60 text-slate-200 backdrop-blur transition hover:border-rose-300/40 hover:bg-rose-500/15 hover:text-rose-100 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                          aria-label="حذف پیام اسلایدر"
                         >
-                          <X size={22} />
+                          <X size={18} />
                         </button>
-                        <div className="hidden h-36 w-56 rounded-2xl bg-gradient-to-br from-sky-200 via-slate-500 to-slate-900 md:block" />
-                        <div className="flex-1 py-4">
-                          <h1 className="text-2xl font-black">پیام مدیریت</h1>
-                          <p className="mt-3 text-xl font-bold">
-                            به پورتال سازمان خوش آمدید
-                          </p>
-                          <p className="mt-4 text-sm leading-7 text-slate-300">
-                            در تلاش هستیم تا با ارائه بهترین خدمات، بهره‌وری
-                            سازمان را افزایش دهیم.
-                          </p>
-                        </div>
-                        <Link
-                          href="#announcements"
-                          className="hidden rounded-xl bg-gradient-to-l from-violet-600 to-sky-500 px-6 py-3 text-sm font-black md:inline-flex"
-                        >
-                          اطلاعات بیشتر
-                        </Link>
-                      </div>
-                    )}
-                  </GlassPanel>
-                ),
-              },
+                        {heroSlider ? (
+                          <Link
+                            href={heroSlider.url || "#announcements"}
+                            target={
+                              heroSlider.url?.startsWith("http")
+                                ? "_blank"
+                                : undefined
+                            }
+                            rel={
+                              heroSlider.url?.startsWith("http")
+                                ? "noreferrer"
+                                : undefined
+                            }
+                            className="relative block min-h-48 overflow-hidden rounded-2xl bg-cover bg-center p-5"
+                            style={{
+                              backgroundImage: `url(${heroSlider.image})`,
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-950/45 to-transparent" />
+                            <div className="relative z-10 flex min-h-40 flex-col justify-end">
+                              <p className="text-sm font-black text-cyan-200">
+                                پیام مدیریت
+                              </p>
+                              <h1 className="mt-2 text-2xl font-black text-white">
+                                {heroSlider.title}
+                              </h1>
+                              <span className="mt-4 w-fit rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-black text-cyan-100">
+                                مشاهده جزئیات
+                              </span>
+                            </div>
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
+                            <div className="hidden h-36 w-56 rounded-2xl bg-gradient-to-br from-sky-200 via-slate-500 to-slate-900 md:block" />
+                            <div className="flex-1 py-4">
+                              <h1 className="text-2xl font-black">
+                                پیام مدیریت
+                              </h1>
+                              <p className="mt-3 text-xl font-bold">
+                                به پورتال سازمان خوش آمدید
+                              </p>
+                              <p className="mt-4 text-sm leading-7 text-slate-300">
+                                در تلاش هستیم تا با ارائه بهترین خدمات، بهره‌وری
+                                سازمان را افزایش دهیم.
+                              </p>
+                            </div>
+                            <Link
+                              href="#announcements"
+                              className="hidden rounded-xl bg-gradient-to-l from-violet-600 to-sky-500 px-6 py-3 text-sm font-black md:inline-flex"
+                            >
+                              اطلاعات بیشتر
+                            </Link>
+                          </div>
+                        )}
+                      </GlassPanel>
+                    </motion.div>
+                  ),
+                },
 
-              {
-                id: "map",
-                node: (
-                  <IranPortalMap
-                    selectedSiteId={selectedSiteId}
-                    onSiteSelect={setSelectedSiteId}
-                  />
-                ),
-              },
-
-              {
-                id: "systems",
-                node: (
-                  <GlassPanel id="systems" className="!p-4">
-                    <PortalApplicationsGrid
+                {
+                  id: "map",
+                  node: (
+                    <IranPortalMap
                       selectedSiteId={selectedSiteId}
                       onSiteSelect={setSelectedSiteId}
                     />
-                  </GlassPanel>
-                ),
-              },
+                  ),
+                },
 
-              {
-                id: "training",
-                node: (
-                  <GlassPanel id="training">
-                    <SectionHeader
-                      title="کتابخانه آموزش"
-                      viewAllHref="/trainings"
-                    />
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {visibleTrainings.map((training) => {
-                        return (
-                          <Link
-                            key={training.id}
-                            href={`/trainings/${training.id}`}
-                            className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-right transition hover:border-cyan-300/40 hover:bg-white/[0.08]"
-                          >
-                            <div
-                              className="relative h-28 bg-slate-800 bg-cover bg-center"
-                              style={{
-                                backgroundImage: training.thumbnail
-                                  ? `url(${training.thumbnail})`
-                                  : undefined,
-                              }}
+                {
+                  id: "systems",
+                  node: (
+                    <GlassPanel id="systems" className="!p-4">
+                      <PortalApplicationsGrid
+                        selectedSiteId={selectedSiteId}
+                        onSiteSelect={setSelectedSiteId}
+                      />
+                    </GlassPanel>
+                  ),
+                },
+
+                {
+                  id: "training",
+                  node: (
+                    <GlassPanel id="training">
+                      <SectionHeader
+                        title="کتابخانه آموزش"
+                        viewAllHref="/trainings"
+                      />
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {visibleTrainings.map((training) => {
+                          return (
+                            <Link
+                              key={training.id}
+                              href={`/trainings/${training.id}`}
+                              className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-right transition hover:border-cyan-300/40 hover:bg-white/[0.08]"
                             >
-                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-slate-950/10" />
-                              <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full bg-cyan-400/20 text-cyan-100 ring-1 ring-cyan-300/30">
-                                {training.contentType === "VIDEO" ? (
-                                  <PlayCircle size={22} />
-                                ) : (
-                                  <GraduationCap size={22} />
-                                )}
-                              </span>
-                            </div>
-                            <div className="p-4">
-                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                                <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-100">
-                                  {training.category?.name || "آموزش"}
+                              <div
+                                className="relative h-28 bg-slate-800 bg-cover bg-center"
+                                style={{
+                                  backgroundImage: training.thumbnail
+                                    ? `url(${training.thumbnail})`
+                                    : undefined,
+                                }}
+                              >
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-slate-950/10" />
+                                <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full bg-cyan-400/20 text-cyan-100 ring-1 ring-cyan-300/30">
+                                  {training.contentType === "VIDEO" ? (
+                                    <PlayCircle size={22} />
+                                  ) : (
+                                    <GraduationCap size={22} />
+                                  )}
                                 </span>
-                                {training.isRequired && (
-                                  <span className="rounded-full bg-rose-400/10 px-3 py-1 text-[11px] font-bold text-rose-100">
-                                    اجباری
+                              </div>
+                              <div className="p-4">
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                  <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-[11px] font-bold text-cyan-100">
+                                    {training.category?.name || "آموزش"}
                                   </span>
-                                )}
+                                  {training.isRequired && (
+                                    <span className="rounded-full bg-rose-400/10 px-3 py-1 text-[11px] font-bold text-rose-100">
+                                      اجباری
+                                    </span>
+                                  )}
+                                </div>
+                                <h3 className="line-clamp-1 font-black text-white">
+                                  {training.title}
+                                </h3>
+                                <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
+                                  {training.description ||
+                                    "محتوای آموزشی سازمانی"}
+                                </p>
+                                <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                                  <span>
+                                    {training.durationMinutes
+                                      ? `${training.durationMinutes} دقیقه`
+                                      : "بدون زمان"}
+                                  </span>
+                                  <span>{training.files.length} فایل</span>
+                                </div>
                               </div>
-                              <h3 className="line-clamp-1 font-black text-white">
-                                {training.title}
-                              </h3>
-                              <p className="mt-2 line-clamp-2 text-xs leading-6 text-slate-300">
-                                {training.description ||
-                                  "محتوای آموزشی سازمانی"}
-                              </p>
-                              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-                                <span>
-                                  {training.durationMinutes
-                                    ? `${training.durationMinutes} دقیقه`
-                                    : "بدون زمان"}
-                                </span>
-                                <span>{training.files.length} فایل</span>
-                              </div>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                    {visibleTrainings.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm leading-7 text-slate-300">
-                        هنوز آموزش منتشرشده‌ای برای نمایش در پرتال وجود ندارد.
+                            </Link>
+                          );
+                        })}
                       </div>
-                    )}
-                  </GlassPanel>
-                ),
-              },
-            ]).map((widget) => (
-              <Fragment key={widget.id}>{widget.node}</Fragment>
-            ))}
+                      {visibleTrainings.length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm leading-7 text-slate-300">
+                          هنوز آموزش منتشرشده‌ای برای نمایش در پرتال وجود ندارد.
+                        </div>
+                      )}
+                    </GlassPanel>
+                  ),
+                },
+              ]).map((widget) => (
+                <motion.div
+                  key={widget.id}
+                  layout="position"
+                  transition={portalLayoutTransition}
+                >
+                  {widget.node}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </section>
 
           <aside className="space-y-5">
