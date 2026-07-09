@@ -19,6 +19,7 @@ import {
   Puzzle,
   Settings,
   ShieldCheck,
+  UserRound,
   Activity,
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +38,11 @@ type AdminNavItem = {
 };
 
 const adminNavItems: AdminNavItem[] = [
+  {
+    href: "/admin/profile",
+    label: "پروفایل",
+    icon: UserRound,
+  },
   {
     href: "/admin/dashboard",
     label: "داشبورد",
@@ -154,11 +160,7 @@ function hasPermission(user: AuthUser | null, permission?: string) {
   return user?.permissions.includes(permission) ?? false;
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<AuthUser | null>(null);
   const { data: enabledModules } = useEnabledPortalModules();
@@ -188,7 +190,9 @@ export default function AdminLayout({
     return moduleIsEnabled && hasPermission(user, item.permission);
   });
   const currentNavItem = adminNavItems
-    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .filter(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
     .sort((first, second) => second.href.length - first.href.length)[0];
   const currentModuleIsEnabled =
     !enabledModuleKeys ||
@@ -243,9 +247,16 @@ export default function AdminLayout({
             <h2 className="text-xl font-semibold">AGTPS Administration</h2>
 
             <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-400">
-                {user?.firstName || user?.username || "کاربر"}
-              </span>
+              <Link
+                href="/admin/profile"
+                className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-100"
+              >
+                {user?.fullName ||
+                  user?.firstName ||
+                  user?.directoryUser?.displayName ||
+                  user?.username ||
+                  "کاربر"}
+              </Link>
               <AdminLogoutButton />
             </div>
           </header>

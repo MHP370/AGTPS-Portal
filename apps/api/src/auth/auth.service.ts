@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 
@@ -22,20 +19,13 @@ export class AuthService {
     const user = await this.usersService.findByUsername(username);
 
     if (!user) {
-      throw new UnauthorizedException(
-        'Invalid username or password',
-      );
+      throw new UnauthorizedException('Invalid username or password');
     }
 
-    const valid = await bcrypt.compare(
-      password,
-      user.password,
-    );
+    const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
-      throw new UnauthorizedException(
-        'Invalid username or password',
-      );
+      throw new UnauthorizedException('Invalid username or password');
     }
 
     const payload = {
@@ -43,8 +33,7 @@ export class AuthService {
       username: user.username,
     };
 
-    const access_token =
-      await this.jwtService.signAsync(payload);
+    const access_token = await this.jwtService.signAsync(payload);
 
     return {
       access_token,
@@ -116,16 +105,12 @@ export class AuthService {
         membership.group.roles.map((item) => item.role.name),
       ) ?? [];
     const userPermissions = user.roles.flatMap((item) =>
-      item.role.permissions.map(
-        (permission) => permission.permission.name,
-      ),
+      item.role.permissions.map((permission) => permission.permission.name),
     );
     const groupPermissions =
       directoryUser?.groupMemberships.flatMap((membership) =>
         membership.group.roles.flatMap((item) =>
-          item.role.permissions.map(
-            (permission) => permission.permission.name,
-          ),
+          item.role.permissions.map((permission) => permission.permission.name),
         ),
       ) ?? [];
 
@@ -135,12 +120,38 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      fullName:
+        [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+        directoryUser?.displayName ||
+        user.username,
       isActive: user.isActive,
+      authSource:
+        directoryUser?.source === 'ACTIVE_DIRECTORY'
+          ? 'ACTIVE_DIRECTORY'
+          : 'INTERNAL',
       roles: Array.from(new Set([...userRoleNames, ...groupRoleNames])),
+      roleDetails: Array.from(
+        new Map(
+          [
+            ...user.roles.map((item) => item.role),
+            ...(directoryUser?.groupMemberships.flatMap((membership) =>
+              membership.group.roles.map((item) => item.role),
+            ) ?? []),
+          ].map((role) => [role.id, role]),
+        ).values(),
+      ),
       permissions: Array.from(
         new Set([...userPermissions, ...groupPermissions]),
       ),
       directoryUser,
+      directoryGroups:
+        directoryUser?.groupMemberships.map((membership) => ({
+          id: membership.group.id,
+          name: membership.group.name,
+          title: membership.group.title,
+          source: membership.group.source,
+          isActive: membership.group.isActive,
+        })) ?? [],
     };
   }
 }

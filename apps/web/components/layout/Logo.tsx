@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function Logo() {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex shrink-0 items-center gap-4">
       <Image
         src="/images/logo/apgt-logo.png"
         alt="APGT Logo"

@@ -17,9 +17,16 @@ export interface AuthUser {
 
   firstName: string | null;
   lastName: string | null;
+  fullName?: string | null;
 
   isActive: boolean;
+  authSource?: "INTERNAL" | "ACTIVE_DIRECTORY";
   roles: string[];
+  roleDetails?: Array<{
+    id: string;
+    name: string;
+    title: string;
+  }>;
   permissions: string[];
   directoryUser?: {
     id: string;
@@ -30,6 +37,13 @@ export interface AuthUser {
     title?: string | null;
     isActive: boolean;
   } | null;
+  directoryGroups?: Array<{
+    id: string;
+    name: string;
+    title: string;
+    source: "INTERNAL" | "ACTIVE_DIRECTORY";
+    isActive: boolean;
+  }>;
 }
 
 export interface LoginResponse {
@@ -108,13 +122,8 @@ export function hasAuthSession() {
   return Boolean(getAccessToken());
 }
 
-export async function login(
-  dto: LoginDto,
-): Promise<LoginResponse> {
-  return api.post<LoginResponse>(
-    "/auth/login",
-    dto,
-  );
+export async function login(dto: LoginDto): Promise<LoginResponse> {
+  return api.post<LoginResponse>("/auth/login", dto);
 }
 
 export function getMe() {

@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Bell,
   ChevronLeft,
   CloudDownload,
   Download,
   GraduationCap,
+  LogOut,
   Plus,
   PlayCircle,
   Settings,
   ShieldCheck,
+  UserRound,
   X,
 } from "lucide-react";
 import Logo from "@/components/layout/Logo";
@@ -61,6 +63,7 @@ import {
   normalizePortalWidgets,
   type PortalWidgetId,
 } from "@/lib/portal-widgets";
+import { clearAuthSession, getStoredAuthUser, type AuthUser } from "@/lib/auth";
 import {
   getJalaliMonthLength,
   gregorianToJalali,
@@ -224,6 +227,7 @@ function GlassPanel({
 }
 
 export default function Home() {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
     startOfLocalDay(new Date()),
@@ -434,6 +438,11 @@ export default function Home() {
   const unreadNotifications = notifications.filter(
     (notification) => !notification.readAt,
   );
+  const authUserName =
+    authUser?.fullName ||
+    [authUser?.firstName, authUser?.lastName].filter(Boolean).join(" ") ||
+    authUser?.directoryUser?.displayName ||
+    authUser?.username;
   const visibleDownloads =
     downloads.length > 0
       ? downloads
@@ -470,6 +479,19 @@ export default function Home() {
           ][index % 6],
         }));
 
+  useEffect(() => {
+    const syncAuthUser = () => setAuthUser(getStoredAuthUser());
+
+    syncAuthUser();
+    window.addEventListener("auth-user-updated", syncAuthUser);
+    window.addEventListener("focus", syncAuthUser);
+
+    return () => {
+      window.removeEventListener("auth-user-updated", syncAuthUser);
+      window.removeEventListener("focus", syncAuthUser);
+    };
+  }, []);
+
   function openQuickAction(action: QuickAction) {
     setQuickAction(action);
     setQuickTitle("");
@@ -477,6 +499,12 @@ export default function Home() {
     setQuickDate(toLocalDateKey(selectedCalendarDate));
     setQuickTime("09:00");
     setQuickNotifyBefore("0");
+  }
+
+  function logoutFromPortal() {
+    clearAuthSession();
+    setAuthUser(null);
+    window.dispatchEvent(new Event("auth-user-updated"));
   }
 
   async function submitQuickAction(event: React.FormEvent) {
@@ -534,16 +562,16 @@ export default function Home() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_5%,rgba(124,58,237,0.35),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,0.3),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.1),rgba(2,6,23,0.95))]" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(56,189,248,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.06)_1px,transparent_1px)] bg-[size:72px_72px] opacity-60" />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1920px] flex-col px-4 py-4">
-        <header className="mb-5 flex min-h-24 flex-wrap items-center justify-between gap-4 rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">
+        <header className="mb-5 flex min-h-24 flex-nowrap items-center justify-between gap-4 overflow-x-auto rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">
           <Logo />
-          <nav className="order-3 flex w-full flex-wrap justify-center gap-2 xl:order-2 xl:w-auto">
+          <nav className="flex min-w-0 flex-1 flex-nowrap justify-center gap-2 overflow-x-auto">
             {visiblePortalNavItems.map((item, index) => {
               const Icon = item.icon;
               return (
                 <Link
                   key={item.title}
                   href={item.href}
-                  className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-cyan-400/10 hover:text-cyan-100 ${index === 0 ? "bg-cyan-400/15 text-cyan-100 shadow-[inset_0_-2px_0_rgba(34,211,238,0.8)]" : ""}`}
+                  className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-3 text-sm font-bold text-slate-200 transition hover:bg-cyan-400/10 hover:text-cyan-100 ${index === 0 ? "bg-cyan-400/15 text-cyan-100 shadow-[inset_0_-2px_0_rgba(34,211,238,0.8)]" : ""}`}
                 >
                   <Icon size={19} />
                   {item.title}
@@ -551,8 +579,35 @@ export default function Home() {
               );
             })}
           </nav>
-          <div className="order-2 flex items-center gap-4 xl:order-3">
+          <div className="flex shrink-0 items-center gap-4">
             <PersianClock />
+            {authUser ? (
+              <div className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 md:flex">
+                <Link
+                  href="/admin/profile"
+                  className="flex items-center gap-2 text-xs font-black text-slate-100 hover:text-cyan-100"
+                >
+                  <UserRound size={17} />
+                  <span className="max-w-32 truncate">{authUserName}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={logoutFromPortal}
+                  className="grid size-8 place-items-center rounded-xl text-slate-400 transition hover:bg-white/10 hover:text-rose-200"
+                  aria-label="خروج"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/admin/login?next=%2F"
+                className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-black text-slate-200 hover:bg-white/[0.08] md:flex"
+              >
+                <UserRound size={17} />
+                ورود دستی
+              </Link>
+            )}
             <button
               type="button"
               onClick={() => setNotificationsOpen(true)}

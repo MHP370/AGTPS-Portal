@@ -39,11 +39,10 @@ export function subscribeToPushNotifications(
   },
 ) {
   return api.post("/notifications/push/subscribe", {
-    ...subscription,
+    endpoint: subscription.endpoint,
+    keys: subscription.keys,
     ...recipient,
     userAgent:
-      typeof navigator !== "undefined"
-        ? navigator.userAgent
-        : undefined,
+      typeof navigator !== "undefined" ? navigator.userAgent : undefined,
   });
 }
