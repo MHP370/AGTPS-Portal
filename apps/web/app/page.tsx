@@ -362,13 +362,11 @@ export default function Home() {
   const calendarDays = Array.from({ length: 7 }, (_, index) =>
     addDays(selectedCalendarDate, index - 3),
   );
-  const selectedMeetings = meetings
-    .filter(
-      (meeting) =>
-        meeting.isPublished &&
-        meeting.status === "SCHEDULED" &&
-        isSameLocalDay(selectedCalendarDate, meeting.startAt),
-    )
+  const visibleCalendarMeetings = meetings.filter(
+    (meeting) => meeting.isPublished && meeting.status === "SCHEDULED",
+  );
+  const selectedMeetings = visibleCalendarMeetings
+    .filter((meeting) => isSameLocalDay(selectedCalendarDate, meeting.startAt))
     .sort(
       (first, second) =>
         new Date(first.startAt).getTime() - new Date(second.startAt).getTime(),
@@ -429,14 +427,9 @@ export default function Home() {
         const eventsCount = iranFixedCalendarEvents.filter(
           (event) => event.month === month,
         ).length;
-        const meetingsCount = meetings.filter((meeting) => {
+        const meetingsCount = visibleCalendarMeetings.filter((meeting) => {
           const jalali = getJalaliParts(new Date(meeting.startAt));
-          return (
-            meeting.isPublished &&
-            meeting.status === "SCHEDULED" &&
-            jalali?.jy === selectedJalaliDate.jy &&
-            jalali?.jm === month
-          );
+          return jalali?.jy === selectedJalaliDate.jy && jalali?.jm === month;
         }).length;
 
         return {
@@ -460,7 +453,7 @@ export default function Home() {
               jalaliToGregorian(selectedJalaliDate.jy, month, jalaliDay),
             );
             const occasions = getIranCalendarEvents(month, jalaliDay);
-            const meetingsCount = meetings.filter((meeting) =>
+            const meetingsCount = visibleCalendarMeetings.filter((meeting) =>
               isSameLocalDay(gregorianDate, meeting.startAt),
             ).length;
             const workCount =
@@ -1171,7 +1164,7 @@ export default function Home() {
                               {jalali?.jd ?? "-"}
                             </p>
                             {(dayOccasions.length > 0 ||
-                              meetings.some((meeting) =>
+                              visibleCalendarMeetings.some((meeting) =>
                                 isSameLocalDay(date, meeting.startAt),
                               ) ||
                               tasks.some((task) =>
@@ -1792,8 +1785,9 @@ export default function Home() {
                 <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                   {selectedMonthDays.map((day) => {
                     const dayKey = toLocalDateKey(day.gregorianDate);
-                    const meetingsCount = meetings.filter((meeting) =>
-                      isSameLocalDay(day.gregorianDate, meeting.startAt),
+                    const meetingsCount = visibleCalendarMeetings.filter(
+                      (meeting) =>
+                        isSameLocalDay(day.gregorianDate, meeting.startAt),
                     ).length;
                     const workCount =
                       reminders.filter((reminder) =>

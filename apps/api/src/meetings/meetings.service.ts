@@ -14,10 +14,7 @@ type AuthenticatedUser = {
 export class MeetingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(
-    includePrivate = false,
-    currentUser?: AuthenticatedUser,
-  ) {
+  async findAll(includePrivate = false, currentUser?: AuthenticatedUser) {
     const where = includePrivate
       ? undefined
       : await this.getVisibleMeetingWhere(currentUser);
@@ -41,8 +38,7 @@ export class MeetingsService {
   }
 
   async findOne(id: string, currentUser?: AuthenticatedUser) {
-    const visibleWhere =
-      await this.getVisibleMeetingWhere(currentUser);
+    const visibleWhere = await this.getVisibleMeetingWhere(currentUser);
     const meeting = await this.prisma.meeting.findFirst({
       where: {
         id,
@@ -149,11 +145,10 @@ export class MeetingsService {
     });
   }
 
-  private async getVisibleMeetingWhere(
-    currentUser?: AuthenticatedUser,
-  ) {
+  private async getVisibleMeetingWhere(currentUser?: AuthenticatedUser) {
     if (!currentUser) {
       return {
+        isPublished: true,
         visibility: 'PUBLIC' as const,
       };
     }
@@ -162,56 +157,59 @@ export class MeetingsService {
       where: {
         isActive: true,
         OR: [
-          ...(currentUser.username
-            ? [{ username: currentUser.username }]
-            : []),
-          ...(currentUser.email
-            ? [{ email: currentUser.email }]
-            : []),
+          ...(currentUser.username ? [{ username: currentUser.username }] : []),
+          ...(currentUser.email ? [{ email: currentUser.email }] : []),
         ],
       },
     });
 
     return {
-      OR: [
+      AND: [
         {
-          visibility: 'PUBLIC' as const,
+          isPublished: true,
         },
         {
-          organizerId: currentUser.id,
-        },
-        {
-          participants: {
-            some: {
-              userId: currentUser.id,
+          OR: [
+            {
+              visibility: 'PUBLIC' as const,
             },
-          },
+            {
+              organizerId: currentUser.id,
+            },
+            {
+              participants: {
+                some: {
+                  userId: currentUser.id,
+                },
+              },
+            },
+            ...(directoryUser
+              ? [
+                  {
+                    organizerDirectoryUserId: directoryUser.id,
+                  },
+                  {
+                    participants: {
+                      some: {
+                        directoryUserId: directoryUser.id,
+                      },
+                    },
+                  },
+                ]
+              : []),
+            ...(currentUser.email
+              ? [
+                  {
+                    participants: {
+                      some: {
+                        email: currentUser.email,
+                      },
+                    },
+                  },
+                ]
+              : []),
+          ],
         },
-        ...(directoryUser
-          ? [
-              {
-                organizerDirectoryUserId: directoryUser.id,
-              },
-              {
-                participants: {
-                  some: {
-                    directoryUserId: directoryUser.id,
-                  },
-                },
-              },
-            ]
-          : []),
-        ...(currentUser.email
-          ? [
-              {
-                participants: {
-                  some: {
-                    email: currentUser.email,
-                  },
-                },
-              },
-            ]
-          : []),
       ],
     };
   }
@@ -223,8 +221,7 @@ export class MeetingsService {
     type: NotificationType,
   ) {
     const cleanParticipants = (participants ?? []).filter(
-      (participant) =>
-        participant.directoryUserId || participant.email,
+      (participant) => participant.directoryUserId || participant.email,
     );
 
     if (cleanParticipants.length === 0) return;
