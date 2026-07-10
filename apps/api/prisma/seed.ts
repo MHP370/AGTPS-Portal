@@ -1,6 +1,9 @@
 import {
   ApplicationStatus,
   NetworkType,
+  PollSurveyQuestionType,
+  PollSurveyStatus,
+  PollSurveyType,
   PrismaClient,
   TrainingContentType,
   TrainingPublishStatus,
@@ -48,167 +51,194 @@ async function main() {
       source: 'INTERNAL',
     },
   });
-  
+
   // Roles
-const adminRole = await prisma.role.upsert({
-  where: {
-    name: 'admin',
-  },
-  update: {},
-  create: {
-    name: 'admin',
-    title: 'Administrator',
-  },
-});
+  const adminRole = await prisma.role.upsert({
+    where: {
+      name: 'admin',
+    },
+    update: {},
+    create: {
+      name: 'admin',
+      title: 'Administrator',
+    },
+  });
 
-// Permissions
-const permissionDefinitions = [
-  {
-    name: 'applications.manage',
-    title: 'Manage Applications',
-  },
-  {
-    name: 'categories.manage',
-    title: 'Manage Categories',
-  },
-  {
-    name: 'sites.manage',
-    title: 'Manage Sites',
-  },
-  {
-    name: 'news.publish',
-    title: 'Publish News',
-  },
-  {
-    name: 'announcements.publish',
-    title: 'Publish Announcements',
-  },
-  {
-    name: 'meetings.manage',
-    title: 'Manage Meetings',
-  },
-  {
-    name: 'users.manage',
-    title: 'Manage Users',
-  },
-  {
-    name: 'directory.manage',
-    title: 'Manage Directory',
-  },
-  {
-    name: 'access.manage',
-    title: 'Manage Access',
-  },
-  {
-    name: 'settings.manage',
-    title: 'Manage Settings',
-  },
-  {
-    name: 'sliders.manage',
-    title: 'Manage Sliders',
-  },
-  {
-    name: 'downloads.manage',
-    title: 'Manage Downloads',
-  },
-  {
-    name: 'system-statuses.manage',
-    title: 'Manage System Statuses',
-  },
-  {
-    name: 'modules.manage',
-    title: 'Manage Portal Modules',
-  },
-  {
-    name: 'training.view',
-    title: 'View Training',
-  },
-  {
-    name: 'training.manage',
-    title: 'Manage Training',
-  },
-  {
-    name: 'training.publish',
-    title: 'Publish Training',
-  },
-  {
-    name: 'training.delete',
-    title: 'Delete Training',
-  },
-  {
-    name: 'training.feedback.manage',
-    title: 'Manage Training Feedback',
-  },
-  {
-    name: 'training.history.view',
-    title: 'View Training History',
-  },
-  {
-    name: 'training.history.manage',
-    title: 'Manage Training History',
-  },
-  {
-    name: 'training.course.manage',
-    title: 'Manage Training Courses',
-  },
-  {
-    name: 'training.reports.view',
-    title: 'View Training Reports',
-  },
-];
+  // Permissions
+  const permissionDefinitions = [
+    {
+      name: 'applications.manage',
+      title: 'Manage Applications',
+    },
+    {
+      name: 'categories.manage',
+      title: 'Manage Categories',
+    },
+    {
+      name: 'sites.manage',
+      title: 'Manage Sites',
+    },
+    {
+      name: 'news.publish',
+      title: 'Publish News',
+    },
+    {
+      name: 'announcements.publish',
+      title: 'Publish Announcements',
+    },
+    {
+      name: 'meetings.manage',
+      title: 'Manage Meetings',
+    },
+    {
+      name: 'users.manage',
+      title: 'Manage Users',
+    },
+    {
+      name: 'directory.manage',
+      title: 'Manage Directory',
+    },
+    {
+      name: 'access.manage',
+      title: 'Manage Access',
+    },
+    {
+      name: 'settings.manage',
+      title: 'Manage Settings',
+    },
+    {
+      name: 'sliders.manage',
+      title: 'Manage Sliders',
+    },
+    {
+      name: 'downloads.manage',
+      title: 'Manage Downloads',
+    },
+    {
+      name: 'system-statuses.manage',
+      title: 'Manage System Statuses',
+    },
+    {
+      name: 'modules.manage',
+      title: 'Manage Portal Modules',
+    },
+    {
+      name: 'training.view',
+      title: 'View Training',
+    },
+    {
+      name: 'training.manage',
+      title: 'Manage Training',
+    },
+    {
+      name: 'training.publish',
+      title: 'Publish Training',
+    },
+    {
+      name: 'training.delete',
+      title: 'Delete Training',
+    },
+    {
+      name: 'training.feedback.manage',
+      title: 'Manage Training Feedback',
+    },
+    {
+      name: 'training.history.view',
+      title: 'View Training History',
+    },
+    {
+      name: 'training.history.manage',
+      title: 'Manage Training History',
+    },
+    {
+      name: 'training.course.manage',
+      title: 'Manage Training Courses',
+    },
+    {
+      name: 'training.reports.view',
+      title: 'View Training Reports',
+    },
+    {
+      name: 'poll.view',
+      title: 'View Polls',
+    },
+    {
+      name: 'poll.manage',
+      title: 'Manage Polls',
+    },
+    {
+      name: 'poll.vote',
+      title: 'Vote in Polls',
+    },
+    {
+      name: 'survey.view',
+      title: 'View Surveys',
+    },
+    {
+      name: 'survey.manage',
+      title: 'Manage Surveys',
+    },
+    {
+      name: 'survey.answer',
+      title: 'Answer Surveys',
+    },
+    {
+      name: 'reports.view',
+      title: 'View Reports',
+    },
+  ];
 
-const permissions = await Promise.all(
-  permissionDefinitions.map((permission) =>
-    prisma.permission.upsert({
-      where: {
-        name: permission.name,
+  const permissions = await Promise.all(
+    permissionDefinitions.map((permission) =>
+      prisma.permission.upsert({
+        where: {
+          name: permission.name,
+        },
+        update: {
+          title: permission.title,
+        },
+        create: permission,
+      }),
+    ),
+  );
+
+  // Assign role to admin
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: (
+          await prisma.user.findUniqueOrThrow({
+            where: { username: 'admin' },
+          })
+        ).id,
+        roleId: adminRole.id,
       },
-      update: {
-        title: permission.title,
-      },
-      create: permission,
-    }),
-  ),
-);
-
-// Assign role to admin
-await prisma.userRole.upsert({
-  where: {
-    userId_roleId: {
-      userId: (
-        await prisma.user.findUniqueOrThrow({
-          where: { username: 'admin' },
-        })
-      ).id,
+    },
+    update: {},
+    create: {
+      userId: adminUser.id,
       roleId: adminRole.id,
     },
-  },
-  update: {},
-  create: {
-    userId: adminUser.id,
-    roleId: adminRole.id,
-  },
-});
+  });
 
-// Assign permissions to role
-await Promise.all(
-  permissions.map((permission) =>
-    prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
+  // Assign permissions to role
+  await Promise.all(
+    permissions.map((permission) =>
+      prisma.rolePermission.upsert({
+        where: {
+          roleId_permissionId: {
+            roleId: adminRole.id,
+            permissionId: permission.id,
+          },
+        },
+        update: {},
+        create: {
           roleId: adminRole.id,
           permissionId: permission.id,
         },
-      },
-      update: {},
-      create: {
-        roleId: adminRole.id,
-        permissionId: permission.id,
-      },
-    }),
-  ),
-);
-
+      }),
+    ),
+  );
 
   // Sites
   const tehran = await prisma.site.upsert({
@@ -509,7 +539,8 @@ await Promise.all(
     {
       key: 'system-statuses',
       title: 'وضعیت سیستم‌ها',
-      description: 'اسکلت مدیریت وضعیت سامانه‌ها؛ منطق مانیتورینگ بعدا تعریف می‌شود.',
+      description:
+        'اسکلت مدیریت وضعیت سامانه‌ها؛ منطق مانیتورینگ بعدا تعریف می‌شود.',
       icon: 'Activity',
       route: '/admin/system-statuses',
       permission: 'system-statuses.manage',
@@ -520,13 +551,26 @@ await Promise.all(
     {
       key: 'training',
       title: 'آموزش',
-      description: 'ماژول LMS سازمانی برای محتوای آموزشی، پیشرفت کاربران و دوره‌های حضوری.',
+      description:
+        'ماژول LMS سازمانی برای محتوای آموزشی، پیشرفت کاربران و دوره‌های حضوری.',
       icon: 'GraduationCap',
       route: '/admin/trainings',
       permission: 'training.manage',
       isCore: false,
       isEnabled: false,
       sortOrder: 10,
+    },
+    {
+      key: 'poll-survey',
+      title: 'نظرسنجی و رای‌گیری',
+      description:
+        'مدیریت رای‌گیری‌ها، نظرسنجی‌ها، مشارکت اجباری، هدف‌گذاری و گزارش‌ها.',
+      icon: 'Vote',
+      route: '/admin/polls',
+      permission: 'poll.manage',
+      isCore: false,
+      isEnabled: true,
+      sortOrder: 11,
     },
     {
       key: 'directory',
@@ -537,7 +581,7 @@ await Promise.all(
       permission: 'directory.manage',
       isCore: false,
       isEnabled: true,
-      sortOrder: 11,
+      sortOrder: 12,
     },
     {
       key: 'access',
@@ -548,7 +592,7 @@ await Promise.all(
       permission: 'access.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 12,
+      sortOrder: 13,
     },
     {
       key: 'announcements',
@@ -559,7 +603,7 @@ await Promise.all(
       permission: 'announcements.publish',
       isCore: false,
       isEnabled: true,
-      sortOrder: 13,
+      sortOrder: 14,
     },
     {
       key: 'sliders',
@@ -570,7 +614,7 @@ await Promise.all(
       permission: 'sliders.manage',
       isCore: false,
       isEnabled: true,
-      sortOrder: 14,
+      sortOrder: 15,
     },
     {
       key: 'settings',
@@ -581,18 +625,19 @@ await Promise.all(
       permission: 'settings.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 15,
+      sortOrder: 16,
     },
     {
       key: 'modules',
       title: 'ماژول‌ها',
-      description: 'فعال‌سازی، غیرفعال‌سازی و مدیریت نصب منطقی ماژول‌های پرتال.',
+      description:
+        'فعال‌سازی، غیرفعال‌سازی و مدیریت نصب منطقی ماژول‌های پرتال.',
       icon: 'Puzzle',
       route: '/admin/modules',
       permission: 'modules.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 16,
+      sortOrder: 17,
     },
   ];
 
@@ -727,6 +772,137 @@ await Promise.all(
       description:
         'مسیر نمونه برای فایل‌های آموزشی قبلی. sync واقعی بعد از مشخص شدن مسیر و دسترسی شبکه فعال می‌شود.',
       isActive: false,
+    },
+  });
+
+  const samplePoll = await prisma.pollSurvey.upsert({
+    where: {
+      id: 'sample-required-poll',
+    },
+    update: {
+      title: 'رای‌گیری نمونه انتخاب اولویت پرتال',
+      description:
+        'نمونه اولیه برای تست موتور رای‌گیری. بعد از نهایی شدن می‌توانید حذف یا آرشیو کنید.',
+      type: PollSurveyType.POLL,
+      category: 'عمومی',
+      anonymous: false,
+      required: false,
+      allowMultipleSelection: false,
+      allowResultViewing: true,
+      allowParticipantCount: true,
+      allowLiveResults: true,
+      status: PollSurveyStatus.RUNNING,
+    },
+    create: {
+      id: 'sample-required-poll',
+      title: 'رای‌گیری نمونه انتخاب اولویت پرتال',
+      description:
+        'نمونه اولیه برای تست موتور رای‌گیری. بعد از نهایی شدن می‌توانید حذف یا آرشیو کنید.',
+      type: PollSurveyType.POLL,
+      category: 'عمومی',
+      anonymous: false,
+      required: false,
+      allowMultipleSelection: false,
+      allowResultViewing: true,
+      allowParticipantCount: true,
+      allowLiveResults: true,
+      status: PollSurveyStatus.RUNNING,
+    },
+  });
+
+  const samplePollQuestion = await prisma.pollSurveyQuestion.upsert({
+    where: {
+      id: 'sample-required-poll-question',
+    },
+    update: {
+      title: 'کدام بخش پرتال برای شما اولویت بیشتری دارد؟',
+      type: PollSurveyQuestionType.SINGLE_CHOICE,
+      isRequired: true,
+      sortOrder: 1,
+      pollSurveyId: samplePoll.id,
+    },
+    create: {
+      id: 'sample-required-poll-question',
+      title: 'کدام بخش پرتال برای شما اولویت بیشتری دارد؟',
+      type: PollSurveyQuestionType.SINGLE_CHOICE,
+      isRequired: true,
+      sortOrder: 1,
+      pollSurveyId: samplePoll.id,
+    },
+  });
+
+  await Promise.all(
+    ['سامانه‌ها', 'آموزش', 'جلسات', 'دانلودها'].map((label, index) =>
+      prisma.pollSurveyOption.upsert({
+        where: {
+          id: `sample-required-poll-option-${index + 1}`,
+        },
+        update: {
+          label,
+          sortOrder: index + 1,
+          questionId: samplePollQuestion.id,
+        },
+        create: {
+          id: `sample-required-poll-option-${index + 1}`,
+          label,
+          sortOrder: index + 1,
+          questionId: samplePollQuestion.id,
+        },
+      }),
+    ),
+  );
+
+  const sampleSurvey = await prisma.pollSurvey.upsert({
+    where: {
+      id: 'sample-employee-survey',
+    },
+    update: {
+      title: 'نظرسنجی نمونه رضایت کاربران',
+      description: 'نمونه اولیه برای تست موتور نظرسنجی سازمانی.',
+      type: PollSurveyType.SURVEY,
+      category: 'بازخورد',
+      anonymous: true,
+      required: false,
+      status: PollSurveyStatus.DRAFT,
+    },
+    create: {
+      id: 'sample-employee-survey',
+      title: 'نظرسنجی نمونه رضایت کاربران',
+      description: 'نمونه اولیه برای تست موتور نظرسنجی سازمانی.',
+      type: PollSurveyType.SURVEY,
+      category: 'بازخورد',
+      anonymous: true,
+      required: false,
+      status: PollSurveyStatus.DRAFT,
+    },
+  });
+
+  await prisma.pollSurveyQuestion.upsert({
+    where: {
+      id: 'sample-employee-survey-question-1',
+    },
+    update: {
+      title: 'رضایت کلی شما از پرتال چقدر است؟',
+      type: PollSurveyQuestionType.RATING,
+      isRequired: true,
+      sortOrder: 1,
+      settings: {
+        min: 1,
+        max: 5,
+      },
+      pollSurveyId: sampleSurvey.id,
+    },
+    create: {
+      id: 'sample-employee-survey-question-1',
+      title: 'رضایت کلی شما از پرتال چقدر است؟',
+      type: PollSurveyQuestionType.RATING,
+      isRequired: true,
+      sortOrder: 1,
+      settings: {
+        min: 1,
+        max: 5,
+      },
+      pollSurveyId: sampleSurvey.id,
     },
   });
 

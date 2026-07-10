@@ -25,9 +25,7 @@ import { DownloadsModule } from './downloads/downloads.module';
 import { PortalModulesModule } from './portal-modules/portal-modules.module';
 import { SystemStatusesModule } from './system-statuses/system-statuses.module';
 import { TrainingsModule } from './trainings/trainings.module';
-
-
-
+import { PollSurveysModule } from './poll-surveys/poll-surveys.module';
 
 @Module({
   imports: [
@@ -58,6 +56,7 @@ import { TrainingsModule } from './trainings/trainings.module';
     PortalModulesModule,
     SystemStatusesModule,
     TrainingsModule,
+    PollSurveysModule,
   ],
 
   controllers: [AppController],

@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   UserRound,
   Activity,
+  Vote,
   type LucideIcon,
 } from "lucide-react";
 
@@ -90,6 +91,13 @@ const adminNavItems: AdminNavItem[] = [
     icon: GraduationCap,
     permission: "training.manage",
     moduleKey: "training",
+  },
+  {
+    href: "/admin/polls",
+    label: "نظرسنجی و رای‌گیری",
+    icon: Vote,
+    permission: "poll.manage",
+    moduleKey: "poll-survey",
   },
   {
     href: "/admin/workspace",

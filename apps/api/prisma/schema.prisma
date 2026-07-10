@@ -94,6 +94,36 @@ enum InPersonTrainingResult {
   NO_EXAM
 }
 
+enum PollSurveyType {
+  POLL
+  SURVEY
+}
+
+enum PollSurveyStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  CLOSED
+  ARCHIVED
+}
+
+enum PollSurveyQuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TEXT
+  PARAGRAPH
+  RATING
+  YES_NO
+  NUMBER
+  DATE
+  MATRIX
+}
+
+enum PollSurveyResponseStatus {
+  DRAFT
+  SUBMITTED
+}
+
 model User {
   id       String @id @default(cuid())
   username String @unique
@@ -114,6 +144,8 @@ model User {
   downloads                    PortalDownload[]
   trainingProgress             TrainingProgress[]
   inPersonTrainingParticipants InPersonTrainingParticipant[]
+  createdPollSurveys           PollSurvey[]                  @relation("PollSurveyCreator")
+  pollSurveyResponses          PollSurveyResponse[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -156,6 +188,7 @@ model DirectoryUser {
   pushSubscriptions            PushSubscription[]
   trainingProgress             TrainingProgress[]
   inPersonTrainingParticipants InPersonTrainingParticipant[]
+  pollSurveyResponses          PollSurveyResponse[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -704,6 +737,147 @@ model InPersonTrainingParticipant {
   @@index([directoryUserId])
   @@index([attendanceStatus])
   @@index([result])
+}
+
+model PollSurvey {
+  id String @id @default(cuid())
+
+  type        PollSurveyType
+  title       String
+  description String?        @db.Text
+  category    String?
+  tags        String[]       @default([])
+
+  allowMultipleSelection Boolean @default(false)
+  anonymous              Boolean @default(false)
+  required               Boolean @default(false)
+  popupEnforced          Boolean @default(false)
+  allowVoteEditing       Boolean @default(false)
+
+  deadline    DateTime?
+  publishDate DateTime?
+  status      PollSurveyStatus @default(DRAFT)
+
+  targetUserIds     String[] @default([])
+  targetDepartments String[] @default([])
+  targetAdGroupIds  String[] @default([])
+
+  allowResultViewing    Boolean @default(false)
+  allowParticipantCount Boolean @default(true)
+  allowLiveResults      Boolean @default(false)
+  participantVisibility Boolean @default(false)
+
+  creatorId String?
+  creator   User?   @relation("PollSurveyCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+
+  questions PollSurveyQuestion[]
+  responses PollSurveyResponse[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([status])
+  @@index([deadline])
+  @@index([publishDate])
+}
+
+model PollSurveyQuestion {
+  id String @id @default(cuid())
+
+  pollSurveyId String
+  type         PollSurveyQuestionType
+  title        String
+  description  String?                @db.Text
+  isRequired   Boolean                @default(false)
+  sortOrder    Int                    @default(0)
+  settings     Json?
+
+  conditionQuestionId String?
+  conditionOperator   String?
+  conditionValue      String?
+
+  pollSurvey PollSurvey         @relation(fields: [pollSurveyId], references: [id], onDelete: Cascade)
+  options    PollSurveyOption[]
+  answers    PollSurveyAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pollSurveyId])
+  @@index([type])
+}
+
+model PollSurveyOption {
+  id String @id @default(cuid())
+
+  questionId String
+  label      String
+  value      String?
+  sortOrder  Int     @default(0)
+
+  question PollSurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  PollSurveyAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([questionId])
+}
+
+model PollSurveyResponse {
+  id String @id @default(cuid())
+
+  pollSurveyId    String
+  userId          String?
+  directoryUserId String?
+
+  participantHash  String
+  isAnonymous      Boolean                  @default(false)
+  status           PollSurveyResponseStatus @default(SUBMITTED)
+  draftData        Json?
+  timeSpentSeconds Int?
+  submittedAt      DateTime?
+
+  pollSurvey    PollSurvey         @relation(fields: [pollSurveyId], references: [id], onDelete: Cascade)
+  user          User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  directoryUser DirectoryUser?     @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+  answers       PollSurveyAnswer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollSurveyId, participantHash])
+  @@index([pollSurveyId])
+  @@index([userId])
+  @@index([directoryUserId])
+  @@index([status])
+}
+
+model PollSurveyAnswer {
+  id String @id @default(cuid())
+
+  responseId String
+  questionId String
+  optionId   String?
+
+  optionIds    String[]  @default([])
+  textValue    String?   @db.Text
+  numberValue  Float?
+  dateValue    DateTime?
+  booleanValue Boolean?
+  matrixValue  Json?
+
+  response PollSurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question PollSurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  option   PollSurveyOption?  @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([responseId])
+  @@index([questionId])
+  @@index([optionId])
 }
 
 model Slider {
