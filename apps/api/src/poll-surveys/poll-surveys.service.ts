@@ -122,6 +122,18 @@ function hasSubmittedResponses(item: PollSurveyWithResponses) {
   );
 }
 
+function answerHasValue(answer: SubmitPollSurveyResponseDto['answers'][number]) {
+  return Boolean(
+    answer.optionId ||
+      answer.optionIds?.length ||
+      answer.textValue?.trim() ||
+      answer.numberValue !== undefined ||
+      answer.dateValue ||
+      answer.booleanValue !== undefined ||
+      answer.matrixValue,
+  );
+}
+
 function assertSensitiveFieldsAreLocked(
   item: PollSurveyWithResponses,
   dto: UpdatePollSurveyDto,
@@ -444,6 +456,30 @@ export class PollSurveysService {
       !item.allowVoteEditing
     ) {
       throw new BadRequestException('You have already submitted a response.');
+    }
+
+    const questionIds = new Set(item.questions.map((question) => question.id));
+    const answersByQuestionId = new Map(
+      dto.answers.map((answer) => [answer.questionId, answer]),
+    );
+    const invalidAnswer = dto.answers.find(
+      (answer) => !questionIds.has(answer.questionId),
+    );
+
+    if (invalidAnswer) {
+      throw new BadRequestException('One or more answers are invalid.');
+    }
+
+    if (!dto.saveDraft) {
+      const missingRequiredQuestion = item.questions.find((question) => {
+        if (!question.isRequired) return false;
+        const answer = answersByQuestionId.get(question.id);
+        return !answer || !answerHasValue(answer);
+      });
+
+      if (missingRequiredQuestion) {
+        throw new BadRequestException('Required questions must be answered.');
+      }
     }
 
     return this.prisma.$transaction(async (tx) => {

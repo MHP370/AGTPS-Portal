@@ -375,6 +375,7 @@ export default function Home() {
   const [pollSurveyModal, setPollSurveyModal] = useState<PollSurvey | null>(
     null,
   );
+  const [pollSurveyStep, setPollSurveyStep] = useState(0);
   const [pollAnswers, setPollAnswers] = useState<
     Record<string, PollAnswerValue>
   >({});
@@ -715,6 +716,7 @@ export default function Home() {
       !pollSurveyModal
     ) {
       const timer = window.setTimeout(() => {
+        setPollSurveyStep(0);
         setPollSurveyModal(requiredPollSurvey);
       }, 0);
 
@@ -732,6 +734,7 @@ export default function Home() {
 
   function openPollSurvey(item: PollSurvey) {
     setPollAnswers({});
+    setPollSurveyStep(0);
     setPollSurveyModal(item);
   }
 
@@ -757,6 +760,182 @@ export default function Home() {
     });
   }
 
+  function questionHasAnswer(question: PollSurveyQuestion) {
+    const value = pollAnswers[question.id];
+
+    if (question.type === "MULTIPLE_CHOICE") {
+      return Array.isArray(value) && value.length > 0;
+    }
+
+    if (question.type === "NUMBER" || question.type === "RATING") {
+      return typeof value === "number" && Number.isFinite(value);
+    }
+
+    if (question.type === "YES_NO") {
+      return typeof value === "boolean";
+    }
+
+    return typeof value === "string" && value.trim().length > 0;
+  }
+
+  function currentQuestionIsReady() {
+    if (!pollSurveyModal || pollSurveyModal.type !== "SURVEY") return true;
+
+    const question = pollSurveyModal.questions[pollSurveyStep];
+    if (!question || !question.isRequired) return true;
+
+    return questionHasAnswer(question);
+  }
+
+  function pollSurveyCanSubmit() {
+    if (!pollSurveyModal) return false;
+
+    if (pollSurveyModal.type === "SURVEY") {
+      return currentQuestionIsReady();
+    }
+
+    return pollSurveyModal.questions.every(
+      (question) => !question.isRequired || questionHasAnswer(question),
+    );
+  }
+
+  function renderPollSurveyQuestion(question: PollSurveyQuestion) {
+    const value = pollAnswers[question.id];
+
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <h3 className="font-black text-white">{question.title}</h3>
+        {question.description && (
+          <p className="mt-1 text-xs leading-6 text-slate-400">
+            {question.description}
+          </p>
+        )}
+
+        <div className="mt-4 space-y-2">
+          {question.type === "YES_NO" && (
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "بله", value: true },
+                { label: "خیر", value: false },
+              ].map((option) => (
+                <motion.button
+                  key={option.label}
+                  type="button"
+                  onClick={() => updatePollAnswer(question.id, option.value)}
+                  whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                  className={`rounded-xl border px-4 py-3 text-sm font-black transition ${
+                    value === option.value
+                      ? "border-cyan-300 bg-cyan-400/20 text-cyan-50 shadow-lg shadow-cyan-500/15"
+                      : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
+                  }`}
+                >
+                  {option.label}
+                </motion.button>
+              ))}
+            </div>
+          )}
+
+          {isChoiceQuestion(question) &&
+            question.type !== "YES_NO" &&
+            question.options.map((option) => {
+              const selected =
+                question.type === "MULTIPLE_CHOICE"
+                  ? Array.isArray(value) && value.includes(option.id)
+                  : value === option.id;
+
+              return (
+                <motion.button
+                  key={option.id}
+                  type="button"
+                  onClick={() =>
+                    question.type === "MULTIPLE_CHOICE"
+                      ? togglePollAnswer(question.id, option.id)
+                      : updatePollAnswer(question.id, option.id)
+                  }
+                  whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+                  animate={
+                    selected && !reduceMotion
+                      ? { scale: 1.01 }
+                      : { scale: 1 }
+                  }
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-right text-sm transition ${
+                    selected
+                      ? "border-cyan-300 bg-cyan-400/20 text-cyan-50 shadow-lg shadow-cyan-500/15"
+                      : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="font-bold">{option.label}</span>
+                  <span
+                    className={`size-3 rounded-full ${
+                      selected ? "bg-cyan-200" : "bg-white/20"
+                    }`}
+                  />
+                </motion.button>
+              );
+            })}
+
+          {question.type === "RATING" && (
+            <div className="grid grid-cols-5 gap-2">
+              {[1, 2, 3, 4, 5].map((rate) => (
+                <motion.button
+                  key={rate}
+                  type="button"
+                  onClick={() => updatePollAnswer(question.id, rate)}
+                  whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+                  className={`rounded-xl border px-3 py-3 text-lg font-black transition ${
+                    value === rate
+                      ? "border-amber-300 bg-amber-400/20 text-amber-50 shadow-lg shadow-amber-500/15"
+                      : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
+                  }`}
+                >
+                  {rate}
+                </motion.button>
+              ))}
+            </div>
+          )}
+
+          {question.type === "NUMBER" && (
+            <Input
+              type="number"
+              value={typeof value === "number" ? value : ""}
+              onChange={(event) =>
+                updatePollAnswer(question.id, Number(event.target.value))
+              }
+            />
+          )}
+
+          {question.type === "DATE" && (
+            <Input
+              type="date"
+              value={typeof value === "string" ? value : ""}
+              onChange={(event) =>
+                updatePollAnswer(question.id, event.target.value)
+              }
+            />
+          )}
+
+          {(question.type === "TEXT" ||
+            question.type === "PARAGRAPH" ||
+            question.type === "MATRIX") && (
+            <textarea
+              value={typeof value === "string" ? value : ""}
+              onChange={(event) =>
+                updatePollAnswer(question.id, event.target.value)
+              }
+              className="min-h-28 w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20"
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function closePollSurveyModal() {
+    setPollSurveyModal(null);
+    setPollAnswers({});
+    setPollSurveyStep(0);
+  }
+
   function submitCurrentPollSurvey() {
     if (!pollSurveyModal) return;
 
@@ -772,7 +951,14 @@ export default function Home() {
             };
           }
 
-          if (question.type === "SINGLE_CHOICE" || question.type === "YES_NO") {
+          if (question.type === "YES_NO") {
+            return {
+              questionId: question.id,
+              booleanValue: typeof value === "boolean" ? value : undefined,
+            };
+          }
+
+          if (question.type === "SINGLE_CHOICE") {
             return {
               questionId: question.id,
               optionId: typeof value === "string" ? value : undefined,
@@ -809,6 +995,7 @@ export default function Home() {
           );
           setPollSurveyModal(null);
           setPollAnswers({});
+          setPollSurveyStep(0);
         },
       },
     );
@@ -1922,8 +2109,7 @@ export default function Home() {
           }
 
           if (!open) {
-            setPollSurveyModal(null);
-            setPollAnswers({});
+            closePollSurveyModal();
           }
         }}
         title={pollSurveyModal?.title ?? "نظرسنجی و رای‌گیری"}
@@ -1954,156 +2140,120 @@ export default function Home() {
               )}
             </div>
 
-            {pollSurveyModal.questions.map((question) => {
-              const value = pollAnswers[question.id];
-
-              return (
-                <div
-                  key={question.id}
-                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
-                >
-                  <h3 className="font-black text-white">{question.title}</h3>
-                  {question.description && (
-                    <p className="mt-1 text-xs leading-6 text-slate-400">
-                      {question.description}
-                    </p>
-                  )}
-
-                  <div className="mt-4 space-y-2">
-                    {question.type === "YES_NO" && (
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { label: "بله", value: true },
-                          { label: "خیر", value: false },
-                        ].map((option) => (
-                          <button
-                            key={option.label}
-                            type="button"
-                            onClick={() =>
-                              updatePollAnswer(question.id, option.value)
-                            }
-                            className={`rounded-xl border px-4 py-3 text-sm font-black transition ${
-                              value === option.value
-                                ? "border-cyan-300 bg-cyan-400/20 text-cyan-50"
-                                : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {isChoiceQuestion(question) &&
-                      question.type !== "YES_NO" &&
-                      question.options.map((option) => {
-                        const selected =
-                          question.type === "MULTIPLE_CHOICE"
-                            ? Array.isArray(value) && value.includes(option.id)
-                            : value === option.id;
-
-                        return (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() =>
-                              question.type === "MULTIPLE_CHOICE"
-                                ? togglePollAnswer(question.id, option.id)
-                                : updatePollAnswer(question.id, option.id)
-                            }
-                            className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-right text-sm transition ${
-                              selected
-                                ? "border-cyan-300 bg-cyan-400/20 text-cyan-50"
-                                : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
-                            }`}
-                          >
-                            <span className="font-bold">{option.label}</span>
-                            <span
-                              className={`size-3 rounded-full ${
-                                selected ? "bg-cyan-200" : "bg-white/20"
-                              }`}
-                            />
-                          </button>
-                        );
-                      })}
-
-                    {question.type === "RATING" && (
-                      <div className="grid grid-cols-5 gap-2">
-                        {[1, 2, 3, 4, 5].map((rate) => (
-                          <button
-                            key={rate}
-                            type="button"
-                            onClick={() => updatePollAnswer(question.id, rate)}
-                            className={`rounded-xl border px-3 py-3 text-lg font-black transition ${
-                              value === rate
-                                ? "border-amber-300 bg-amber-400/20 text-amber-50"
-                                : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
-                            }`}
-                          >
-                            {rate}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {question.type === "NUMBER" && (
-                      <Input
-                        type="number"
-                        value={typeof value === "number" ? value : ""}
-                        onChange={(event) =>
-                          updatePollAnswer(
-                            question.id,
-                            Number(event.target.value),
-                          )
-                        }
-                      />
-                    )}
-
-                    {question.type === "DATE" && (
-                      <Input
-                        type="date"
-                        value={typeof value === "string" ? value : ""}
-                        onChange={(event) =>
-                          updatePollAnswer(question.id, event.target.value)
-                        }
-                      />
-                    )}
-
-                    {(question.type === "TEXT" ||
-                      question.type === "PARAGRAPH" ||
-                      question.type === "MATRIX") && (
-                      <textarea
-                        value={typeof value === "string" ? value : ""}
-                        onChange={(event) =>
-                          updatePollAnswer(question.id, event.target.value)
-                        }
-                        className="min-h-28 w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20"
-                      />
-                    )}
+            {pollSurveyModal.type === "SURVEY" ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-3 text-xs text-slate-300">
+                  <span>
+                    سوال {pollSurveyStep + 1} از{" "}
+                    {pollSurveyModal.questions.length}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                    <motion.div
+                      className="h-full rounded-full bg-cyan-400"
+                      animate={{
+                        width: `${((pollSurveyStep + 1) / Math.max(pollSurveyModal.questions.length, 1)) * 100}%`,
+                      }}
+                      transition={reduceMotion ? { duration: 0 } : undefined}
+                    />
                   </div>
                 </div>
-              );
-            })}
+
+                <AnimatePresence mode="wait">
+                  {pollSurveyModal.questions[pollSurveyStep] && (
+                    <motion.div
+                      key={pollSurveyModal.questions[pollSurveyStep].id}
+                      initial={
+                        reduceMotion
+                          ? false
+                          : { opacity: 0, x: -20, filter: "blur(6px)" }
+                      }
+                      animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                      exit={
+                        reduceMotion
+                          ? undefined
+                          : { opacity: 0, x: 20, filter: "blur(6px)" }
+                      }
+                      transition={
+                        reduceMotion
+                          ? { duration: 0 }
+                          : { duration: 0.2, ease: "easeOut" }
+                      }
+                    >
+                      {renderPollSurveyQuestion(
+                        pollSurveyModal.questions[pollSurveyStep],
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pollSurveyModal.questions.map((question) => (
+                  <motion.div
+                    key={question.id}
+                    initial={
+                      reduceMotion
+                        ? false
+                        : { opacity: 0, y: 10, filter: "blur(4px)" }
+                    }
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    transition={reduceMotion ? { duration: 0 } : undefined}
+                  >
+                    {renderPollSurveyQuestion(question)}
+                  </motion.div>
+                ))}
+              </div>
+            )}
 
             <div className="flex flex-wrap justify-end gap-3">
               {(!pollSurveyModal.required ||
                 !pollSurveyModal.popupEnforced) && (
                 <button
                   type="button"
-                  onClick={() => setPollSurveyModal(null)}
+                  onClick={closePollSurveyModal}
                   className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-white/10"
                 >
                   بعدا
                 </button>
               )}
-              <button
-                type="button"
-                onClick={submitCurrentPollSurvey}
-                disabled={submitPollSurvey.isPending}
-                className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-black text-white hover:bg-cyan-400 disabled:opacity-60"
-              >
-                ثبت پاسخ
-              </button>
+              {pollSurveyModal.type === "SURVEY" &&
+                pollSurveyStep > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPollSurveyStep((step) => Math.max(step - 1, 0))
+                    }
+                    className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-white/10"
+                  >
+                    قبلی
+                  </button>
+                )}
+              {pollSurveyModal.type === "SURVEY" &&
+              pollSurveyStep < pollSurveyModal.questions.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPollSurveyStep((step) =>
+                      Math.min(step + 1, pollSurveyModal.questions.length - 1),
+                    )
+                  }
+                  disabled={!currentQuestionIsReady()}
+                  className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-black text-white hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  بعدی
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={submitCurrentPollSurvey}
+                  disabled={
+                    submitPollSurvey.isPending || !pollSurveyCanSubmit()
+                  }
+                  className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-black text-white hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  ثبت پاسخ
+                </button>
+              )}
             </div>
           </div>
         )}

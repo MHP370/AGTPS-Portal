@@ -6,8 +6,15 @@ import {
   CheckSquare,
   ClipboardList,
   Plus,
+  Trash2,
   Vote,
 } from "lucide-react";
+import {
+  AnimatePresence,
+  motion,
+  type Transition,
+  useReducedMotion,
+} from "framer-motion";
 
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
@@ -30,6 +37,15 @@ import type {
 } from "@/lib/poll-surveys";
 
 type PageTab = "polls" | "surveys" | "create" | "reports";
+
+type SurveyQuestionDraft = {
+  draftId: string;
+  title: string;
+  type: PollSurveyQuestionType;
+  description: string;
+  optionsText: string;
+  isRequired: boolean;
+};
 
 const tabs: Array<{ id: PageTab; label: string; icon: typeof Vote }> = [
   { id: "polls", label: "رای‌گیری‌ها", icon: Vote },
@@ -73,6 +89,28 @@ function splitCsv(value: string) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function createSurveyQuestionDraft(
+  index: number,
+  overrides?: Partial<SurveyQuestionDraft>,
+): SurveyQuestionDraft {
+  return {
+    draftId:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${index}`,
+    title: `سوال ${index + 1}`,
+    type: "SINGLE_CHOICE",
+    description: "",
+    optionsText: "گزینه اول\nگزینه دوم",
+    isRequired: true,
+    ...overrides,
+  };
+}
+
+function questionNeedsOptions(type: PollSurveyQuestionType) {
+  return type === "SINGLE_CHOICE" || type === "MULTIPLE_CHOICE";
 }
 
 function formatDate(value?: string | null) {
@@ -250,6 +288,7 @@ function PollSurveyTable({
 }
 
 export default function PollsPage() {
+  const reduceMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<PageTab>("polls");
   const { data: items = [] } = useAdminPollSurveys();
   const createPollSurvey = useCreatePollSurvey();
@@ -269,6 +308,10 @@ export default function PollsPage() {
   const [questionType, setQuestionType] =
     useState<PollSurveyQuestionType>("SINGLE_CHOICE");
   const [optionsText, setOptionsText] = useState("");
+  const [surveyQuestions, setSurveyQuestions] = useState<
+    SurveyQuestionDraft[]
+  >(() => [createSurveyQuestionDraft(0)]);
+  const [activeSurveyQuestionIndex, setActiveSurveyQuestionIndex] = useState(0);
   const [targetDepartments, setTargetDepartments] = useState("");
   const [targetAdGroups, setTargetAdGroups] = useState("");
   const [anonymous, setAnonymous] = useState(false);
@@ -309,6 +352,8 @@ export default function PollsPage() {
     setQuestionTitle("");
     setQuestionType("SINGLE_CHOICE");
     setOptionsText("");
+    setSurveyQuestions([createSurveyQuestionDraft(0)]);
+    setActiveSurveyQuestionIndex(0);
     setTargetDepartments("");
     setTargetAdGroups("");
     setAnonymous(false);
@@ -339,6 +384,23 @@ export default function PollsPage() {
     setOptionsText(
       firstQuestion?.options.map((option) => option.label).join("\n") ?? "",
     );
+    setSurveyQuestions(
+      item.questions.length
+        ? item.questions.map((question, index) =>
+            createSurveyQuestionDraft(index, {
+              draftId: question.id,
+              title: question.title,
+              type: question.type,
+              description: question.description ?? "",
+              optionsText: question.options
+                .map((option) => option.label)
+                .join("\n"),
+              isRequired: question.isRequired,
+            }),
+          )
+        : [createSurveyQuestionDraft(0)],
+    );
+    setActiveSurveyQuestionIndex(0);
     setTargetDepartments(item.targetDepartments.join(", "));
     setTargetAdGroups(item.targetAdGroupIds.join(", "));
     setAnonymous(item.anonymous);
@@ -360,6 +422,32 @@ export default function PollsPage() {
       label,
       sortOrder: index + 1,
     }));
+    const resolvedSurveyQuestions = surveyQuestions.map((question, index) => {
+      const questionOptions = splitLines(question.optionsText).map(
+        (label, optionIndex) => ({
+          label,
+          sortOrder: optionIndex + 1,
+        }),
+      );
+
+      return {
+        title: question.title || `سوال ${index + 1}`,
+        description: question.description,
+        type: question.type,
+        isRequired: question.isRequired,
+        sortOrder: index + 1,
+        options: questionNeedsOptions(question.type)
+          ? questionOptions
+          : undefined,
+        settings:
+          question.type === "RATING"
+            ? {
+                min: 1,
+                max: 5,
+              }
+            : undefined,
+      };
+    });
     const resolvedQuestionType =
       type === "POLL"
         ? allowMultipleSelection
@@ -386,26 +474,29 @@ export default function PollsPage() {
       participantVisibility,
       targetDepartments: splitCsv(targetDepartments),
       targetAdGroupIds: splitCsv(targetAdGroups),
-      questions: [
-        {
-          title: questionTitle || title,
-          type: resolvedQuestionType,
-          isRequired: required,
-          sortOrder: 1,
-          options:
-            resolvedQuestionType === "SINGLE_CHOICE" ||
-            resolvedQuestionType === "MULTIPLE_CHOICE"
-              ? options
-              : undefined,
-          settings:
-            resolvedQuestionType === "RATING"
-              ? {
-                  min: 1,
-                  max: 5,
-                }
-              : undefined,
-        },
-      ],
+      questions:
+        type === "SURVEY"
+          ? resolvedSurveyQuestions
+          : [
+              {
+                title: questionTitle || title,
+                type: resolvedQuestionType,
+                isRequired: required,
+                sortOrder: 1,
+                options:
+                  resolvedQuestionType === "SINGLE_CHOICE" ||
+                  resolvedQuestionType === "MULTIPLE_CHOICE"
+                    ? options
+                    : undefined,
+                settings:
+                  resolvedQuestionType === "RATING"
+                    ? {
+                        min: 1,
+                        max: 5,
+                      }
+                    : undefined,
+              },
+            ],
     };
 
     if (editingHasResponses && editingItem) {
@@ -444,6 +535,44 @@ export default function PollsPage() {
       },
     });
   };
+
+  const updateSurveyQuestion = (
+    draftId: string,
+    patch: Partial<SurveyQuestionDraft>,
+  ) => {
+    setSurveyQuestions((current) =>
+      current.map((question) =>
+        question.draftId === draftId ? { ...question, ...patch } : question,
+      ),
+    );
+  };
+
+  const addSurveyQuestion = () => {
+    setSurveyQuestions((current) => {
+      const next = [...current, createSurveyQuestionDraft(current.length)];
+      setActiveSurveyQuestionIndex(next.length - 1);
+      return next;
+    });
+  };
+
+  const removeSurveyQuestion = (draftId: string) => {
+    setSurveyQuestions((current) => {
+      if (current.length === 1) return current;
+      const next = current.filter((question) => question.draftId !== draftId);
+      setActiveSurveyQuestionIndex((index) =>
+        Math.min(index, Math.max(next.length - 1, 0)),
+      );
+      return next;
+    });
+  };
+
+  const activeSurveyQuestion =
+    surveyQuestions[
+      Math.min(activeSurveyQuestionIndex, surveyQuestions.length - 1)
+    ];
+  const formMotionTransition: Transition = reduceMotion
+    ? { duration: 0 }
+    : { duration: 0.18, ease: [0.16, 1, 0.3, 1] };
 
   return (
     <main className="space-y-6 p-6" dir="rtl">
@@ -704,46 +833,203 @@ export default function PollsPage() {
             </FormField>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <FormField label="عنوان سوال" required>
-              <Input
-                value={questionTitle}
-                onChange={(event) => setQuestionTitle(event.target.value)}
-                placeholder="اگر خالی باشد عنوان اصلی استفاده می‌شود"
-                disabled={editingHasResponses}
-              />
-            </FormField>
-            <FormField label="نوع سوال">
-              {editingHasResponses ? (
-                <div className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
-                  {questionTypeOptions.find(
-                    (item) => item.value === questionType,
-                  )?.label ?? questionType}
-                </div>
-              ) : (
-                <Select
-                  value={type === "POLL" ? "SINGLE_CHOICE" : questionType}
-                  onValueChange={(value) =>
-                    setQuestionType(value as PollSurveyQuestionType)
-                  }
-                  options={questionTypeOptions}
-                />
-              )}
-            </FormField>
-          </div>
+          {type === "POLL" ? (
+            <>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <FormField label="عنوان سوال" required>
+                  <Input
+                    value={questionTitle}
+                    onChange={(event) => setQuestionTitle(event.target.value)}
+                    placeholder="اگر خالی باشد عنوان اصلی استفاده می‌شود"
+                    disabled={editingHasResponses}
+                  />
+                </FormField>
+                <FormField label="نوع سوال">
+                  <div className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+                    {allowMultipleSelection ? "چند انتخابی" : "تک انتخابی"}
+                  </div>
+                </FormField>
+              </div>
 
-          <FormField
-            label="گزینه‌ها"
-            hint="هر گزینه در یک خط. برای سوال‌های متنی و عددی لازم نیست."
-          >
-            <textarea
-              value={optionsText}
-              onChange={(event) => setOptionsText(event.target.value)}
-              disabled={editingHasResponses}
-              className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-              placeholder={"گزینه اول\nگزینه دوم\nگزینه سوم"}
-            />
-          </FormField>
+              <FormField label="گزینه‌ها" hint="هر گزینه در یک خط.">
+                <textarea
+                  value={optionsText}
+                  onChange={(event) => setOptionsText(event.target.value)}
+                  disabled={editingHasResponses}
+                  className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  placeholder={"گزینه اول\nگزینه دوم\nگزینه سوم"}
+                />
+              </FormField>
+            </>
+          ) : (
+            <section className="space-y-4 rounded-2xl border border-cyan-300/15 bg-slate-950/35 p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-lg font-black text-white">
+                    سوال‌های نظرسنجی
+                  </h2>
+                  <p className="mt-1 text-xs leading-6 text-slate-400">
+                    هر سوال در پرتال به صورت یک صفحه جدا نمایش داده می‌شود.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addSurveyQuestion}
+                  disabled={editingHasResponses}
+                >
+                  <Plus className="ml-2 h-4 w-4" />
+                  افزودن سوال
+                </Button>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {surveyQuestions.map((question, index) => (
+                  <motion.button
+                    key={question.draftId}
+                    type="button"
+                    onClick={() => setActiveSurveyQuestionIndex(index)}
+                    whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                    className={`shrink-0 rounded-xl border px-4 py-2 text-sm font-bold transition ${
+                      activeSurveyQuestionIndex === index
+                        ? "border-cyan-300 bg-cyan-400/20 text-cyan-50"
+                        : "border-white/10 bg-white/[0.03] text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    سوال {index + 1}
+                  </motion.button>
+                ))}
+              </div>
+
+              <AnimatePresence mode="wait">
+                {activeSurveyQuestion && (
+                  <motion.div
+                    key={activeSurveyQuestion.draftId}
+                    initial={
+                      reduceMotion
+                        ? false
+                        : { opacity: 0, x: -18, filter: "blur(6px)" }
+                    }
+                    animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                    exit={
+                      reduceMotion
+                        ? undefined
+                        : { opacity: 0, x: 18, filter: "blur(6px)" }
+                    }
+                    transition={formMotionTransition}
+                    className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4"
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="text-sm font-bold text-cyan-100">
+                        صفحه {activeSurveyQuestionIndex + 1} از{" "}
+                        {surveyQuestions.length}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() =>
+                          removeSurveyQuestion(activeSurveyQuestion.draftId)
+                        }
+                        disabled={
+                          editingHasResponses || surveyQuestions.length === 1
+                        }
+                      >
+                        <Trash2 className="ml-2 h-4 w-4" />
+                        حذف سوال
+                      </Button>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      <FormField label="عنوان سوال" required>
+                        <Input
+                          value={activeSurveyQuestion.title}
+                          onChange={(event) =>
+                            updateSurveyQuestion(activeSurveyQuestion.draftId, {
+                              title: event.target.value,
+                            })
+                          }
+                          disabled={editingHasResponses}
+                        />
+                      </FormField>
+                      <FormField label="نوع سوال">
+                        {editingHasResponses ? (
+                          <div className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+                            {questionTypeOptions.find(
+                              (item) =>
+                                item.value === activeSurveyQuestion.type,
+                            )?.label ?? activeSurveyQuestion.type}
+                          </div>
+                        ) : (
+                          <Select
+                            value={activeSurveyQuestion.type}
+                            onValueChange={(value) =>
+                              updateSurveyQuestion(
+                                activeSurveyQuestion.draftId,
+                                {
+                                  type: value as PollSurveyQuestionType,
+                                },
+                              )
+                            }
+                            options={questionTypeOptions}
+                          />
+                        )}
+                      </FormField>
+                    </div>
+
+                    <FormField label="توضیح سوال">
+                      <Input
+                        value={activeSurveyQuestion.description}
+                        onChange={(event) =>
+                          updateSurveyQuestion(activeSurveyQuestion.draftId, {
+                            description: event.target.value,
+                          })
+                        }
+                        disabled={editingHasResponses}
+                      />
+                    </FormField>
+
+                    {questionNeedsOptions(activeSurveyQuestion.type) && (
+                      <FormField
+                        label="گزینه‌ها"
+                        hint="هر گزینه در یک خط وارد شود."
+                      >
+                        <textarea
+                          value={activeSurveyQuestion.optionsText}
+                          onChange={(event) =>
+                            updateSurveyQuestion(
+                              activeSurveyQuestion.draftId,
+                              {
+                                optionsText: event.target.value,
+                              },
+                            )
+                          }
+                          disabled={editingHasResponses}
+                          className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                          placeholder={"گزینه اول\nگزینه دوم\nگزینه سوم"}
+                        />
+                      </FormField>
+                    )}
+
+                    <label className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">
+                      <span>پاسخ به این سوال اجباری باشد</span>
+                      <input
+                        type="checkbox"
+                        checked={activeSurveyQuestion.isRequired}
+                        disabled={editingHasResponses}
+                        onChange={(event) =>
+                          updateSurveyQuestion(activeSurveyQuestion.draftId, {
+                            isRequired: event.target.checked,
+                          })
+                        }
+                        className="h-4 w-4 accent-cyan-400"
+                      />
+                    </label>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
+          )}
 
           <div className="grid gap-4 lg:grid-cols-3">
             <FormField label="تگ‌ها">
