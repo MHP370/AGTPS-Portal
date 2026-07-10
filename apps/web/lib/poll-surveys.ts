@@ -71,7 +71,7 @@ export interface PollSurvey {
   allowLiveResults: boolean;
   participantVisibility: boolean;
   questions: PollSurveyQuestion[];
-  responses: PollSurveyResponse[];
+  responses?: PollSurveyResponse[];
   createdAt: string;
   updatedAt: string;
 }
@@ -172,6 +172,10 @@ export function getPollSurvey(id: string) {
   return api.get<PollSurvey>(`/poll-surveys/${id}`);
 }
 
+export function getAdminPollSurvey(id: string) {
+  return api.get<PollSurvey>(`/poll-surveys/admin/${id}`);
+}
+
 export function getPollSurveyResults(id: string) {
   return api.get<PollSurveyResult>(`/poll-surveys/${id}/results`);
 }
@@ -189,6 +193,10 @@ export function updatePollSurvey(
 
 export function deletePollSurvey(id: string) {
   return api.delete<PollSurvey>(`/poll-surveys/${id}`);
+}
+
+export function clonePollSurvey(id: string) {
+  return api.post<PollSurvey>(`/poll-surveys/${id}/clone`);
 }
 
 export function submitPollSurveyResponse(

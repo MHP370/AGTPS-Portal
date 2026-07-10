@@ -3,8 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  clonePollSurvey,
   createPollSurvey,
   deletePollSurvey,
+  getAdminPollSurvey,
   getAdminPollSurveys,
   getPollSurveyResults,
   getPollSurveys,
@@ -54,6 +56,14 @@ export function usePollSurveyResults(id?: string) {
   });
 }
 
+export function useAdminPollSurvey(id?: string) {
+  return useQuery({
+    queryKey: [...pollSurveysQueryKey, "admin", id],
+    queryFn: () => getAdminPollSurvey(id || ""),
+    enabled: Boolean(id),
+  });
+}
+
 export function useCreatePollSurvey() {
   const queryClient = useQueryClient();
 
@@ -87,6 +97,17 @@ export function useDeletePollSurvey() {
 
   return useMutation({
     mutationFn: deletePollSurvey,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pollSurveysQueryKey });
+    },
+  });
+}
+
+export function useClonePollSurvey() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: clonePollSurvey,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pollSurveysQueryKey });
     },

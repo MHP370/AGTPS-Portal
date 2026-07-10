@@ -35,6 +35,13 @@ export class PollSurveysController {
     return this.pollSurveysService.findAllForAdmin(type);
   }
 
+  @Get('admin/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('poll.manage', 'survey.manage')
+  findOneForAdmin(@Param('id') id: string) {
+    return this.pollSurveysService.findOneForAdmin(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.pollSurveysService.findOne(id);
@@ -52,6 +59,13 @@ export class PollSurveysController {
   @Permissions('poll.manage', 'survey.manage')
   create(@Body() dto: CreatePollSurveyDto, @Req() req: any) {
     return this.pollSurveysService.create(dto, req.user?.id);
+  }
+
+  @Post(':id/clone')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('poll.manage', 'survey.manage')
+  clone(@Param('id') id: string, @Req() req: any) {
+    return this.pollSurveysService.clone(id, req.user?.id);
   }
 
   @Put(':id')

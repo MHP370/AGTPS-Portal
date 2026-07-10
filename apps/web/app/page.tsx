@@ -23,6 +23,7 @@ import {
   Settings,
   ShieldCheck,
   UserRound,
+  Vote,
   X,
 } from "lucide-react";
 import Logo from "@/components/layout/Logo";
@@ -42,6 +43,10 @@ import {
   useNotifications,
 } from "@/hooks/useNotifications";
 import { useEnabledPortalModules } from "@/hooks/usePortalModules";
+import {
+  usePollSurveys,
+  useSubmitPollSurveyResponse,
+} from "@/hooks/usePollSurveys";
 import { useSettings } from "@/hooks/useSettings";
 import { useSliders } from "@/hooks/useSliders";
 import { useSystemStatuses } from "@/hooks/useSystemStatuses";
@@ -83,6 +88,7 @@ import {
   getNotificationTargetDate,
   type PortalNotification,
 } from "@/lib/notifications";
+import type { PollSurvey, PollSurveyQuestion } from "@/lib/poll-surveys";
 
 type PortalContentItem = {
   title: string;
@@ -98,6 +104,7 @@ type PortalWidgetEntry = {
 
 type QuickAction = "note" | "reminder" | "task";
 type CalendarView = "day" | "month" | "year";
+type PollAnswerValue = string | string[] | number | boolean;
 
 const calendarViewLabels: Record<CalendarView, string> = {
   day: "روزانه",
@@ -155,6 +162,7 @@ const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
   map: "sites",
   systems: "applications",
   training: "training",
+  "poll-survey": "poll-survey",
   status: "system-statuses",
   calendar: "meetings",
   workspace: "workspace",
@@ -169,6 +177,7 @@ const fixedCenterWidgetOrder: PortalWidgetId[] = [
 ];
 
 const dismissedHeroStorageKey = "portal-hero-dismissed";
+const submittedPollSurveysStorageKey = "portal-poll-surveys-submitted";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -207,6 +216,50 @@ function getPersianTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatPersianDateTime(value?: string | null) {
+  if (!value) return "بدون مهلت";
+
+  return new Intl.DateTimeFormat("fa-IR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function getSubmittedPollSurveyIds() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const parsed = JSON.parse(
+      localStorage.getItem(submittedPollSurveysStorageKey) || "[]",
+    );
+
+    return new Set<string>(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function storeSubmittedPollSurveyId(id: string) {
+  if (typeof window === "undefined") return new Set<string>();
+
+  const next = getSubmittedPollSurveyIds();
+  next.add(id);
+  localStorage.setItem(
+    submittedPollSurveysStorageKey,
+    JSON.stringify(Array.from(next)),
+  );
+
+  return next;
+}
+
+function isChoiceQuestion(question: PollSurveyQuestion) {
+  return (
+    question.type === "SINGLE_CHOICE" ||
+    question.type === "MULTIPLE_CHOICE" ||
+    question.type === "YES_NO"
+  );
 }
 
 function getJalaliParts(date: Date) {
@@ -319,6 +372,15 @@ export default function Home() {
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const [heroDismissed, setHeroDismissed] = useState(false);
+  const [pollSurveyModal, setPollSurveyModal] = useState<PollSurvey | null>(
+    null,
+  );
+  const [pollAnswers, setPollAnswers] = useState<
+    Record<string, PollAnswerValue>
+  >({});
+  const [submittedPollSurveyIds, setSubmittedPollSurveyIds] = useState<
+    Set<string>
+  >(() => new Set());
   const handledNotificationDeepLink = useRef(false);
   const { data: settings } = useSettings();
   const { data: enabledModules } = useEnabledPortalModules();
@@ -328,6 +390,7 @@ export default function Home() {
   const { data: news = [] } = useNews();
   const { data: downloads = [] } = useDownloads();
   const { data: trainings = [] } = useTrainings();
+  const { data: pollSurveys = [] } = usePollSurveys();
   const { data: meetings = [] } = useMeetings();
   const { data: notes = [] } = useNotes();
   const { data: reminders = [] } = useReminders();
@@ -340,6 +403,7 @@ export default function Home() {
   const createTask = useCreateTask();
   const updateReminder = useUpdateReminder();
   const updateTask = useUpdateTask();
+  const submitPollSurvey = useSubmitPollSurveyResponse(pollSurveyModal?.id);
   const backgroundImageUrl =
     settings?.portalBackgroundImageUrl || "/images/logo/apgt-logo.png";
   const overlayColor = settings?.portalBackgroundOverlayColor || "#020617";
@@ -580,6 +644,15 @@ export default function Home() {
           updatedAt: "",
         }));
   const visibleTrainings = trainings.slice(0, 4);
+  const activePollSurveys = pollSurveys
+    .filter((item) => !submittedPollSurveyIds.has(item.id))
+    .slice(0, 4);
+  const requiredPollSurvey = pollSurveys.find(
+    (item) =>
+      item.required &&
+      item.popupEnforced &&
+      !submittedPollSurveyIds.has(item.id),
+  );
   const visibleSystemStatuses =
     managedSystemStatuses.length > 0
       ? managedSystemStatuses
@@ -625,10 +698,29 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    setHeroDismissed(
-      window.sessionStorage.getItem(dismissedHeroStorageKey) === "true",
-    );
+    const timer = window.setTimeout(() => {
+      setHeroDismissed(
+        window.sessionStorage.getItem(dismissedHeroStorageKey) === "true",
+      );
+      setSubmittedPollSurveyIds(getSubmittedPollSurveyIds());
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (
+      moduleIsEnabled("poll-survey") &&
+      requiredPollSurvey &&
+      !pollSurveyModal
+    ) {
+      const timer = window.setTimeout(() => {
+        setPollSurveyModal(requiredPollSurvey);
+      }, 0);
+
+      return () => window.clearTimeout(timer);
+    }
+  }, [enabledModuleKeys, pollSurveyModal, requiredPollSurvey]);
 
   function dismissHeroSlider() {
     setHeroDismissed(true);
@@ -636,6 +728,90 @@ export default function Home() {
     if (typeof window !== "undefined") {
       window.sessionStorage.setItem(dismissedHeroStorageKey, "true");
     }
+  }
+
+  function openPollSurvey(item: PollSurvey) {
+    setPollAnswers({});
+    setPollSurveyModal(item);
+  }
+
+  function updatePollAnswer(questionId: string, value: PollAnswerValue) {
+    setPollAnswers((current) => ({
+      ...current,
+      [questionId]: value,
+    }));
+  }
+
+  function togglePollAnswer(questionId: string, optionId: string) {
+    setPollAnswers((current) => {
+      const currentValue = current[questionId];
+      const currentOptions = Array.isArray(currentValue) ? currentValue : [];
+      const nextOptions = currentOptions.includes(optionId)
+        ? currentOptions.filter((id) => id !== optionId)
+        : [...currentOptions, optionId];
+
+      return {
+        ...current,
+        [questionId]: nextOptions,
+      };
+    });
+  }
+
+  function submitCurrentPollSurvey() {
+    if (!pollSurveyModal) return;
+
+    submitPollSurvey.mutate(
+      {
+        answers: pollSurveyModal.questions.map((question) => {
+          const value = pollAnswers[question.id];
+
+          if (question.type === "MULTIPLE_CHOICE") {
+            return {
+              questionId: question.id,
+              optionIds: Array.isArray(value) ? value : [],
+            };
+          }
+
+          if (question.type === "SINGLE_CHOICE" || question.type === "YES_NO") {
+            return {
+              questionId: question.id,
+              optionId: typeof value === "string" ? value : undefined,
+            };
+          }
+
+          if (question.type === "RATING" || question.type === "NUMBER") {
+            return {
+              questionId: question.id,
+              numberValue:
+                typeof value === "number"
+                  ? value
+                  : Number(value || 0) || undefined,
+            };
+          }
+
+          if (question.type === "DATE") {
+            return {
+              questionId: question.id,
+              dateValue: typeof value === "string" ? value : undefined,
+            };
+          }
+
+          return {
+            questionId: question.id,
+            textValue: typeof value === "string" ? value : undefined,
+          };
+        }),
+      },
+      {
+        onSuccess: () => {
+          setSubmittedPollSurveyIds(
+            storeSubmittedPollSurveyId(pollSurveyModal.id),
+          );
+          setPollSurveyModal(null);
+          setPollAnswers({});
+        },
+      },
+    );
   }
 
   function openQuickAction(action: QuickAction) {
@@ -704,10 +880,14 @@ export default function Home() {
     if (!notification) return;
 
     handledNotificationDeepLink.current = true;
-    openNotification(notification);
-    url.searchParams.delete("notification");
-    url.searchParams.delete("type");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    const timer = window.setTimeout(() => {
+      openNotification(notification);
+      url.searchParams.delete("notification");
+      url.searchParams.delete("type");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [notifications]);
 
   async function submitQuickAction(event: React.FormEvent) {
@@ -1196,6 +1376,66 @@ export default function Home() {
           <aside className="space-y-5">
             {sortPortalWidgets([
               {
+                id: "poll-survey",
+                node: (
+                  <GlassPanel id="poll-survey">
+                    <SectionHeader title="نظرسنجی و رای‌گیری" />
+                    <div className="space-y-3">
+                      {activePollSurveys.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => openPollSurvey(item)}
+                          className={`w-full rounded-2xl border p-4 text-right transition hover:border-cyan-300/35 hover:bg-white/[0.08] ${
+                            item.required
+                              ? "border-rose-300/25 bg-rose-400/10"
+                              : "border-white/10 bg-white/[0.04]"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-cyan-400/15 text-cyan-100 ring-1 ring-cyan-300/20">
+                              <Vote size={22} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span className="font-black text-white">
+                                  {item.title}
+                                </span>
+                                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-200">
+                                  {item.type === "POLL"
+                                    ? "رای‌گیری"
+                                    : "نظرسنجی"}
+                                </span>
+                                {item.required && (
+                                  <span className="rounded-full bg-rose-400/15 px-2 py-0.5 text-[10px] font-bold text-rose-100">
+                                    اجباری
+                                  </span>
+                                )}
+                              </span>
+                              <span className="mt-2 line-clamp-2 block text-xs leading-6 text-slate-300">
+                                {item.description || "برای ثبت پاسخ کلیک کنید."}
+                              </span>
+                              <span className="mt-2 block text-[11px] text-slate-500">
+                                {item.anonymous ? "ناشناس" : "با نام"} ·{" "}
+                                {item.deadline
+                                  ? `مهلت ${formatPersianDateTime(item.deadline)}`
+                                  : "بدون مهلت"}
+                              </span>
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+
+                      {activePollSurveys.length === 0 && (
+                        <div className="rounded-2xl border border-dashed border-white/15 p-4 text-sm leading-7 text-slate-300">
+                          رای‌گیری یا نظرسنجی فعالی برای شما وجود ندارد.
+                        </div>
+                      )}
+                    </div>
+                  </GlassPanel>
+                ),
+              },
+              {
                 id: "status",
                 node: (
                   <GlassPanel id="status">
@@ -1669,6 +1909,205 @@ export default function Home() {
           </span>
         </footer>
       </div>
+
+      <Dialog
+        open={Boolean(pollSurveyModal)}
+        onOpenChange={(open) => {
+          if (
+            !open &&
+            pollSurveyModal?.required &&
+            pollSurveyModal.popupEnforced
+          ) {
+            return;
+          }
+
+          if (!open) {
+            setPollSurveyModal(null);
+            setPollAnswers({});
+          }
+        }}
+        title={pollSurveyModal?.title ?? "نظرسنجی و رای‌گیری"}
+        className="max-w-3xl bg-slate-950/95"
+      >
+        {pollSurveyModal && (
+          <div className="space-y-5 text-right" dir="rtl">
+            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-cyan-100">
+                  {pollSurveyModal.type === "POLL" ? "رای‌گیری" : "نظرسنجی"}
+                </span>
+                {pollSurveyModal.required && (
+                  <span className="rounded-full bg-rose-400/15 px-3 py-1 text-xs font-bold text-rose-100">
+                    اجباری
+                  </span>
+                )}
+                {pollSurveyModal.anonymous && (
+                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-100">
+                    ناشناس
+                  </span>
+                )}
+              </div>
+              {pollSurveyModal.description && (
+                <p className="mt-3 text-sm leading-7 text-slate-200">
+                  {pollSurveyModal.description}
+                </p>
+              )}
+            </div>
+
+            {pollSurveyModal.questions.map((question) => {
+              const value = pollAnswers[question.id];
+
+              return (
+                <div
+                  key={question.id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                >
+                  <h3 className="font-black text-white">{question.title}</h3>
+                  {question.description && (
+                    <p className="mt-1 text-xs leading-6 text-slate-400">
+                      {question.description}
+                    </p>
+                  )}
+
+                  <div className="mt-4 space-y-2">
+                    {question.type === "YES_NO" && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: "بله", value: true },
+                          { label: "خیر", value: false },
+                        ].map((option) => (
+                          <button
+                            key={option.label}
+                            type="button"
+                            onClick={() =>
+                              updatePollAnswer(question.id, option.value)
+                            }
+                            className={`rounded-xl border px-4 py-3 text-sm font-black transition ${
+                              value === option.value
+                                ? "border-cyan-300 bg-cyan-400/20 text-cyan-50"
+                                : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {isChoiceQuestion(question) &&
+                      question.type !== "YES_NO" &&
+                      question.options.map((option) => {
+                        const selected =
+                          question.type === "MULTIPLE_CHOICE"
+                            ? Array.isArray(value) && value.includes(option.id)
+                            : value === option.id;
+
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() =>
+                              question.type === "MULTIPLE_CHOICE"
+                                ? togglePollAnswer(question.id, option.id)
+                                : updatePollAnswer(question.id, option.id)
+                            }
+                            className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-right text-sm transition ${
+                              selected
+                                ? "border-cyan-300 bg-cyan-400/20 text-cyan-50"
+                                : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
+                            }`}
+                          >
+                            <span className="font-bold">{option.label}</span>
+                            <span
+                              className={`size-3 rounded-full ${
+                                selected ? "bg-cyan-200" : "bg-white/20"
+                              }`}
+                            />
+                          </button>
+                        );
+                      })}
+
+                    {question.type === "RATING" && (
+                      <div className="grid grid-cols-5 gap-2">
+                        {[1, 2, 3, 4, 5].map((rate) => (
+                          <button
+                            key={rate}
+                            type="button"
+                            onClick={() => updatePollAnswer(question.id, rate)}
+                            className={`rounded-xl border px-3 py-3 text-lg font-black transition ${
+                              value === rate
+                                ? "border-amber-300 bg-amber-400/20 text-amber-50"
+                                : "border-white/10 bg-slate-950/40 text-slate-200 hover:bg-white/10"
+                            }`}
+                          >
+                            {rate}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {question.type === "NUMBER" && (
+                      <Input
+                        type="number"
+                        value={typeof value === "number" ? value : ""}
+                        onChange={(event) =>
+                          updatePollAnswer(
+                            question.id,
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                    )}
+
+                    {question.type === "DATE" && (
+                      <Input
+                        type="date"
+                        value={typeof value === "string" ? value : ""}
+                        onChange={(event) =>
+                          updatePollAnswer(question.id, event.target.value)
+                        }
+                      />
+                    )}
+
+                    {(question.type === "TEXT" ||
+                      question.type === "PARAGRAPH" ||
+                      question.type === "MATRIX") && (
+                      <textarea
+                        value={typeof value === "string" ? value : ""}
+                        onChange={(event) =>
+                          updatePollAnswer(question.id, event.target.value)
+                        }
+                        className="min-h-28 w-full rounded-xl border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-white outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/20"
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="flex flex-wrap justify-end gap-3">
+              {(!pollSurveyModal.required ||
+                !pollSurveyModal.popupEnforced) && (
+                <button
+                  type="button"
+                  onClick={() => setPollSurveyModal(null)}
+                  className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-slate-200 hover:bg-white/10"
+                >
+                  بعدا
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={submitCurrentPollSurvey}
+                disabled={submitPollSurvey.isPending}
+                className="rounded-xl bg-cyan-500 px-5 py-2 text-sm font-black text-white hover:bg-cyan-400 disabled:opacity-60"
+              >
+                ثبت پاسخ
+              </button>
+            </div>
+          </div>
+        )}
+      </Dialog>
 
       <Dialog
         open={Boolean(selectedContent)}

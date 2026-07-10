@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import {
   useAdminPollSurveys,
+  useClonePollSurvey,
   useCreatePollSurvey,
   useDeletePollSurvey,
   usePollSurveyResults,
@@ -87,15 +88,34 @@ function typeLabel(type: PollSurveyType) {
   return type === "POLL" ? "رای‌گیری" : "نظرسنجی";
 }
 
+function getSubmittedCount(item: PollSurvey) {
+  return (
+    item.responses?.filter((response) => response.status === "SUBMITTED")
+      .length ?? 0
+  );
+}
+
+function toDateTimeLocal(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function PollSurveyTable({
   items,
   onSelectReport,
+  onEdit,
+  onView,
 }: {
   items: PollSurvey[];
   onSelectReport: (id: string) => void;
+  onEdit: (item: PollSurvey) => void;
+  onView: (item: PollSurvey) => void;
 }) {
   const updatePollSurvey = useUpdatePollSurvey();
   const deletePollSurvey = useDeletePollSurvey();
+  const clonePollSurvey = useClonePollSurvey();
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70">
@@ -164,11 +184,7 @@ function PollSurveyTable({
                   </div>
                 </td>
                 <td className="px-4 py-4 text-slate-300">
-                  {
-                    item.responses.filter(
-                      (response) => response.status === "SUBMITTED",
-                    ).length
-                  }
+                  {getSubmittedCount(item)}
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex flex-wrap gap-2">
@@ -176,9 +192,33 @@ function PollSurveyTable({
                       type="button"
                       variant="outline"
                       size="sm"
+                      onClick={() => onView(item)}
+                    >
+                      مشاهده
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => onEdit(item)}
+                    >
+                      ویرایش
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => onSelectReport(item.id)}
                     >
                       گزارش
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => clonePollSurvey.mutate(item.id)}
+                    >
+                      کلون
                     </Button>
                     <Button
                       type="button"
@@ -213,7 +253,10 @@ export default function PollsPage() {
   const [activeTab, setActiveTab] = useState<PageTab>("polls");
   const { data: items = [] } = useAdminPollSurveys();
   const createPollSurvey = useCreatePollSurvey();
+  const updatePollSurvey = useUpdatePollSurvey();
 
+  const [editingItem, setEditingItem] = useState<PollSurvey | null>(null);
+  const [viewingItem, setViewingItem] = useState<PollSurvey | null>(null);
   const [type, setType] = useState<PollSurveyType>("POLL");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -241,6 +284,9 @@ export default function PollsPage() {
     undefined,
   );
   const { data: selectedReport } = usePollSurveyResults(selectedReportId);
+  const editingHasResponses = editingItem
+    ? getSubmittedCount(editingItem) > 0
+    : false;
 
   const polls = useMemo(
     () => items.filter((item) => item.type === "POLL"),
@@ -252,6 +298,7 @@ export default function PollsPage() {
   );
 
   const resetForm = () => {
+    setEditingItem(null);
     setTitle("");
     setDescription("");
     setCategory("");
@@ -273,6 +320,37 @@ export default function PollsPage() {
     setAllowParticipantCount(true);
     setAllowLiveResults(false);
     setParticipantVisibility(false);
+  };
+
+  const loadItemIntoForm = (item: PollSurvey) => {
+    const firstQuestion = item.questions[0];
+
+    setEditingItem(item);
+    setType(item.type);
+    setTitle(item.title);
+    setDescription(item.description ?? "");
+    setCategory(item.category ?? "");
+    setTags(item.tags.join(", "));
+    setStatus(item.status);
+    setDeadline(toDateTimeLocal(item.deadline));
+    setPublishDate(toDateTimeLocal(item.publishDate));
+    setQuestionTitle(firstQuestion?.title ?? item.title);
+    setQuestionType(firstQuestion?.type ?? "SINGLE_CHOICE");
+    setOptionsText(
+      firstQuestion?.options.map((option) => option.label).join("\n") ?? "",
+    );
+    setTargetDepartments(item.targetDepartments.join(", "));
+    setTargetAdGroups(item.targetAdGroupIds.join(", "));
+    setAnonymous(item.anonymous);
+    setRequired(item.required);
+    setPopupEnforced(item.popupEnforced);
+    setAllowMultipleSelection(item.allowMultipleSelection);
+    setAllowVoteEditing(item.allowVoteEditing);
+    setAllowResultViewing(item.allowResultViewing);
+    setAllowParticipantCount(item.allowParticipantCount);
+    setAllowLiveResults(item.allowLiveResults);
+    setParticipantVisibility(item.participantVisibility);
+    setActiveTab("create");
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -330,10 +408,39 @@ export default function PollsPage() {
       ],
     };
 
+    if (editingHasResponses && editingItem) {
+      dto.type = editingItem.type;
+      dto.anonymous = editingItem.anonymous;
+      dto.allowMultipleSelection = editingItem.allowMultipleSelection;
+      dto.allowVoteEditing = editingItem.allowVoteEditing;
+      dto.participantVisibility = editingItem.participantVisibility;
+      delete dto.questions;
+      delete dto.options;
+    }
+
+    const onSuccess = () => {
+      const nextTab =
+        (editingItem?.type ?? type) === "POLL" ? "polls" : "surveys";
+      resetForm();
+      setActiveTab(nextTab);
+    };
+
+    if (editingItem) {
+      updatePollSurvey.mutate(
+        {
+          id: editingItem.id,
+          dto,
+        },
+        {
+          onSuccess,
+        },
+      );
+      return;
+    }
+
     createPollSurvey.mutate(dto, {
       onSuccess: () => {
-        resetForm();
-        setActiveTab(type === "POLL" ? "polls" : "surveys");
+        onSuccess();
       },
     });
   };
@@ -351,6 +458,7 @@ export default function PollsPage() {
         <Button
           type="button"
           onClick={() => {
+            resetForm();
             setType("POLL");
             setActiveTab("create");
           }}
@@ -383,9 +491,121 @@ export default function PollsPage() {
         })}
       </nav>
 
+      {viewingItem && (
+        <section className="space-y-4 rounded-2xl border border-cyan-300/20 bg-slate-900/85 p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-bold text-cyan-200">
+                {typeLabel(viewingItem.type)}
+              </p>
+              <h2 className="mt-1 text-2xl font-black text-white">
+                {viewingItem.title}
+              </h2>
+              <p className="mt-2 text-sm leading-7 text-slate-300">
+                {viewingItem.description || "بدون توضیح"}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setViewingItem(null)}
+            >
+              بستن
+            </Button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+              <p className="text-xs text-slate-400">وضعیت</p>
+              <p className="mt-1 font-black text-white">
+                {statusOptions.find((item) => item.value === viewingItem.status)
+                  ?.label ?? viewingItem.status}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+              <p className="text-xs text-slate-400">پاسخ‌ها</p>
+              <p className="mt-1 font-black text-cyan-100">
+                {getSubmittedCount(viewingItem)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+              <p className="text-xs text-slate-400">مهلت</p>
+              <p className="mt-1 font-black text-white">
+                {formatDate(viewingItem.deadline)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
+              <p className="text-xs text-slate-400">حالت</p>
+              <p className="mt-1 font-black text-white">
+                {viewingItem.anonymous ? "ناشناس" : "با نام"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+              <h3 className="font-black text-white">سوال‌ها</h3>
+              <div className="mt-3 space-y-3">
+                {viewingItem.questions.map((question) => (
+                  <div
+                    key={question.id}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                  >
+                    <div className="font-bold text-slate-100">
+                      {question.title}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {question.options.map((option) => (
+                        <span
+                          key={option.id}
+                          className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100"
+                        >
+                          {option.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+              <h3 className="font-black text-white">هدف‌گذاری</h3>
+              <div className="mt-3 space-y-3 text-sm text-slate-300">
+                <p>
+                  دپارتمان‌ها:{" "}
+                  {viewingItem.targetDepartments.length
+                    ? viewingItem.targetDepartments.join("، ")
+                    : "همه"}
+                </p>
+                <p>
+                  گروه‌های AD:{" "}
+                  {viewingItem.targetAdGroupIds.length
+                    ? viewingItem.targetAdGroupIds.join("، ")
+                    : "همه"}
+                </p>
+                <p>
+                  ویژگی‌ها:{" "}
+                  {[
+                    viewingItem.required ? "اجباری" : null,
+                    viewingItem.popupEnforced ? "popup" : null,
+                    viewingItem.allowLiveResults ? "نتایج زنده" : null,
+                    viewingItem.allowVoteEditing ? "ویرایش پاسخ" : null,
+                  ]
+                    .filter(Boolean)
+                    .join("، ") || "بدون ویژگی خاص"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {activeTab === "polls" && (
         <PollSurveyTable
           items={polls}
+          onEdit={loadItemIntoForm}
+          onView={setViewingItem}
           onSelectReport={(id) => {
             setSelectedReportId(id);
             setActiveTab("reports");
@@ -396,6 +616,8 @@ export default function PollsPage() {
       {activeTab === "surveys" && (
         <PollSurveyTable
           items={surveys}
+          onEdit={loadItemIntoForm}
+          onView={setViewingItem}
           onSelectReport={(id) => {
             setSelectedReportId(id);
             setActiveTab("reports");
@@ -408,16 +630,31 @@ export default function PollsPage() {
           onSubmit={handleSubmit}
           className="space-y-5 rounded-2xl border border-white/10 bg-slate-900/70 p-5"
         >
+          {editingItem && (
+            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm leading-7 text-cyan-100">
+              در حال ویرایش: {editingItem.title}
+              {editingHasResponses
+                ? " - چون پاسخ ثبت شده، فیلدهای حساس مثل نوع، ناشناس بودن، سوال‌ها و گزینه‌ها قفل هستند."
+                : " - هنوز پاسخی ثبت نشده و همه فیلدها قابل ویرایش هستند."}
+            </div>
+          )}
+
           <div className="grid gap-4 lg:grid-cols-3">
             <FormField label="نوع" required>
-              <Select
-                value={type}
-                onValueChange={(value) => setType(value as PollSurveyType)}
-                options={[
-                  { value: "POLL", label: "رای‌گیری" },
-                  { value: "SURVEY", label: "نظرسنجی" },
-                ]}
-              />
+              {editingHasResponses ? (
+                <div className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+                  {typeLabel(type)}
+                </div>
+              ) : (
+                <Select
+                  value={type}
+                  onValueChange={(value) => setType(value as PollSurveyType)}
+                  options={[
+                    { value: "POLL", label: "رای‌گیری" },
+                    { value: "SURVEY", label: "نظرسنجی" },
+                  ]}
+                />
+              )}
             </FormField>
             <FormField label="عنوان" required>
               <Input
@@ -473,16 +710,25 @@ export default function PollsPage() {
                 value={questionTitle}
                 onChange={(event) => setQuestionTitle(event.target.value)}
                 placeholder="اگر خالی باشد عنوان اصلی استفاده می‌شود"
+                disabled={editingHasResponses}
               />
             </FormField>
             <FormField label="نوع سوال">
-              <Select
-                value={type === "POLL" ? "SINGLE_CHOICE" : questionType}
-                onValueChange={(value) =>
-                  setQuestionType(value as PollSurveyQuestionType)
-                }
-                options={questionTypeOptions}
-              />
+              {editingHasResponses ? (
+                <div className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+                  {questionTypeOptions.find(
+                    (item) => item.value === questionType,
+                  )?.label ?? questionType}
+                </div>
+              ) : (
+                <Select
+                  value={type === "POLL" ? "SINGLE_CHOICE" : questionType}
+                  onValueChange={(value) =>
+                    setQuestionType(value as PollSurveyQuestionType)
+                  }
+                  options={questionTypeOptions}
+                />
+              )}
             </FormField>
           </div>
 
@@ -493,6 +739,7 @@ export default function PollsPage() {
             <textarea
               value={optionsText}
               onChange={(event) => setOptionsText(event.target.value)}
+              disabled={editingHasResponses}
               className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               placeholder={"گزینه اول\nگزینه دوم\nگزینه سوم"}
             />
@@ -528,6 +775,7 @@ export default function PollsPage() {
                 checked: anonymous,
                 onChange: setAnonymous,
                 label: "ناشناس",
+                disabled: editingHasResponses,
               },
               {
                 checked: required,
@@ -543,12 +791,13 @@ export default function PollsPage() {
                 checked: allowMultipleSelection,
                 onChange: setAllowMultipleSelection,
                 label: "انتخاب چند گزینه",
-                disabled: type !== "POLL",
+                disabled: type !== "POLL" || editingHasResponses,
               },
               {
                 checked: allowVoteEditing,
                 onChange: setAllowVoteEditing,
                 label: "امکان ویرایش پاسخ",
+                disabled: editingHasResponses,
               },
               {
                 checked: allowResultViewing,
@@ -569,7 +818,7 @@ export default function PollsPage() {
                 checked: participantVisibility,
                 onChange: setParticipantVisibility,
                 label: "نمایش شرکت‌کنندگان",
-                disabled: anonymous,
+                disabled: anonymous || editingHasResponses,
               },
             ].map((item) => (
               <label
@@ -589,9 +838,14 @@ export default function PollsPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={createPollSurvey.isPending}>
+            <Button
+              type="submit"
+              disabled={
+                createPollSurvey.isPending || updatePollSurvey.isPending
+              }
+            >
               <CheckSquare className="ml-2 h-4 w-4" />
-              ذخیره
+              {editingItem ? "ذخیره ویرایش" : "ذخیره"}
             </Button>
             <Button type="button" variant="outline" onClick={resetForm}>
               پاک کردن فرم

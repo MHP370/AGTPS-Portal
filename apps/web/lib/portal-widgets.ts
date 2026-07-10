@@ -5,6 +5,7 @@ export type PortalWidgetId =
   | "map"
   | "systems"
   | "training"
+  | "poll-survey"
   | "status"
   | "calendar"
   | "workspace"
@@ -64,6 +65,13 @@ export const defaultPortalWidgets: PortalWidgetSetting[] = [
     column: "center",
   },
   {
+    id: "poll-survey",
+    title: "نظرسنجی و رای‌گیری",
+    enabled: true,
+    order: 5,
+    column: "right",
+  },
+  {
     id: "status",
     title: "وضعیت سیستم‌ها",
     enabled: true,
@@ -109,19 +117,14 @@ export function normalizePortalWidgets(value: unknown): PortalWidgetSetting[] {
       return {
         ...widget,
         enabled:
-          typeof saved?.enabled === "boolean"
-            ? saved.enabled
-            : widget.enabled,
-        order:
-          typeof saved?.order === "number" ? saved.order : widget.order,
+          typeof saved?.enabled === "boolean" ? saved.enabled : widget.enabled,
+        order: typeof saved?.order === "number" ? saved.order : widget.order,
       };
     })
     .sort((first, second) => first.order - second.order);
 }
 
-export function normalizePortalWidgetsForSave(
-  widgets: PortalWidgetSetting[],
-) {
+export function normalizePortalWidgetsForSave(widgets: PortalWidgetSetting[]) {
   return widgets.map((widget, index) => ({
     id: widget.id,
     title: widget.title,

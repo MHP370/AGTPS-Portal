@@ -36,6 +36,25 @@ const pollSurveyInclude = {
   },
 } satisfies Prisma.PollSurveyInclude;
 
+const publicPollSurveyInclude = {
+  questions: {
+    include: {
+      options: {
+        orderBy: {
+          sortOrder: 'asc',
+        },
+      },
+    },
+    orderBy: {
+      sortOrder: 'asc',
+    },
+  },
+} satisfies Prisma.PollSurveyInclude;
+
+type PollSurveyWithResponses = Prisma.PollSurveyGetPayload<{
+  include: typeof pollSurveyInclude;
+}>;
+
 function parseDate(value?: string | null) {
   return value ? new Date(value) : null;
 }
@@ -97,19 +116,90 @@ function buildQuestionCreate(dto: CreatePollSurveyDto) {
   return [];
 }
 
+function hasSubmittedResponses(item: PollSurveyWithResponses) {
+  return item.responses.some(
+    (response) => response.status === PollSurveyResponseStatus.SUBMITTED,
+  );
+}
+
+function assertSensitiveFieldsAreLocked(
+  item: PollSurveyWithResponses,
+  dto: UpdatePollSurveyDto,
+) {
+  if (!hasSubmittedResponses(item)) return;
+
+  const lockedFields: string[] = [];
+
+  if (dto.type !== undefined && dto.type !== item.type) {
+    lockedFields.push('type');
+  }
+
+  if (dto.anonymous !== undefined && dto.anonymous !== item.anonymous) {
+    lockedFields.push('anonymous');
+  }
+
+  if (
+    dto.allowMultipleSelection !== undefined &&
+    dto.allowMultipleSelection !== item.allowMultipleSelection
+  ) {
+    lockedFields.push('allowMultipleSelection');
+  }
+
+  if (dto.questions !== undefined || dto.options !== undefined) {
+    lockedFields.push('questions/options');
+  }
+
+  if (
+    dto.allowVoteEditing !== undefined &&
+    dto.allowVoteEditing !== item.allowVoteEditing
+  ) {
+    lockedFields.push('allowVoteEditing');
+  }
+
+  if (
+    dto.participantVisibility !== undefined &&
+    dto.participantVisibility !== item.participantVisibility
+  ) {
+    lockedFields.push('participantVisibility');
+  }
+
+  if (lockedFields.length > 0) {
+    throw new BadRequestException(
+      `Sensitive fields cannot be changed after participation starts: ${lockedFields.join(', ')}`,
+    );
+  }
+}
+
 @Injectable()
 export class PollSurveysService {
   constructor(private readonly prisma: PrismaService) {}
 
   findPublic(type?: PollSurveyType) {
+    const now = new Date();
+
     return this.prisma.pollSurvey.findMany({
       where: {
         ...(type ? { type } : {}),
-        status: {
-          in: [PollSurveyStatus.SCHEDULED, PollSurveyStatus.RUNNING],
-        },
+        OR: [
+          {
+            status: PollSurveyStatus.RUNNING,
+          },
+          {
+            status: PollSurveyStatus.SCHEDULED,
+            OR: [
+              {
+                publishDate: null,
+              },
+              {
+                publishDate: {
+                  lte: now,
+                },
+              },
+            ],
+          },
+        ],
       },
-      include: pollSurveyInclude,
+      include: publicPollSurveyInclude,
       orderBy: [
         {
           required: 'desc',
@@ -135,6 +225,19 @@ export class PollSurveysService {
   }
 
   async findOne(id: string) {
+    const item = await this.prisma.pollSurvey.findUnique({
+      where: { id },
+      include: publicPollSurveyInclude,
+    });
+
+    if (!item) {
+      throw new NotFoundException('Poll or survey was not found.');
+    }
+
+    return item;
+  }
+
+  async findOneForAdmin(id: string) {
     const item = await this.prisma.pollSurvey.findUnique({
       where: { id },
       include: pollSurveyInclude,
@@ -180,7 +283,8 @@ export class PollSurveysService {
   }
 
   async update(id: string, dto: UpdatePollSurveyDto) {
-    await this.findOne(id);
+    const current = await this.findOneForAdmin(id);
+    assertSensitiveFieldsAreLocked(current, dto);
     const shouldReplaceQuestions =
       dto.questions !== undefined || dto.options !== undefined;
 
@@ -259,8 +363,59 @@ export class PollSurveysService {
     });
   }
 
+  async clone(id: string, creatorId?: string) {
+    const current = await this.findOneForAdmin(id);
+
+    return this.prisma.pollSurvey.create({
+      data: {
+        type: current.type,
+        title: `${current.title} - کپی`,
+        description: current.description,
+        category: current.category,
+        tags: current.tags,
+        allowMultipleSelection: current.allowMultipleSelection,
+        anonymous: current.anonymous,
+        required: false,
+        popupEnforced: false,
+        allowVoteEditing: current.allowVoteEditing,
+        deadline: null,
+        publishDate: null,
+        status: PollSurveyStatus.DRAFT,
+        targetUserIds: current.targetUserIds,
+        targetDepartments: current.targetDepartments,
+        targetAdGroupIds: current.targetAdGroupIds,
+        allowResultViewing: current.allowResultViewing,
+        allowParticipantCount: current.allowParticipantCount,
+        allowLiveResults: current.allowLiveResults,
+        participantVisibility: current.participantVisibility,
+        creatorId,
+        questions: {
+          create: current.questions.map((question) => ({
+            type: question.type,
+            title: question.title,
+            description: question.description,
+            isRequired: question.isRequired,
+            sortOrder: question.sortOrder,
+            settings: question.settings as Prisma.InputJsonValue,
+            conditionQuestionId: question.conditionQuestionId,
+            conditionOperator: question.conditionOperator,
+            conditionValue: question.conditionValue,
+            options: {
+              create: question.options.map((option) => ({
+                label: option.label,
+                value: option.value,
+                sortOrder: option.sortOrder,
+              })),
+            },
+          })),
+        },
+      },
+      include: pollSurveyInclude,
+    });
+  }
+
   async submitResponse(id: string, dto: SubmitPollSurveyResponseDto) {
-    const item = await this.findOne(id);
+    const item = await this.findOneForAdmin(id);
     const now = new Date();
 
     if (
@@ -353,7 +508,7 @@ export class PollSurveysService {
   }
 
   async getResults(id: string) {
-    const item = await this.findOne(id);
+    const item = await this.findOneForAdmin(id);
     const submittedResponses = item.responses.filter(
       (response) => response.status === PollSurveyResponseStatus.SUBMITTED,
     );
