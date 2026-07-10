@@ -62,12 +62,6 @@ type MapSite = {
   provinceName?: string;
 };
 
-type CityLight = {
-  coordinate: Coordinate;
-  radius: number;
-  opacity: number;
-};
-
 type SiteModal = {
   id: string;
   title: string;
@@ -78,11 +72,11 @@ const mapWidth = 760;
 const mapHeight = 640;
 const mapPadding = 34;
 const mapPerspective = {
-  translateX: 12,
-  translateY: 58,
-  skewX: -5,
-  scaleX: 0.99,
-  scaleY: 0.86,
+  translateX: 4,
+  translateY: 30,
+  skewX: -2.5,
+  scaleX: 1,
+  scaleY: 0.92,
 };
 const mapPerspectiveTransform = `translate(${mapPerspective.translateX} ${mapPerspective.translateY}) skewX(${mapPerspective.skewX}) scale(${mapPerspective.scaleX} ${mapPerspective.scaleY})`;
 const mapPerspectiveOrigin = "380px 350px";
@@ -140,39 +134,6 @@ const knownSiteColors: Record<string, string> = {
   tehran: "#22d3ee",
   "دفتر تهران": "#22d3ee",
 };
-
-const cityLightSeeds: CityLight[] = [
-  { coordinate: [51.389, 35.6892], radius: 4.8, opacity: 0.95 },
-  { coordinate: [51.6675, 32.6539], radius: 3.5, opacity: 0.72 },
-  { coordinate: [59.6062, 36.2605], radius: 3.3, opacity: 0.68 },
-  { coordinate: [46.2919, 38.0962], radius: 3.1, opacity: 0.68 },
-  { coordinate: [57.0728, 30.2839], radius: 2.8, opacity: 0.52 },
-  { coordinate: [48.6692, 31.3183], radius: 2.9, opacity: 0.6 },
-  { coordinate: [52.5837, 29.5918], radius: 2.7, opacity: 0.58 },
-  { coordinate: [49.5832, 37.2808], radius: 2.5, opacity: 0.54 },
-  { coordinate: [50.0041, 36.2688], radius: 2.2, opacity: 0.5 },
-  { coordinate: [50.8764, 34.6416], radius: 2.2, opacity: 0.52 },
-  { coordinate: [47.065, 34.3142], radius: 2.2, opacity: 0.5 },
-  { coordinate: [54.3675, 31.8974], radius: 2.1, opacity: 0.46 },
-  { coordinate: [56.2667, 27.1832], radius: 2.3, opacity: 0.54 },
-  { coordinate: [52.6155, 27.4761], radius: 2.7, opacity: 0.72 },
-  { coordinate: [50.8385, 28.9234], radius: 2.2, opacity: 0.56 },
-  { coordinate: [60.8629, 29.4963], radius: 1.9, opacity: 0.42 },
-  { coordinate: [48.515, 36.6736], radius: 1.9, opacity: 0.42 },
-  { coordinate: [44.6783, 37.5527], radius: 1.9, opacity: 0.42 },
-  { coordinate: [53.0601, 36.5633], radius: 1.8, opacity: 0.38 },
-  { coordinate: [54.4342, 36.8416], radius: 1.8, opacity: 0.38 },
-  { coordinate: [51.587, 35.3219], radius: 2.4, opacity: 0.5 },
-  { coordinate: [50.9915, 35.8327], radius: 2.8, opacity: 0.62 },
-  { coordinate: [51.1508, 35.7047], radius: 2.2, opacity: 0.5 },
-  { coordinate: [52.5311, 29.6103], radius: 1.5, opacity: 0.36 },
-  { coordinate: [52.33, 29.75], radius: 1.3, opacity: 0.32 },
-  { coordinate: [51.8, 32.3], radius: 1.3, opacity: 0.32 },
-  { coordinate: [50.5, 36.0], radius: 1.4, opacity: 0.34 },
-  { coordinate: [49.0, 37.0], radius: 1.3, opacity: 0.34 },
-  { coordinate: [46.7, 38.1], radius: 1.3, opacity: 0.34 },
-  { coordinate: [59.0, 36.2], radius: 1.4, opacity: 0.34 },
-];
 
 const fallbackSites = [
   {
@@ -492,15 +453,6 @@ export default function IranPortalMap({
     () => buildMapSites(sites, project, features),
     [features, project, sites],
   );
-  const cityLights = useMemo(
-    () =>
-      cityLightSeeds.map((light, index) => ({
-        ...light,
-        id: `city-light-${index}`,
-        point: project(light.coordinate),
-      })),
-    [project],
-  );
   const hoveredProvince = hoveredProvinceName
     ? provinceShapes.find((province) => province.name === hoveredProvinceName)
     : undefined;
@@ -520,17 +472,18 @@ export default function IranPortalMap({
       >
         <defs>
           <linearGradient id="provinceFill" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#1f4659" stopOpacity="0.94" />
-            <stop offset="48%" stopColor="#1f3346" stopOpacity="0.96" />
-            <stop offset="100%" stopColor="#111827" stopOpacity="0.98" />
+            <stop offset="0%" stopColor="#17384d" stopOpacity="0.98" />
+            <stop offset="45%" stopColor="#14293d" stopOpacity="0.98" />
+            <stop offset="100%" stopColor="#07111f" stopOpacity="0.99" />
           </linearGradient>
           <linearGradient id="hoveredProvinceFill" x1="0" x2="1" y1="0" y2="1">
             <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.92" />
             <stop offset="100%" stopColor="#075985" stopOpacity="0.88" />
           </linearGradient>
           <linearGradient id="provinceSideFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#0e7490" stopOpacity="0.72" />
-            <stop offset="100%" stopColor="#020617" stopOpacity="0.96" />
+            <stop offset="0%" stopColor="#03697f" stopOpacity="0.62" />
+            <stop offset="58%" stopColor="#06405b" stopOpacity="0.82" />
+            <stop offset="100%" stopColor="#020617" stopOpacity="0.98" />
           </linearGradient>
           <radialGradient id="terrainLight" cx="38%" cy="28%" r="70%">
             <stop offset="0%" stopColor="#93c5fd" stopOpacity="0.2" />
@@ -545,18 +498,18 @@ export default function IranPortalMap({
             height="130%"
           >
             <feDropShadow
-              dx="-2"
-              dy="16"
-              stdDeviation="7"
+              dx="-7"
+              dy="20"
+              stdDeviation="8"
               floodColor="#020617"
-              floodOpacity="0.55"
+              floodOpacity="0.5"
             />
             <feDropShadow
               dx="0"
-              dy="3"
-              stdDeviation="2"
+              dy="6"
+              stdDeviation="4"
               floodColor="#38bdf8"
-              floodOpacity="0.24"
+              floodOpacity="0.28"
             />
           </filter>
           <filter id="outerNeon" x="-30%" y="-30%" width="160%" height="160%">
@@ -582,18 +535,18 @@ export default function IranPortalMap({
           >
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.032 0.072"
-              numOctaves="4"
+              baseFrequency="0.022 0.064"
+              numOctaves="5"
               seed="24"
               result="terrainNoise"
             />
             <feDiffuseLighting
               in="terrainNoise"
               lightingColor="#e0f2fe"
-              surfaceScale="5.5"
+              surfaceScale="8"
               result="terrainLightMap"
             >
-              <feDistantLight azimuth="310" elevation="34" />
+              <feDistantLight azimuth="306" elevation="28" />
             </feDiffuseLighting>
             <feComponentTransfer in="terrainLightMap" result="reliefLight">
               <feFuncR
@@ -613,24 +566,21 @@ export default function IranPortalMap({
             </feComponentTransfer>
             <feComposite in="reliefLight" in2="SourceAlpha" operator="in" />
           </filter>
-          <filter
-            id="cityLightGlow"
-            x="-200%"
-            y="-200%"
-            width="500%"
-            height="500%"
-          >
-            <feGaussianBlur stdDeviation="2.8" result="blur" />
-            <feColorMatrix
-              in="blur"
-              type="matrix"
-              values="1 0 0 0 0.95 0 1 0 0 0.78 0 0 1 0 0.35 0 0 0 0.9 0"
-              result="warmGlow"
+          <filter id="mapTopGlow" x="-18%" y="-18%" width="136%" height="136%">
+            <feDropShadow
+              dx="0"
+              dy="0"
+              stdDeviation="2.2"
+              floodColor="#38bdf8"
+              floodOpacity="0.7"
             />
-            <feMerge>
-              <feMergeNode in="warmGlow" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+            <feDropShadow
+              dx="0"
+              dy="0"
+              stdDeviation="7"
+              floodColor="#0ea5e9"
+              floodOpacity="0.42"
+            />
           </filter>
           <filter id="provinceGlow">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -687,28 +637,28 @@ export default function IranPortalMap({
             transformOrigin: mapPerspectiveOrigin,
           }}
         >
-          <g transform={`${mapPerspectiveTransform} translate(0 18)`}>
+          <g transform={`${mapPerspectiveTransform} translate(-10 22)`}>
             {provinceShapes.map((province) => (
               <path
                 key={`side-${province.name}`}
                 d={province.path}
                 fill="url(#provinceSideFill)"
                 stroke="#0284c7"
-                strokeOpacity="0.42"
+                strokeOpacity="0.34"
                 strokeWidth="1.2"
               />
             ))}
           </g>
 
-          <g transform={`${mapPerspectiveTransform} translate(0 9)`}>
+          <g transform={`${mapPerspectiveTransform} translate(-5 11)`}>
             {provinceShapes.map((province) => (
               <path
                 key={`rim-${province.name}`}
                 d={province.path}
                 fill="#082f49"
-                opacity="0.72"
+                opacity="0.58"
                 stroke="#38bdf8"
-                strokeOpacity="0.5"
+                strokeOpacity="0.46"
                 strokeWidth="1"
               />
             ))}
@@ -721,7 +671,7 @@ export default function IranPortalMap({
               stroke="#7dd3fc"
               strokeOpacity="0.85"
               strokeWidth="3.2"
-              filter="url(#outerNeon)"
+              filter="url(#mapTopGlow)"
               pointerEvents="none"
             />
 
@@ -740,9 +690,9 @@ export default function IranPortalMap({
                       ? "url(#hoveredProvinceFill)"
                       : "url(#provinceFill)"
                   }
-                  stroke={isHovered ? "#ffffff" : "#8bdfff"}
-                  strokeOpacity={isHovered ? 0.96 : 0.68}
-                  strokeWidth={isHovered ? 2.5 : 1.18}
+                  stroke={isHovered ? "#dffaff" : "#8bdfff"}
+                  strokeOpacity={isHovered ? 0.98 : 0.62}
+                  strokeWidth={isHovered ? 2.6 : 1.06}
                   filter={isHovered ? "url(#provinceGlow)" : undefined}
                   onMouseEnter={() => setHoveredProvinceName(province.name)}
                   onMouseLeave={() => setHoveredProvinceName(null)}
@@ -765,33 +715,11 @@ export default function IranPortalMap({
                 key={`terrain-${province.name}`}
                 d={province.path}
                 fill="#ffffff"
-                opacity="0.16"
+                opacity="0.18"
                 filter="url(#terrainRelief)"
                 pointerEvents="none"
               />
             ))}
-            <g clipPath="url(#iranMapClip)" pointerEvents="none">
-              {cityLights.map((light) => (
-                <g
-                  key={light.id}
-                  transform={`translate(${light.point.x.toFixed(1)} ${light.point.y.toFixed(1)})`}
-                  opacity={light.opacity}
-                  filter="url(#cityLightGlow)"
-                >
-                  <circle
-                    r={light.radius * 3.2}
-                    fill="#f59e0b"
-                    opacity="0.12"
-                  />
-                  <circle
-                    r={light.radius * 1.6}
-                    fill="#fde68a"
-                    opacity="0.35"
-                  />
-                  <circle r={light.radius * 0.46} fill="#fefce8" />
-                </g>
-              ))}
-            </g>
             {hoveredProvince && (
               <g
                 pointerEvents="none"
@@ -871,28 +799,38 @@ export default function IranPortalMap({
                   className="marker-pulse"
                   cx="0"
                   cy="0"
-                  rx={isSelected ? 24 : 19}
-                  ry={isSelected ? 8 : 6}
+                  rx={isSelected ? 28 : 22}
+                  ry={isSelected ? 9 : 7}
                   fill={site.color}
-                  opacity="0.4"
+                  opacity="0.48"
                 />
                 <circle
                   className="marker-halo"
                   cx="0"
                   cy="-45"
-                  r="30"
+                  r="34"
                   fill={site.color}
-                  opacity="0.18"
+                  opacity="0.2"
+                />
+                <circle
+                  className="marker-orbit"
+                  cx="0"
+                  cy="-45"
+                  r="21"
+                  fill="none"
+                  stroke={site.color}
+                  strokeWidth="1.8"
+                  strokeOpacity="0.62"
                 />
                 <ellipse
                   cx="0"
                   cy="-2"
-                  rx={isSelected ? 14 : 11}
-                  ry={isSelected ? 5 : 4}
+                  rx={isSelected ? 18 : 14}
+                  ry={isSelected ? 6 : 5}
                   fill="none"
                   stroke={site.color}
-                  strokeWidth="2.4"
-                  opacity="0.8"
+                  strokeWidth="2.8"
+                  opacity="0.86"
                 />
                 <line
                   x1="0"
@@ -905,13 +843,14 @@ export default function IranPortalMap({
                   opacity="0.86"
                 />
                 <path
+                  className="marker-pin-shape"
                   d="M0 -64 C-11 -64 -19 -55 -19 -45 C-19 -30 0 -1 0 -1 C0 -1 19 -30 19 -45 C19 -55 11 -64 0 -64Z"
                   fill={site.color}
                   stroke={site.color}
-                  strokeWidth="1.4"
+                  strokeWidth="1.8"
                 />
-                <circle cx="0" cy="-45" r="8.5" fill="#082f49" opacity="0.72" />
-                <circle cx="0" cy="-45" r="3.6" fill="#f8fdff" opacity="0.98" />
+                <circle cx="0" cy="-45" r="8.8" fill="#082f49" opacity="0.86" />
+                <circle cx="0" cy="-45" r="3.6" fill="#e0faff" opacity="0.95" />
                 <line
                   x1="18"
                   y1="-45"
@@ -928,10 +867,11 @@ export default function IranPortalMap({
                     width={labelWidth}
                     height="34"
                     rx="6"
-                    fill="#0f172a"
-                    opacity="0.9"
+                    fill="#0a1725"
+                    opacity="0.92"
                     stroke={site.color}
                     strokeOpacity="0.72"
+                    className="marker-label-panel"
                   />
                   <text
                     x={labelWidth / 2}
@@ -990,6 +930,13 @@ export default function IranPortalMap({
           transform-origin: center;
           transform-box: fill-box;
           filter: drop-shadow(0 0 12px var(--marker-color));
+        }
+
+        .marker-orbit,
+        .marker-pin-shape,
+        .marker-label-panel {
+          filter: drop-shadow(0 0 6px var(--marker-color))
+            drop-shadow(0 0 16px var(--marker-color));
         }
 
         @keyframes marker-drop {
@@ -1051,7 +998,8 @@ export default function IranPortalMap({
           .province-shape,
           .map-marker-inner,
           .marker-pulse,
-          .marker-halo {
+          .marker-halo,
+          .marker-orbit {
             animation: none;
             transition: none;
           }
