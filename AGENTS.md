@@ -15,6 +15,7 @@
 - All major product areas must be designed as modules. Modules must have a stable key, title, description, icon, permissions, seed data when needed, and a database-controlled enabled/disabled state.
 - The portal must support a plugin/module-style operating model: modules can be logically installed, enabled, disabled, and hidden from navigation/admin surfaces without changing user-facing code paths manually.
 - Runtime deletion of application code is not required or recommended. "Uninstall" should mean disabling the module, removing/hiding its navigation and actions, and optionally cleaning module-owned data through a controlled migration or admin action.
+- When a module reaches an acceptable, stable, user-approved scope, stop expanding it in the current phase. Record additional ideas as future-phase improvements instead of continuously adding scope to the active module.
 
 ## Product Goal
 

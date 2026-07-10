@@ -5,7 +5,9 @@ import {
   BarChart3,
   CheckSquare,
   ClipboardList,
+  Download,
   Plus,
+  PieChart,
   Trash2,
   Vote,
 } from "lucide-react";
@@ -32,6 +34,7 @@ import type {
   CreatePollSurveyDto,
   PollSurvey,
   PollSurveyQuestionType,
+  PollSurveyResult,
   PollSurveyStatus,
   PollSurveyType,
 } from "@/lib/poll-surveys";
@@ -124,6 +127,52 @@ function formatDate(value?: string | null) {
 
 function typeLabel(type: PollSurveyType) {
   return type === "POLL" ? "رای‌گیری" : "نظرسنجی";
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value)}٪`;
+}
+
+function csvEscape(value: string | number | null | undefined) {
+  const text = String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function exportReportCsv(result: PollSurveyResult) {
+  const rows = [
+    ["نوع", typeLabel(result.type)],
+    ["عنوان", result.title],
+    ["کل پاسخ‌ها", result.totalResponses],
+    [],
+    ["سوال", "نوع", "گزینه/پاسخ", "تعداد/مقدار"],
+  ];
+
+  result.questions.forEach((question) => {
+    if (question.options.length) {
+      question.options.forEach((option) => {
+        rows.push([question.title, question.type, option.label, option.count]);
+      });
+    }
+
+    if (question.average !== null) {
+      rows.push([question.title, question.type, "میانگین", question.average]);
+    }
+
+    question.textAnswers.forEach((answer, index) => {
+      rows.push([question.title, question.type, `پاسخ ${index + 1}`, answer]);
+    });
+  });
+
+  const csv = rows.map((row) => row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([`\uFEFF${csv}`], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${result.title || "poll-survey-report"}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function getSubmittedCount(item: PollSurvey) {
@@ -327,6 +376,10 @@ export default function PollsPage() {
     undefined,
   );
   const { data: selectedReport } = usePollSurveyResults(selectedReportId);
+  const selectedReportItem = useMemo(
+    () => items.find((item) => item.id === selectedReportId),
+    [items, selectedReportId],
+  );
   const editingHasResponses = editingItem
     ? getSubmittedCount(editingItem) > 0
     : false;
@@ -1146,27 +1199,38 @@ export default function PollsPage() {
             <div>
               <h2 className="text-xl font-black text-white">گزارش سریع</h2>
               <p className="mt-1 text-sm text-slate-400">
-                گزارش‌های نموداری و خروجی Excel/PDF در فاز بعد اضافه می‌شود.
+                نمودارها، نرخ مشارکت، میانگین پاسخ‌ها و خروجی CSV.
               </p>
             </div>
-            <Select
-              value={selectedReportId ?? "__none__"}
-              onValueChange={(value) =>
-                setSelectedReportId(value === "__none__" ? undefined : value)
-              }
-              options={[
-                { value: "__none__", label: "انتخاب مورد" },
-                ...items.map((item) => ({
-                  value: item.id,
-                  label: `${typeLabel(item.type)} - ${item.title}`,
-                })),
-              ]}
-            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Select
+                value={selectedReportId ?? "__none__"}
+                onValueChange={(value) =>
+                  setSelectedReportId(value === "__none__" ? undefined : value)
+                }
+                options={[
+                  { value: "__none__", label: "انتخاب مورد" },
+                  ...items.map((item) => ({
+                    value: item.id,
+                    label: `${typeLabel(item.type)} - ${item.title}`,
+                  })),
+                ]}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!selectedReport}
+                onClick={() => selectedReport && exportReportCsv(selectedReport)}
+              >
+                <Download className="ml-2 h-4 w-4" />
+                CSV
+              </Button>
+            </div>
           </div>
 
           {selectedReport ? (
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
                   <div className="text-sm text-slate-400">کل پاسخ‌ها</div>
                   <div className="mt-2 text-3xl font-black text-cyan-100">
@@ -1185,39 +1249,172 @@ export default function PollsPage() {
                     {selectedReport.questions.length}
                   </div>
                 </div>
-              </div>
-
-              {selectedReport.questions.map((question) => (
-                <div
-                  key={question.id}
-                  className="rounded-xl border border-white/10 bg-slate-950/40 p-4"
-                >
-                  <div className="font-bold text-white">{question.title}</div>
-                  <div className="mt-3 space-y-2">
-                    {question.options.map((option) => (
-                      <div key={option.id}>
-                        <div className="mb-1 flex justify-between text-xs text-slate-300">
-                          <span>{option.label}</span>
-                          <span>{option.count}</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-                          <div
-                            className="h-full rounded-full bg-cyan-400"
-                            style={{
-                              width: `${selectedReport.totalResponses ? (option.count / selectedReport.totalResponses) * 100 : 0}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                    {question.average !== null && (
-                      <div className="text-sm text-slate-300">
-                        میانگین: {question.average.toFixed(1)}
-                      </div>
-                    )}
+                <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
+                  <div className="text-sm text-slate-400">نرخ مشارکت</div>
+                  <div className="mt-2 text-2xl font-black text-amber-100">
+                    {selectedReport.participationRate !== null
+                      ? formatPercent(selectedReport.participationRate)
+                      : "نیازمند AD"}
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="rounded-2xl border border-amber-300/15 bg-amber-400/10 p-4 text-sm leading-7 text-amber-50">
+                گزارش تفکیک دپارتمان، گروه AD و نرخ مشارکت دقیق بعد از اتصال
+                کاربران واقعی و گروه‌ها فعال می‌شود. فعلا داده ساختگی نشان داده
+                نمی‌شود تا گزارش مدیریتی گمراه‌کننده نباشد.
+              </div>
+
+              {selectedReportItem?.anonymous && (
+                <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4 text-sm leading-7 text-cyan-50">
+                  این مورد ناشناس است؛ گزارش فقط شمارش و آمار تجمیعی را نمایش
+                  می‌دهد و هویت پاسخ‌دهندگان قابل استخراج نیست.
+                </div>
+              )}
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                {selectedReport.questions.map((question, questionIndex) => {
+                  const maxCount = Math.max(
+                    ...question.options.map((option) => option.count),
+                    1,
+                  );
+                  const totalOptionVotes = question.options.reduce(
+                    (sum, option) => sum + option.count,
+                    0,
+                  );
+                  const leadingOption = [...question.options].sort(
+                    (a, b) => b.count - a.count,
+                  )[0];
+
+                  return (
+                    <motion.div
+                      key={question.id}
+                      initial={
+                        reduceMotion
+                          ? false
+                          : { opacity: 0, y: 14, filter: "blur(6px)" }
+                      }
+                      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                      transition={
+                        reduceMotion
+                          ? { duration: 0 }
+                          : { duration: 0.18, delay: questionIndex * 0.04 }
+                      }
+                      className="rounded-2xl border border-white/10 bg-slate-950/40 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="font-bold text-white">
+                            {question.title}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">
+                            {question.totalAnswers} پاسخ ثبت شده
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-2 rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-100">
+                          <PieChart className="h-3.5 w-3.5" />
+                          {question.type}
+                        </span>
+                      </div>
+
+                      {question.options.length > 0 && (
+                        <div className="mt-4 grid gap-4 lg:grid-cols-[160px_1fr]">
+                          <div className="grid place-items-center">
+                            <div
+                              className="grid size-32 place-items-center rounded-full border border-cyan-300/20"
+                              style={{
+                                background: `conic-gradient(#22d3ee ${totalOptionVotes ? ((leadingOption?.count ?? 0) / totalOptionVotes) * 360 : 0}deg, rgba(15, 23, 42, 0.8) 0deg)`,
+                              }}
+                            >
+                              <div className="grid size-20 place-items-center rounded-full bg-slate-950 text-center">
+                                <span className="text-xs text-slate-400">
+                                  گزینه برتر
+                                </span>
+                                <span className="text-lg font-black text-cyan-100">
+                                  {totalOptionVotes
+                                    ? formatPercent(
+                                        ((leadingOption?.count ?? 0) /
+                                          totalOptionVotes) *
+                                          100,
+                                      )
+                                    : "۰٪"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            {question.options.map((option) => {
+                              const percent = selectedReport.totalResponses
+                                ? (option.count /
+                                    selectedReport.totalResponses) *
+                                  100
+                                : 0;
+
+                              return (
+                                <div key={option.id}>
+                                  <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
+                                    <span>{option.label}</span>
+                                    <span>
+                                      {option.count} - {formatPercent(percent)}
+                                    </span>
+                                  </div>
+                                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-800">
+                                    <motion.div
+                                      className="h-full rounded-full bg-cyan-400"
+                                      initial={{ width: 0 }}
+                                      animate={{
+                                        width: `${(option.count / maxCount) * 100}%`,
+                                      }}
+                                      transition={
+                                        reduceMotion
+                                          ? { duration: 0 }
+                                          : { duration: 0.35, ease: "easeOut" }
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {question.average !== null && (
+                        <div className="mt-4 rounded-xl border border-amber-300/15 bg-amber-400/10 p-3 text-sm text-amber-50">
+                          میانگین پاسخ: {question.average.toFixed(1)}
+                        </div>
+                      )}
+
+                      {question.textAnswers.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <div className="text-sm font-bold text-slate-200">
+                            پاسخ‌های متنی
+                          </div>
+                          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+                            {question.textAnswers.map((answer, index) => (
+                              <div
+                                key={`${question.id}-${index}`}
+                                className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm leading-7 text-slate-200"
+                              >
+                                {answer}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {question.options.length === 0 &&
+                        question.average === null &&
+                        question.textAnswers.length === 0 && (
+                          <div className="mt-4 rounded-xl border border-dashed border-white/15 p-5 text-center text-sm text-slate-400">
+                            هنوز داده قابل نمایش برای این سوال ثبت نشده است.
+                          </div>
+                        )}
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-white/15 p-8 text-center text-sm text-slate-400">
