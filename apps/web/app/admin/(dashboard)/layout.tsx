@@ -27,6 +27,7 @@ import {
 
 import { AdminAuthGuard } from "@/components/auth/AdminAuthGuard";
 import { AdminLogoutButton } from "@/components/auth/AdminLogoutButton";
+import Logo from "@/components/layout/Logo";
 import { getStoredAuthUser, type AuthUser } from "@/lib/auth";
 import { useEnabledPortalModules } from "@/hooks/usePortalModules";
 
@@ -214,8 +215,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen bg-slate-950 text-white">
         <aside className="w-72 border-l border-slate-800 bg-slate-900">
           <div className="border-b border-slate-800 p-6">
-            <h1 className="text-2xl font-bold">AGTPS</h1>
-            <p className="mt-1 text-sm text-slate-400">Admin Panel</p>
+            <Link
+              href="/admin/dashboard"
+              className="block rounded-2xl p-2 transition hover:bg-white/[0.04] focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
+              aria-label="رفتن به داشبورد مدیریت"
+            >
+              <Logo compact />
+            </Link>
           </div>
 
           <nav className="flex flex-col gap-2 p-4">
@@ -252,9 +258,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         <main className="flex-1">
           <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-8 py-5">
-            <h2 className="text-xl font-semibold">AGTPS Administration</h2>
+            <div>
+              <h2 className="text-xl font-semibold">AGTPS Administration</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                پنل مدیریت پورتال داخلی
+              </p>
+            </div>
 
             <div className="flex items-center gap-4">
+              <Link
+                href="/admin/dashboard"
+                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-400/15"
+              >
+                <House className="h-4 w-4" />
+                نمایش داشبورد
+              </Link>
               <Link
                 href="/admin/profile"
                 className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-100"

@@ -332,6 +332,21 @@ function SectionHeader({
   );
 }
 
+function WidgetState({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-4 text-sm leading-7 text-slate-300">
+      <div className="font-bold text-white">{title}</div>
+      {description && <div className="mt-1 text-xs text-slate-400">{description}</div>}
+    </div>
+  );
+}
+
 function GlassPanel({
   children,
   className = "",
@@ -390,12 +405,33 @@ export default function Home() {
   const { data: settings } = useSettings();
   const { data: enabledModules } = useEnabledPortalModules();
   const { data: sliders = [] } = useSliders();
-  const { data: managedSystemStatuses = [] } = useSystemStatuses();
-  const { data: announcements = [] } = useAnnouncements();
-  const { data: news = [] } = useNews();
-  const { data: downloads = [] } = useDownloads();
-  const { data: trainings = [] } = useTrainings();
-  const { data: pollSurveys = [] } = usePollSurveys();
+  const {
+    data: managedSystemStatuses = [],
+    isLoading: systemStatusesLoading,
+    isError: systemStatusesError,
+  } = useSystemStatuses();
+  const {
+    data: announcements = [],
+    isLoading: announcementsLoading,
+    isError: announcementsError,
+  } = useAnnouncements();
+  const { data: news = [], isLoading: newsLoading, isError: newsError } =
+    useNews();
+  const {
+    data: downloads = [],
+    isLoading: downloadsLoading,
+    isError: downloadsError,
+  } = useDownloads();
+  const {
+    data: trainings = [],
+    isLoading: trainingsLoading,
+    isError: trainingsError,
+  } = useTrainings();
+  const {
+    data: pollSurveys = [],
+    isLoading: pollSurveysLoading,
+    isError: pollSurveysError,
+  } = usePollSurveys();
   const { data: publicPollSurveyResult } = usePublicPollSurveyResults(
     selectedPollSurveyResultId ?? undefined,
   );
@@ -1278,7 +1314,18 @@ export default function Home() {
                       onViewAll={() => setListModal("announcements")}
                     />
                     <div className="space-y-3">
-                      {visibleAnnouncements.length > 0
+                      {announcementsLoading && (
+                        <WidgetState title="در حال بارگذاری اطلاعیه‌ها..." />
+                      )}
+                      {announcementsError && (
+                        <WidgetState
+                          title="بارگذاری اطلاعیه‌ها انجام نشد"
+                          description="اطلاعیه‌های نمونه تا رفع اتصال نمایش داده می‌شوند."
+                        />
+                      )}
+                      {!announcementsLoading &&
+                      !announcementsError &&
+                      visibleAnnouncements.length > 0
                         ? visibleAnnouncements.map((notice) => (
                             <button
                               key={notice.id}
@@ -1307,7 +1354,8 @@ export default function Home() {
                               </p>
                             </button>
                           ))
-                        : managementNotices.map((notice) => (
+                        : !announcementsLoading &&
+                          managementNotices.map((notice) => (
                             <button
                               key={notice.title}
                               type="button"
@@ -1348,7 +1396,16 @@ export default function Home() {
                       onViewAll={() => setListModal("news")}
                     />
                     <div className="space-y-3">
-                      {visibleNews.length > 0
+                      {newsLoading && (
+                        <WidgetState title="در حال بارگذاری اخبار..." />
+                      )}
+                      {newsError && (
+                        <WidgetState
+                          title="بارگذاری اخبار انجام نشد"
+                          description="اخبار نمونه تا رفع اتصال نمایش داده می‌شوند."
+                        />
+                      )}
+                      {!newsLoading && !newsError && visibleNews.length > 0
                         ? visibleNews.map((item) => (
                             <button
                               key={item.id}
@@ -1387,7 +1444,8 @@ export default function Home() {
                               </div>
                             </button>
                           ))
-                        : hrNotices.map((notice) => (
+                        : !newsLoading &&
+                          hrNotices.map((notice) => (
                             <button
                               key={notice.title}
                               type="button"
@@ -1538,8 +1596,19 @@ export default function Home() {
                         viewAllHref="/trainings"
                       />
                       <div className="grid gap-3 md:grid-cols-2">
-                        {visibleTrainings.map((training) => {
-                          return (
+                        {trainingsLoading && (
+                          <WidgetState title="در حال بارگذاری آموزش‌ها..." />
+                        )}
+                        {trainingsError && (
+                          <WidgetState
+                            title="بارگذاری آموزش‌ها انجام نشد"
+                            description="لطفا اتصال API را بررسی کنید."
+                          />
+                        )}
+                        {!trainingsLoading &&
+                          !trainingsError &&
+                          visibleTrainings.map((training) => {
+                            return (
                             <Link
                               key={training.id}
                               href={`/trainings/${training.id}`}
@@ -1590,13 +1659,13 @@ export default function Home() {
                                 </div>
                               </div>
                             </Link>
-                          );
-                        })}
+                            );
+                          })}
                       </div>
-                      {visibleTrainings.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-slate-700 p-5 text-sm leading-7 text-slate-300">
-                          هنوز آموزش منتشرشده‌ای برای نمایش در پرتال وجود ندارد.
-                        </div>
+                      {!trainingsLoading &&
+                        !trainingsError &&
+                        visibleTrainings.length === 0 && (
+                          <WidgetState title="هنوز آموزش منتشرشده‌ای برای نمایش در پرتال وجود ندارد." />
                       )}
                     </GlassPanel>
                   ),
@@ -1646,8 +1715,19 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-3">
-                      {activePollSurveys.map((item) => (
-                        <button
+                      {pollSurveysLoading && (
+                        <WidgetState title="در حال بارگذاری نظرسنجی‌ها..." />
+                      )}
+                      {pollSurveysError && (
+                        <WidgetState
+                          title="بارگذاری نظرسنجی و رای‌گیری انجام نشد"
+                          description="بعد از اتصال API دوباره تلاش کنید."
+                        />
+                      )}
+                      {!pollSurveysLoading &&
+                        !pollSurveysError &&
+                        activePollSurveys.map((item) => (
+                          <button
                           key={item.id}
                           type="button"
                           onClick={() => openPollSurvey(item)}
@@ -1693,13 +1773,13 @@ export default function Home() {
                               </span>
                             </span>
                           </div>
-                        </button>
-                      ))}
+                          </button>
+                        ))}
 
-                      {activePollSurveys.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-white/15 p-4 text-sm leading-7 text-slate-300">
-                          رای‌گیری یا نظرسنجی فعالی برای شما وجود ندارد.
-                        </div>
+                      {!pollSurveysLoading &&
+                        !pollSurveysError &&
+                        activePollSurveys.length === 0 && (
+                          <WidgetState title="رای‌گیری یا نظرسنجی فعالی برای شما وجود ندارد." />
                       )}
                     </div>
                   </GlassPanel>
@@ -1711,7 +1791,22 @@ export default function Home() {
                   <GlassPanel id="status">
                     <SectionHeader title="وضعیت سیستم ها" />
                     <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10">
-                      {visibleSystemStatuses.map((item) => {
+                      {systemStatusesLoading && (
+                        <div className="p-3">
+                          <WidgetState title="در حال بررسی وضعیت سیستم‌ها..." />
+                        </div>
+                      )}
+                      {systemStatusesError && (
+                        <div className="p-3">
+                          <WidgetState
+                            title="بارگذاری وضعیت سیستم‌ها انجام نشد"
+                            description="در صورت ادامه خطا، API را بررسی کنید."
+                          />
+                        </div>
+                      )}
+                      {!systemStatusesLoading &&
+                        !systemStatusesError &&
+                        visibleSystemStatuses.map((item) => {
                         const Icon =
                           portalIconMap[item.icon || "CheckCircle2"] ??
                           ShieldCheck;
@@ -1751,7 +1846,7 @@ export default function Home() {
                             </span>
                           </div>
                         );
-                      })}
+                        })}
                     </div>
                   </GlassPanel>
                 ),
@@ -2120,7 +2215,18 @@ export default function Home() {
                   <GlassPanel id="downloads">
                     <SectionHeader title="دانلود نرم افزارها" />
                     <div className="grid grid-cols-2 gap-3">
-                      {visibleDownloads.map((item) => {
+                      {downloadsLoading && (
+                        <WidgetState title="در حال بارگذاری دانلودها..." />
+                      )}
+                      {downloadsError && (
+                        <WidgetState
+                          title="بارگذاری دانلودها انجام نشد"
+                          description="بعد از اتصال API دوباره بررسی کنید."
+                        />
+                      )}
+                      {!downloadsLoading &&
+                        !downloadsError &&
+                        visibleDownloads.map((item) => {
                         const Icon =
                           portalIconMap[item.icon || "CloudDownload"] ??
                           CloudDownload;
@@ -2159,7 +2265,7 @@ export default function Home() {
                             <Download size={18} className="text-cyan-300" />
                           </Link>
                         );
-                      })}
+                        })}
                     </div>
                   </GlassPanel>
                 ),
