@@ -6,8 +6,10 @@ import {
   CheckSquare,
   ClipboardList,
   Download,
+  Filter,
   Plus,
   PieChart,
+  Search,
   Trash2,
   Vote,
 } from "lucide-react";
@@ -40,6 +42,7 @@ import type {
 } from "@/lib/poll-surveys";
 
 type PageTab = "polls" | "surveys" | "create" | "reports";
+type StatusFilter = PollSurveyStatus | "ALL";
 
 type SurveyQuestionDraft = {
   draftId: string;
@@ -189,6 +192,47 @@ function toDateTimeLocal(value?: string | null) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function toLocalDateInput(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function itemMatchesFilters(
+  item: PollSurvey,
+  filters: {
+    search: string;
+    status: StatusFilter;
+    category: string;
+    fromDate: string;
+    toDate: string;
+  },
+) {
+  const search = filters.search.trim().toLowerCase();
+  const haystack = [
+    item.title,
+    item.description,
+    item.category,
+    item.tags.join(" "),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (search && !haystack.includes(search)) return false;
+  if (filters.status !== "ALL" && item.status !== filters.status) return false;
+  if (filters.category !== "ALL" && item.category !== filters.category) {
+    return false;
+  }
+
+  const dateKey = toLocalDateInput(item.publishDate ?? item.createdAt);
+  if (filters.fromDate && dateKey < filters.fromDate) return false;
+  if (filters.toDate && dateKey > filters.toDate) return false;
+
+  return true;
+}
+
 function PollSurveyTable({
   items,
   onSelectReport,
@@ -299,6 +343,22 @@ function PollSurveyTable({
                     >
                       گزارش
                     </Button>
+                    {item.status !== "CLOSED" &&
+                      item.status !== "ARCHIVED" && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            updatePollSurvey.mutate({
+                              id: item.id,
+                              dto: { status: "CLOSED" },
+                            })
+                          }
+                        >
+                          بستن
+                        </Button>
+                      )}
                     <Button
                       type="button"
                       variant="outline"
@@ -345,6 +405,11 @@ export default function PollsPage() {
 
   const [editingItem, setEditingItem] = useState<PollSurvey | null>(null);
   const [viewingItem, setViewingItem] = useState<PollSurvey | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [fromDateFilter, setFromDateFilter] = useState("");
+  const [toDateFilter, setToDateFilter] = useState("");
   const [type, setType] = useState<PollSurveyType>("POLL");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -391,6 +456,34 @@ export default function PollsPage() {
   const surveys = useMemo(
     () => items.filter((item) => item.type === "SURVEY"),
     [items],
+  );
+  const categoryOptions = useMemo(() => {
+    const categories = Array.from(
+      new Set(items.map((item) => item.category).filter(Boolean) as string[]),
+    );
+
+    return [
+      { value: "ALL", label: "همه دسته‌ها" },
+      ...categories.map((item) => ({ value: item, label: item })),
+    ];
+  }, [items]);
+  const currentFilters = useMemo(
+    () => ({
+      search: searchTerm,
+      status: statusFilter,
+      category: categoryFilter,
+      fromDate: fromDateFilter,
+      toDate: toDateFilter,
+    }),
+    [searchTerm, statusFilter, categoryFilter, fromDateFilter, toDateFilter],
+  );
+  const filteredPolls = useMemo(
+    () => polls.filter((item) => itemMatchesFilters(item, currentFilters)),
+    [polls, currentFilters],
+  );
+  const filteredSurveys = useMemo(
+    () => surveys.filter((item) => itemMatchesFilters(item, currentFilters)),
+    [surveys, currentFilters],
   );
 
   const resetForm = () => {
@@ -673,6 +766,75 @@ export default function PollsPage() {
         })}
       </nav>
 
+      {(activeTab === "polls" || activeTab === "surveys") && (
+        <section className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-black text-white">
+            <Filter className="h-4 w-4 text-cyan-200" />
+            فیلتر و جستجو
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="جستجو در عنوان، توضیح، تگ..."
+                className="pr-9"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) =>
+                setStatusFilter(value as StatusFilter)
+              }
+              options={[
+                { value: "ALL", label: "همه وضعیت‌ها" },
+                ...statusOptions,
+              ]}
+            />
+            <Select
+              value={categoryFilter}
+              onValueChange={setCategoryFilter}
+              options={categoryOptions}
+            />
+            <Input
+              type="date"
+              value={fromDateFilter}
+              onChange={(event) => setFromDateFilter(event.target.value)}
+              aria-label="از تاریخ"
+            />
+            <Input
+              type="date"
+              value={toDateFilter}
+              onChange={(event) => setToDateFilter(event.target.value)}
+              aria-label="تا تاریخ"
+            />
+          </div>
+          {(searchTerm ||
+            statusFilter !== "ALL" ||
+            categoryFilter !== "ALL" ||
+            fromDateFilter ||
+            toDateFilter) && (
+            <div className="mt-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("ALL");
+                  setCategoryFilter("ALL");
+                  setFromDateFilter("");
+                  setToDateFilter("");
+                }}
+              >
+                پاک کردن فیلترها
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+
       {viewingItem && (
         <section className="space-y-4 rounded-2xl border border-cyan-300/20 bg-slate-900/85 p-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -785,7 +947,7 @@ export default function PollsPage() {
 
       {activeTab === "polls" && (
         <PollSurveyTable
-          items={polls}
+          items={filteredPolls}
           onEdit={loadItemIntoForm}
           onView={setViewingItem}
           onSelectReport={(id) => {
@@ -797,7 +959,7 @@ export default function PollsPage() {
 
       {activeTab === "surveys" && (
         <PollSurveyTable
-          items={surveys}
+          items={filteredSurveys}
           onEdit={loadItemIntoForm}
           onView={setViewingItem}
           onSelectReport={(id) => {

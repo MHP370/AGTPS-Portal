@@ -249,6 +249,16 @@ export class PollSurveysService {
     return item;
   }
 
+  async getPublicResults(id: string) {
+    const item = await this.findOneForAdmin(id);
+
+    if (!item.allowResultViewing && !item.allowLiveResults) {
+      throw new BadRequestException('Results are not visible for this item.');
+    }
+
+    return this.buildResults(item, { includeTextAnswers: false });
+  }
+
   async findOneForAdmin(id: string) {
     const item = await this.prisma.pollSurvey.findUnique({
       where: { id },
@@ -545,6 +555,14 @@ export class PollSurveysService {
 
   async getResults(id: string) {
     const item = await this.findOneForAdmin(id);
+
+    return this.buildResults(item, { includeTextAnswers: true });
+  }
+
+  private buildResults(
+    item: PollSurveyWithResponses,
+    options: { includeTextAnswers: boolean },
+  ) {
     const submittedResponses = item.responses.filter(
       (response) => response.status === PollSurveyResponseStatus.SUBMITTED,
     );
@@ -577,8 +595,9 @@ export class PollSurveysService {
             ).length,
           })),
           textAnswers:
-            question.type === PollSurveyQuestionType.TEXT ||
-            question.type === PollSurveyQuestionType.PARAGRAPH
+            options.includeTextAnswers &&
+            (question.type === PollSurveyQuestionType.TEXT ||
+              question.type === PollSurveyQuestionType.PARAGRAPH)
               ? answers
                   .map((answer) => answer.textValue)
                   .filter((value): value is string => Boolean(value))

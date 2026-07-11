@@ -42,6 +42,11 @@ export class PollSurveysController {
     return this.pollSurveysService.findOneForAdmin(id);
   }
 
+  @Get(':id/public-results')
+  getPublicResults(@Param('id') id: string) {
+    return this.pollSurveysService.getPublicResults(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.pollSurveysService.findOne(id);

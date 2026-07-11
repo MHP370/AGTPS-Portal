@@ -10,6 +10,7 @@ import {
   getAdminPollSurveys,
   getPollSurveyResults,
   getPollSurveys,
+  getPublicPollSurveyResults,
   pollSurveysQueryKey,
   submitPollSurveyResponse,
   updatePollSurvey,
@@ -52,6 +53,14 @@ export function usePollSurveyResults(id?: string) {
   return useQuery({
     queryKey: [...pollSurveysQueryKey, id, "results"],
     queryFn: () => getPollSurveyResults(id || ""),
+    enabled: Boolean(id),
+  });
+}
+
+export function usePublicPollSurveyResults(id?: string) {
+  return useQuery({
+    queryKey: [...pollSurveysQueryKey, id, "public-results"],
+    queryFn: () => getPublicPollSurveyResults(id || ""),
     enabled: Boolean(id),
   });
 }

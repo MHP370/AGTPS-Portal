@@ -180,6 +180,10 @@ export function getPollSurveyResults(id: string) {
   return api.get<PollSurveyResult>(`/poll-surveys/${id}/results`);
 }
 
+export function getPublicPollSurveyResults(id: string) {
+  return api.get<PollSurveyResult>(`/poll-surveys/${id}/public-results`);
+}
+
 export function createPollSurvey(dto: CreatePollSurveyDto) {
   return api.post<PollSurvey>("/poll-surveys", dto);
 }
