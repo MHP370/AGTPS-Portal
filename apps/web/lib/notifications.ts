@@ -67,6 +67,10 @@ export function markNotificationRead(id: string) {
   return api.put<PortalNotification>(`/notifications/${id}/read`);
 }
 
+export function markAllNotificationsRead() {
+  return api.put<{ ok: boolean }>("/notifications/read-all");
+}
+
 export function getPushConfig() {
   return api.get<PushConfig>("/notifications/push/config");
 }

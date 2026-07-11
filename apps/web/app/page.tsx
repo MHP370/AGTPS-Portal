@@ -39,6 +39,7 @@ import { useDownloads } from "@/hooks/useDownloads";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useNews } from "@/hooks/useNews";
 import {
+  useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
 } from "@/hooks/useNotifications";
@@ -106,6 +107,7 @@ type PortalWidgetEntry = {
 type QuickAction = "note" | "reminder" | "task";
 type CalendarView = "day" | "month" | "year";
 type PollAnswerValue = string | string[] | number | boolean;
+type NotificationReadFilter = "all" | "unread" | "read";
 
 const calendarViewLabels: Record<CalendarView, string> = {
   day: "روزانه",
@@ -384,6 +386,13 @@ export default function Home() {
   const [selectedPollSurveyResultId, setSelectedPollSurveyResultId] =
     useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationReadFilter, setNotificationReadFilter] =
+    useState<NotificationReadFilter>("all");
+  const [notificationTypeFilter, setNotificationTypeFilter] = useState("all");
+  const [notificationSearch, setNotificationSearch] = useState("");
+  const [selectedNotificationId, setSelectedNotificationId] = useState<
+    string | null
+  >(null);
   const [quickAction, setQuickAction] = useState<QuickAction | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickBody, setQuickBody] = useState("");
@@ -441,6 +450,7 @@ export default function Home() {
   const { data: tasks = [] } = useTasks();
   const { data: notifications = [] } = useNotifications();
   const markNotificationRead = useMarkNotificationRead();
+  const markAllNotificationsRead = useMarkAllNotificationsRead();
   const browserNotifications = useBrowserNotifications(notifications);
   const createNote = useCreateNote();
   const createReminder = useCreateReminder();
@@ -665,6 +675,32 @@ export default function Home() {
   const unreadNotifications = notifications.filter(
     (notification) => !notification.readAt,
   );
+  const notificationTypes = Array.from(
+    new Set(notifications.map((notification) => notification.type)),
+  );
+  const filteredNotifications = notifications.filter((notification) => {
+    const matchesReadState =
+      notificationReadFilter === "all" ||
+      (notificationReadFilter === "unread" && !notification.readAt) ||
+      (notificationReadFilter === "read" && Boolean(notification.readAt));
+    const matchesType =
+      notificationTypeFilter === "all" ||
+      notification.type === notificationTypeFilter;
+    const search = notificationSearch.trim().toLowerCase();
+    const matchesSearch =
+      !search ||
+      [notification.title, notification.body]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
+
+    return matchesReadState && matchesType && matchesSearch;
+  });
+  const selectedNotification =
+    notifications.find((item) => item.id === selectedNotificationId) ??
+    filteredNotifications[0] ??
+    null;
   const authUserName =
     authUser?.fullName ||
     [authUser?.firstName, authUser?.lastName].filter(Boolean).join(" ") ||
@@ -2711,86 +2747,293 @@ export default function Home() {
 
       <Dialog
         open={notificationsOpen}
-        onOpenChange={setNotificationsOpen}
-        title="نوتیفیکیشن‌ها"
+        onOpenChange={(open) => {
+          setNotificationsOpen(open);
+          if (!open) setSelectedNotificationId(null);
+        }}
+        title="مرکز اعلان‌ها"
+        className="max-w-5xl bg-slate-950/95"
       >
-        <div className="space-y-3 text-right" dir="rtl">
+        <div className="space-y-4 text-right" dir="rtl">
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="text-xs text-slate-400">کل اعلان‌ها</div>
+              <div className="mt-2 text-2xl font-black text-white">
+                {notifications.length}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4">
+              <div className="text-xs text-cyan-100/70">نخوانده</div>
+              <div className="mt-2 text-2xl font-black text-cyan-100">
+                {unreadNotifications.length}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-emerald-300/15 bg-emerald-400/10 p-4">
+              <div className="text-xs text-emerald-100/70">خوانده‌شده</div>
+              <div className="mt-2 text-2xl font-black text-emerald-100">
+                {notifications.length - unreadNotifications.length}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => markAllNotificationsRead.mutate()}
+              disabled={
+                unreadNotifications.length === 0 ||
+                markAllNotificationsRead.isPending
+              }
+              className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-black text-slate-100 transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              همه خوانده شد
+            </button>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+            <Input
+              value={notificationSearch}
+              onChange={(event) => setNotificationSearch(event.target.value)}
+              placeholder="جستجو در عنوان و متن اعلان..."
+            />
+            <div className="flex rounded-xl border border-white/10 bg-white/[0.04] p-1">
+              {[
+                { id: "all", label: "همه" },
+                { id: "unread", label: "نخوانده" },
+                { id: "read", label: "خوانده‌شده" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() =>
+                    setNotificationReadFilter(
+                      item.id as NotificationReadFilter,
+                    )
+                  }
+                  className={`rounded-lg px-3 py-2 text-xs font-black transition ${
+                    notificationReadFilter === item.id
+                      ? "bg-cyan-400/20 text-cyan-50"
+                      : "text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex max-w-full gap-2 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.04] p-1">
+              <button
+                type="button"
+                onClick={() => setNotificationTypeFilter("all")}
+                className={`shrink-0 rounded-lg px-3 py-2 text-xs font-black transition ${
+                  notificationTypeFilter === "all"
+                    ? "bg-cyan-400/20 text-cyan-50"
+                    : "text-slate-300 hover:bg-white/10"
+                }`}
+              >
+                همه نوع‌ها
+              </button>
+              {notificationTypes.map((type) => {
+                const meta = notificationTypeMeta[type] ?? {
+                  label: "اعلان",
+                  color: "text-slate-200 bg-white/[0.04] border-white/10",
+                  icon: Bell,
+                };
+
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setNotificationTypeFilter(type)}
+                    className={`shrink-0 rounded-lg px-3 py-2 text-xs font-black transition ${
+                      notificationTypeFilter === type
+                        ? "bg-cyan-400/20 text-cyan-50"
+                        : "text-slate-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {meta.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {notifications.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
               نوتیفیکیشنی وجود ندارد.
             </div>
           ) : (
-            notifications.map((notification) => {
-              const meta = notificationTypeMeta[notification.type] ?? {
-                label: "اعلان",
-                color: "text-slate-200 bg-white/[0.04] border-white/10",
-                icon: Bell,
-              };
-              const Icon = meta.icon;
-              const targetDate = getNotificationTargetDate(notification);
-              const requiredModuleKey =
-                notificationModuleKeys[notification.type];
-              const actionEnabled =
-                !requiredModuleKey || moduleIsEnabled(requiredModuleKey);
+            <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+              <div className="max-h-[58vh] space-y-3 overflow-y-auto pr-1">
+                <AnimatePresence initial={false}>
+                  {filteredNotifications.map((notification) => {
+                    const meta = notificationTypeMeta[notification.type] ?? {
+                      label: "اعلان",
+                      color: "text-slate-200 bg-white/[0.04] border-white/10",
+                      icon: Bell,
+                    };
+                    const Icon = meta.icon;
+                    const active = selectedNotificationId === notification.id;
 
-              return (
-                <button
-                  key={notification.id}
-                  type="button"
-                  onClick={() => openNotification(notification)}
-                  className={`w-full rounded-2xl border p-4 text-right transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
-                    !actionEnabled
-                      ? "cursor-not-allowed border-white/10 bg-white/[0.025] text-slate-500"
-                      : notification.readAt
-                        ? "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06]"
-                        : "border-cyan-300/30 bg-cyan-400/10 text-white hover:bg-cyan-400/15"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`grid size-10 shrink-0 place-items-center rounded-xl border ${meta.color}`}
-                    >
-                      <Icon size={20} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-black">{notification.title}</span>
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${meta.color}`}
-                        >
-                          {meta.label}
-                        </span>
-                        {!notification.readAt && (
-                          <span className="size-2 rounded-full bg-cyan-300" />
-                        )}
-                      </span>
-                      {notification.body && (
-                        <span className="mt-2 block text-sm leading-7">
-                          {notification.body}
-                        </span>
-                      )}
-                      <span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <span>
-                          {new Date(notification.createdAt).toLocaleString(
-                            "fa-IR",
-                          )}
-                        </span>
-                        {targetDate && actionEnabled && (
-                          <span className="text-cyan-200/80">
-                            باز کردن در تقویم
+                    return (
+                      <motion.button
+                        key={notification.id}
+                        type="button"
+                        layout
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        onClick={() => setSelectedNotificationId(notification.id)}
+                        className={`w-full rounded-2xl border p-4 text-right transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
+                          active
+                            ? "border-cyan-300/40 bg-cyan-400/12 text-white"
+                            : notification.readAt
+                              ? "border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.06]"
+                              : "border-cyan-300/30 bg-cyan-400/10 text-white hover:bg-cyan-400/15"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span
+                            className={`grid size-10 shrink-0 place-items-center rounded-xl border ${meta.color}`}
+                          >
+                            <Icon size={20} />
                           </span>
-                        )}
-                        {!actionEnabled && (
-                          <span className="text-amber-200/80">
-                            ماژول مقصد غیرفعال است
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="font-black">
+                                {notification.title}
+                              </span>
+                              <span
+                                className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${meta.color}`}
+                              >
+                                {meta.label}
+                              </span>
+                              {!notification.readAt && (
+                                <span className="size-2 rounded-full bg-cyan-300" />
+                              )}
+                            </span>
+                            {notification.body && (
+                              <span className="mt-2 line-clamp-2 block text-sm leading-7">
+                                {notification.body}
+                              </span>
+                            )}
+                            <span className="mt-2 block text-xs text-slate-500">
+                              {new Date(notification.createdAt).toLocaleString(
+                                "fa-IR",
+                              )}
+                            </span>
                           </span>
-                        )}
-                      </span>
-                    </span>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {filteredNotifications.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-300">
+                    اعلان مطابق فیلترها پیدا نشد.
                   </div>
-                </button>
-              );
-            })
+                )}
+              </div>
+
+              <aside className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                {selectedNotification ? (
+                  (() => {
+                    const meta = notificationTypeMeta[
+                      selectedNotification.type
+                    ] ?? {
+                      label: "اعلان",
+                      color: "text-slate-200 bg-white/[0.04] border-white/10",
+                      icon: Bell,
+                    };
+                    const Icon = meta.icon;
+                    const targetDate =
+                      getNotificationTargetDate(selectedNotification);
+                    const requiredModuleKey =
+                      notificationModuleKeys[selectedNotification.type];
+                    const actionEnabled =
+                      !requiredModuleKey || moduleIsEnabled(requiredModuleKey);
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                          <span
+                            className={`grid size-12 shrink-0 place-items-center rounded-2xl border ${meta.color}`}
+                          >
+                            <Icon size={22} />
+                          </span>
+                          <div className="min-w-0">
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${meta.color}`}
+                            >
+                              {meta.label}
+                            </span>
+                            <h3 className="mt-2 text-lg font-black text-white">
+                              {selectedNotification.title}
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {new Date(
+                                selectedNotification.createdAt,
+                              ).toLocaleString("fa-IR")}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedNotification.body && (
+                          <p className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-sm leading-7 text-slate-200">
+                            {selectedNotification.body}
+                          </p>
+                        )}
+
+                        <div className="space-y-2 text-xs text-slate-400">
+                          <div>
+                            وضعیت:{" "}
+                            {selectedNotification.readAt
+                              ? "خوانده‌شده"
+                              : "نخوانده"}
+                          </div>
+                          {targetDate && (
+                            <div>
+                              زمان مقصد:{" "}
+                              {new Date(targetDate).toLocaleString("fa-IR")}
+                            </div>
+                          )}
+                          {!actionEnabled && (
+                            <div className="text-amber-200">
+                              ماژول مقصد این اعلان غیرفعال است.
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {!selectedNotification.readAt && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                markNotificationRead.mutate(
+                                  selectedNotification.id,
+                                )
+                              }
+                              className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-white/10"
+                            >
+                              خوانده شد
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => openNotification(selectedNotification)}
+                            disabled={!actionEnabled}
+                            className="rounded-xl bg-cyan-500 px-4 py-2 text-xs font-black text-white hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            باز کردن مقصد
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="grid h-full min-h-56 place-items-center rounded-xl border border-dashed border-white/15 p-6 text-center text-sm leading-7 text-slate-400">
+                    یک اعلان را برای مشاهده جزئیات انتخاب کنید.
+                  </div>
+                )}
+              </aside>
+            </div>
           )}
         </div>
       </Dialog>

@@ -8,6 +8,7 @@ import {
 
 import {
   getNotifications,
+  markAllNotificationsRead,
   markNotificationRead,
   notificationsQueryKey,
 } from "@/lib/notifications";
@@ -24,6 +25,19 @@ export function useMarkNotificationRead() {
 
   return useMutation({
     mutationFn: markNotificationRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: notificationsQueryKey,
+      });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: markAllNotificationsRead,
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: notificationsQueryKey,

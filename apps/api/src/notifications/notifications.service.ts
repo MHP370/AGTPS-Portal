@@ -104,6 +104,41 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async markAllRead(currentUser?: AuthenticatedUser) {
+    const recipientWhere =
+      await this.getNotificationRecipientWhere(currentUser);
+
+    await this.prisma.portalNotification.updateMany({
+      where: {
+        AND: [
+          recipientWhere,
+          {
+            readAt: null,
+          },
+          {
+            OR: [
+              {
+                scheduledAt: null,
+              },
+              {
+                scheduledAt: {
+                  lte: new Date(),
+                },
+              },
+            ],
+          },
+        ],
+      },
+      data: {
+        readAt: new Date(),
+      },
+    });
+
+    return {
+      ok: true,
+    };
+  }
+
   private getNotificationTargetUrl(notification: {
     meetingId: string | null;
     reminderId: string | null;

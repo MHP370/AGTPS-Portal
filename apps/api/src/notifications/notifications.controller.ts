@@ -45,6 +45,17 @@ export class NotificationsController {
     return this.notificationsService.unsubscribe(dto);
   }
 
+  @Put('read-all')
+  @UseGuards(OptionalJwtAuthGuard)
+  markAllRead(
+    @Req()
+    request: Request & {
+      user?: { id: string; username?: string; email?: string };
+    },
+  ) {
+    return this.notificationsService.markAllRead(request.user);
+  }
+
   @Put(':id/read')
   markRead(@Param('id') id: string) {
     return this.notificationsService.markRead(id);
