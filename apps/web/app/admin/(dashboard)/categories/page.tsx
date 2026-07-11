@@ -19,7 +19,13 @@ import {
 } from "@/hooks/useCategories";
 
 export default function CategoriesPage() {
-  const { data = [], isLoading } = useCategories();
+  const {
+    data = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useCategories();
 
   const deleteCategory = useDeleteCategory();
 
@@ -49,6 +55,22 @@ export default function CategoriesPage() {
     return (
       <div className="py-10 text-center">
         در حال بارگذاری...
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-4 rounded-xl border border-red-900/60 bg-red-950/30 p-5 text-red-200">
+        <h1 className="text-xl font-semibold">
+          بارگذاری دسته‌بندی‌ها انجام نشد
+        </h1>
+        <p className="text-sm text-red-200/80">
+          {(error as Error | undefined)?.message || "ارتباط با سرویس برقرار نشد."}
+        </p>
+        <Button variant="secondary" onClick={() => void refetch()}>
+          تلاش دوباره
+        </Button>
       </div>
     );
   }
@@ -130,12 +152,14 @@ export default function CategoriesPage() {
 
       {/* CREATE */}
       <CreateCategoryDialog
+        key={openCreate ? "create-category-open" : "create-category-closed"}
         open={openCreate}
         onOpenChange={setOpenCreate}
       />
 
       {/* EDIT */}
       <EditCategoryDialog
+        key={selectedCategory?.id ?? "no-category-selected"}
         open={openEdit}
         onOpenChange={setOpenEdit}
         category={selectedCategory}

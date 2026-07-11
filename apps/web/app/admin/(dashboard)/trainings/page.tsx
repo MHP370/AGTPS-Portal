@@ -17,6 +17,7 @@ import { FileUploadField } from "@/components/ui/FileUploadField";
 import { FormField } from "@/components/ui/FormField";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { Input } from "@/components/ui/Input";
+import { PersianDateTimeInput } from "@/components/ui/PersianDateInput";
 import { Select } from "@/components/ui/Select";
 import {
   useAdminTrainingCategories,
@@ -1311,17 +1312,15 @@ export default function TrainingsPage() {
                 />
               </FormField>
               <FormField label="شروع دوره" required>
-                <Input
-                  type="datetime-local"
+                <PersianDateTimeInput
                   value={courseStartDate}
-                  onChange={(event) => setCourseStartDate(event.target.value)}
+                  onChange={setCourseStartDate}
                 />
               </FormField>
               <FormField label="پایان دوره">
-                <Input
-                  type="datetime-local"
+                <PersianDateTimeInput
                   value={courseEndDate}
-                  onChange={(event) => setCourseEndDate(event.target.value)}
+                  onChange={setCourseEndDate}
                 />
               </FormField>
               <FormField label="مدت دوره / ساعت">

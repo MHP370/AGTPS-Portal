@@ -16,6 +16,10 @@ interface PersianDateInputProps {
   disabled?: boolean;
 }
 
+interface PersianDateTimeInputProps extends PersianDateInputProps {
+  minuteStep?: number;
+}
+
 function getCurrentJalaliDate() {
   return gregorianToJalali(new Date().toISOString().slice(0, 10)) ?? {
     jy: 1405,
@@ -121,6 +125,52 @@ export function PersianDateInput({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function splitDateTime(value: string) {
+  const [date = "", time = ""] = value.split("T");
+  return {
+    date,
+    time: time.slice(0, 5) || "08:00",
+  };
+}
+
+export function PersianDateTimeInput({
+  value,
+  onChange,
+  disabled = false,
+  minuteStep = 5,
+}: PersianDateTimeInputProps) {
+  const { date, time } = splitDateTime(value);
+
+  function updateDate(nextDate: string) {
+    onChange(nextDate ? `${nextDate}T${time}` : "");
+  }
+
+  function updateTime(nextTime: string) {
+    if (!date) {
+      const today = new Date().toISOString().slice(0, 10);
+      onChange(`${today}T${nextTime}`);
+      return;
+    }
+
+    onChange(`${date}T${nextTime}`);
+  }
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+      <PersianDateInput value={date} onChange={updateDate} disabled={disabled} />
+      <input
+        type="time"
+        value={time}
+        step={minuteStep * 60}
+        onChange={(event) => updateTime(event.target.value)}
+        disabled={disabled}
+        className="h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label="ساعت"
+      />
     </div>
   );
 }

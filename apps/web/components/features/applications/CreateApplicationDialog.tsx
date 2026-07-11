@@ -50,6 +50,7 @@ export function CreateApplicationDialog({
       title="افزودن سامانه"
     >
       <ApplicationForm
+        key={open ? "create-application-open" : "create-application-closed"}
         categories={categories}
         loading={createApplication.isPending}
         error={error}

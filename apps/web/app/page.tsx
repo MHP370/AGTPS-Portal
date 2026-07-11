@@ -1030,12 +1030,9 @@ export default function Home() {
           )}
 
           {question.type === "DATE" && (
-            <Input
-              type="date"
+            <PersianDateInput
               value={typeof value === "string" ? value : ""}
-              onChange={(event) =>
-                updatePollAnswer(question.id, event.target.value)
-              }
+              onChange={(nextDate) => updatePollAnswer(question.id, nextDate)}
             />
           )}
 

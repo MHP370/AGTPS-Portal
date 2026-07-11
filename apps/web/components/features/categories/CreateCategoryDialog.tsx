@@ -22,14 +22,32 @@ export function CreateCategoryDialog({
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [error, setError] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
 
-    await createCategory.mutateAsync({
-      name,
-      slug,
-    });
+    const trimmedName = name.trim();
+    const trimmedSlug = slug.trim();
+
+    if (!trimmedName || !trimmedSlug) {
+      setError("نام و اسلاگ الزامی هستند.");
+      return;
+    }
+
+    setError("");
+
+    try {
+      await createCategory.mutateAsync({
+        name: trimmedName,
+        slug: trimmedSlug,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "ایجاد دسته‌بندی انجام نشد.",
+      );
+      return;
+    }
 
     setName("");
     setSlug("");
@@ -44,6 +62,11 @@ export function CreateCategoryDialog({
       title="افزودن دسته‌بندی"
     >
       <form onSubmit={submit} className="space-y-5">
+        {error && (
+          <div className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
         <FormField label="نام" required>
           <Input
             value={name}
@@ -63,8 +86,8 @@ export function CreateCategoryDialog({
         </FormField>
 
         <div className="flex justify-end">
-          <Button type="submit">
-            ذخیره
+          <Button type="submit" disabled={createCategory.isPending}>
+            {createCategory.isPending ? "در حال ذخیره..." : "ذخیره"}
           </Button>
         </div>
       </form>

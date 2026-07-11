@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
@@ -24,15 +24,9 @@ export function EditCategoryDialog({
 }: Props) {
   const updateCategory = useUpdateCategory();
 
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-
-  useEffect(() => {
-    if (!category) return;
-
-    setName(category.name);
-    setSlug(category.slug);
-  }, [category]);
+  const [name, setName] = useState(category?.name ?? "");
+  const [slug, setSlug] = useState(category?.slug ?? "");
+  const [error, setError] = useState("");
 
   if (!category) return null;
 
@@ -41,13 +35,30 @@ export function EditCategoryDialog({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
 
-    await updateCategory.mutateAsync({
-      id: selectedCategory.id,
-      dto: {
-        name,
-        slug,
-      },
-    });
+    const trimmedName = name.trim();
+    const trimmedSlug = slug.trim();
+
+    if (!trimmedName || !trimmedSlug) {
+      setError("نام و اسلاگ الزامی هستند.");
+      return;
+    }
+
+    setError("");
+
+    try {
+      await updateCategory.mutateAsync({
+        id: selectedCategory.id,
+        dto: {
+          name: trimmedName,
+          slug: trimmedSlug,
+        },
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "ویرایش دسته‌بندی انجام نشد.",
+      );
+      return;
+    }
 
     onOpenChange(false);
   }
@@ -59,6 +70,11 @@ export function EditCategoryDialog({
       title="ویرایش دسته‌بندی"
     >
       <form onSubmit={submit} className="space-y-5">
+        {error && (
+          <div className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
         <FormField label="نام" required>
           <Input
             value={name}
@@ -78,8 +94,8 @@ export function EditCategoryDialog({
         </FormField>
 
         <div className="flex justify-end">
-          <Button type="submit">
-            ذخیره تغییرات
+          <Button type="submit" disabled={updateCategory.isPending}>
+            {updateCategory.isPending ? "در حال ذخیره..." : "ذخیره تغییرات"}
           </Button>
         </div>
       </form>

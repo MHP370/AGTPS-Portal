@@ -68,6 +68,7 @@ export function EditApplicationDialog({
       title="ویرایش سامانه"
     >
       <ApplicationForm
+        key={selectedApplication.id}
         application={selectedApplication}
         categories={categories}
         loading={updateApplication.isPending}

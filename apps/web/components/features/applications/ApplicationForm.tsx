@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type {
   Application,
@@ -41,60 +41,68 @@ export function ApplicationForm({
   categories = [],
   onSubmit,
 }: Props) {
-  const [title, setTitle] = useState("");
-  const [key, setKey] = useState("");
-  const [slug, setSlug] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [status, setStatus] = useState("ACTIVE");
-  const [networkType, setNetworkType] = useState("INTRANET");
-  const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState("MonitorCog");
-  const [color, setColor] = useState("#0891b2");
-  const [version, setVersion] = useState("");
-  const [owner, setOwner] = useState("");
-  const [supportDepartment, setSupportDepartment] = useState("");
-  const [guideUrl, setGuideUrl] = useState("");
-  const [sortOrder, setSortOrder] = useState("0");
-  const [isActive, setIsActive] = useState(true);
-  const [isFeatured, setIsFeatured] = useState(false);
-  const [isNew, setIsNew] = useState(false);
-  const [openInNewTab, setOpenInNewTab] = useState(true);
+  const initialCategoryId =
+    application?.category?.id ?? categories[0]?.id ?? "";
+  const [title, setTitle] = useState(application?.title ?? "");
+  const [key, setKey] = useState(application?.key ?? "");
+  const [slug, setSlug] = useState(application?.slug ?? "");
+  const [categoryId, setCategoryId] = useState(initialCategoryId);
+  const [status, setStatus] = useState(application?.status || "ACTIVE");
+  const [networkType, setNetworkType] = useState(
+    application?.networkType || "INTRANET",
+  );
+  const [description, setDescription] = useState(
+    application?.description ?? "",
+  );
+  const [icon, setIcon] = useState(application?.icon ?? "MonitorCog");
+  const [color, setColor] = useState(application?.color ?? "#0891b2");
+  const [version, setVersion] = useState(application?.version ?? "");
+  const [owner, setOwner] = useState(application?.owner ?? "");
+  const [supportDepartment, setSupportDepartment] = useState(
+    application?.supportDepartment ?? "",
+  );
+  const [guideUrl, setGuideUrl] = useState(application?.guideUrl ?? "");
+  const [sortOrder, setSortOrder] = useState(
+    String(application?.sortOrder ?? 0),
+  );
+  const [isActive, setIsActive] = useState(application?.isActive ?? true);
+  const [isFeatured, setIsFeatured] = useState(
+    application?.isFeatured ?? false,
+  );
+  const [isNew, setIsNew] = useState(application?.isNew ?? false);
+  const [openInNewTab, setOpenInNewTab] = useState(
+    application?.openInNewTab ?? true,
+  );
   const [formError, setFormError] = useState("");
 
   const categoryExists = useMemo(
     () => categories.some((category) => category.id === categoryId),
     [categories, categoryId],
   );
+  const effectiveCategoryId =
+    categoryId && categoryExists ? categoryId : categories[0]?.id ?? "";
 
-  useEffect(() => {
-    if (!application) return;
-
-    setTitle(application.title);
-    setKey(application.key);
-    setSlug(application.slug);
-    setCategoryId(application.category?.id ?? categories[0]?.id ?? "");
-    setStatus(application.status || "ACTIVE");
-    setNetworkType(application.networkType || "INTRANET");
-    setDescription(application.description ?? "");
-    setIcon(application.icon ?? "MonitorCog");
-    setColor(application.color ?? "#0891b2");
-    setVersion(application.version ?? "");
-    setOwner(application.owner ?? "");
-    setSupportDepartment(application.supportDepartment ?? "");
-    setGuideUrl(application.guideUrl ?? "");
-    setSortOrder(String(application.sortOrder ?? 0));
-    setIsActive(application.isActive);
-    setIsFeatured(application.isFeatured);
-    setIsNew(application.isNew);
-    setOpenInNewTab(application.openInNewTab);
+  function resetCreateForm() {
+    setTitle("");
+    setKey("");
+    setSlug("");
+    setCategoryId(categories[0]?.id ?? "");
+    setStatus("ACTIVE");
+    setNetworkType("INTRANET");
+    setDescription("");
+    setIcon("MonitorCog");
+    setColor("#0891b2");
+    setVersion("");
+    setOwner("");
+    setSupportDepartment("");
+    setGuideUrl("");
+    setSortOrder("0");
+    setIsActive(true);
+    setIsFeatured(false);
+    setIsNew(false);
+    setOpenInNewTab(true);
     setFormError("");
-  }, [application, categories]);
-
-  useEffect(() => {
-    if (!application && !categoryId && categories.length > 0) {
-      setCategoryId(categories[0].id);
-    }
-  }, [categories, application, categoryId]);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -109,7 +117,7 @@ export function ApplicationForm({
       return;
     }
 
-    if (!categoryId || !categoryExists) {
+    if (!effectiveCategoryId) {
       setFormError("لطفاً یک دسته‌بندی معتبر انتخاب کنید.");
       return;
     }
@@ -125,7 +133,7 @@ export function ApplicationForm({
       title: trimmedTitle,
       key: trimmedKey,
       slug: trimmedSlug,
-      categoryId,
+      categoryId: effectiveCategoryId,
       status,
       networkType,
       description: description.trim() || undefined,
@@ -141,6 +149,10 @@ export function ApplicationForm({
       isNew,
       openInNewTab,
     });
+
+    if (!application) {
+      resetCreateForm();
+    }
   }
 
   return (
@@ -180,7 +192,7 @@ export function ApplicationForm({
 
         <FormField label="دسته‌بندی" required>
           <select
-            value={categoryId || ""}
+            value={effectiveCategoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading || categories.length === 0}
@@ -346,7 +358,7 @@ export function ApplicationForm({
       <div className="flex justify-end">
         <Button
           type="submit"
-          disabled={loading || !categoryId || categories.length === 0}
+          disabled={loading || !effectiveCategoryId || categories.length === 0}
         >
           {loading
             ? "در حال ذخیره..."

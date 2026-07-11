@@ -23,6 +23,10 @@ import {
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { Input } from "@/components/ui/Input";
+import {
+  PersianDateInput,
+  PersianDateTimeInput,
+} from "@/components/ui/PersianDateInput";
 import { Select } from "@/components/ui/Select";
 import {
   useAdminPollSurveys,
@@ -797,18 +801,11 @@ export default function PollsPage() {
               onValueChange={setCategoryFilter}
               options={categoryOptions}
             />
-            <Input
-              type="date"
+            <PersianDateInput
               value={fromDateFilter}
-              onChange={(event) => setFromDateFilter(event.target.value)}
-              aria-label="از تاریخ"
+              onChange={setFromDateFilter}
             />
-            <Input
-              type="date"
-              value={toDateFilter}
-              onChange={(event) => setToDateFilter(event.target.value)}
-              aria-label="تا تاریخ"
-            />
+            <PersianDateInput value={toDateFilter} onChange={setToDateFilter} />
           </div>
           {(searchTerm ||
             statusFilter !== "ALL" ||
@@ -1033,18 +1030,13 @@ export default function PollsPage() {
               />
             </FormField>
             <FormField label="تاریخ انتشار">
-              <Input
-                type="datetime-local"
+              <PersianDateTimeInput
                 value={publishDate}
-                onChange={(event) => setPublishDate(event.target.value)}
+                onChange={setPublishDate}
               />
             </FormField>
             <FormField label="مهلت پایان">
-              <Input
-                type="datetime-local"
-                value={deadline}
-                onChange={(event) => setDeadline(event.target.value)}
-              />
+              <PersianDateTimeInput value={deadline} onChange={setDeadline} />
             </FormField>
           </div>
 
