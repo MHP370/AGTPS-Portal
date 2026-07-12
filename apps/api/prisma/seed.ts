@@ -160,31 +160,31 @@ async function main() {
     },
     {
       name: 'poll.view',
-      title: 'View Polls',
+      title: 'مشاهده رای‌گیری‌ها',
     },
     {
       name: 'poll.manage',
-      title: 'Manage Polls',
+      title: 'مدیریت رای‌گیری‌ها',
     },
     {
       name: 'poll.vote',
-      title: 'Vote in Polls',
+      title: 'شرکت در رای‌گیری‌ها',
     },
     {
       name: 'survey.view',
-      title: 'View Surveys',
+      title: 'مشاهده نظرسنجی‌ها',
     },
     {
       name: 'survey.manage',
-      title: 'Manage Surveys',
+      title: 'مدیریت نظرسنجی‌ها',
     },
     {
       name: 'survey.answer',
-      title: 'Answer Surveys',
+      title: 'پاسخ به نظرسنجی‌ها',
     },
     {
       name: 'reports.view',
-      title: 'View Reports',
+      title: 'مشاهده گزارش‌ها',
     },
   ];
 
@@ -831,7 +831,7 @@ async function main() {
     },
   });
 
-  await Promise.all(
+  const samplePollOptions = await Promise.all(
     ['سامانه‌ها', 'آموزش', 'جلسات', 'دانلودها'].map((label, index) =>
       prisma.pollSurveyOption.upsert({
         where: {
@@ -850,6 +850,78 @@ async function main() {
         },
       }),
     ),
+  );
+
+  const samplePollResponses = [
+    {
+      id: 'sample-required-poll-response-1',
+      participantHash: 'sample-required-poll-participant-1',
+      optionId: samplePollOptions[0]?.id,
+      submittedAt: new Date('2026-07-09T08:30:00.000Z'),
+    },
+    {
+      id: 'sample-required-poll-response-2',
+      participantHash: 'sample-required-poll-participant-2',
+      optionId: samplePollOptions[1]?.id,
+      submittedAt: new Date('2026-07-10T09:15:00.000Z'),
+    },
+    {
+      id: 'sample-required-poll-response-3',
+      participantHash: 'sample-required-poll-participant-3',
+      optionId: samplePollOptions[0]?.id,
+      submittedAt: new Date('2026-07-10T12:45:00.000Z'),
+    },
+    {
+      id: 'sample-required-poll-response-4',
+      participantHash: 'sample-required-poll-participant-4',
+      optionId: samplePollOptions[2]?.id,
+      submittedAt: new Date('2026-07-11T07:20:00.000Z'),
+    },
+  ];
+
+  await Promise.all(
+    samplePollResponses.map(async (response) => {
+      if (!response.optionId) return;
+
+      const savedResponse = await prisma.pollSurveyResponse.upsert({
+        where: {
+          pollSurveyId_participantHash: {
+            pollSurveyId: samplePoll.id,
+            participantHash: response.participantHash,
+          },
+        },
+        update: {
+          status: 'SUBMITTED',
+          submittedAt: response.submittedAt,
+          isAnonymous: false,
+        },
+        create: {
+          id: response.id,
+          pollSurveyId: samplePoll.id,
+          participantHash: response.participantHash,
+          status: 'SUBMITTED',
+          submittedAt: response.submittedAt,
+          isAnonymous: false,
+        },
+      });
+
+      await prisma.pollSurveyAnswer.upsert({
+        where: {
+          id: `${response.id}-answer`,
+        },
+        update: {
+          responseId: savedResponse.id,
+          questionId: samplePollQuestion.id,
+          optionId: response.optionId,
+        },
+        create: {
+          id: `${response.id}-answer`,
+          responseId: savedResponse.id,
+          questionId: samplePollQuestion.id,
+          optionId: response.optionId,
+        },
+      });
+    }),
   );
 
   const sampleSurvey = await prisma.pollSurvey.upsert({
