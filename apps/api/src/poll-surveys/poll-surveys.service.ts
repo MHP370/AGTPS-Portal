@@ -305,7 +305,7 @@ export class PollSurveysService {
       throw new NotFoundException('Poll or survey was not found.');
     }
 
-    return item;
+    return sanitizePollSurveyForAdmin(item);
   }
 
   create(dto: CreatePollSurveyDto, creatorId?: string) {
@@ -602,13 +602,38 @@ export class PollSurveysService {
     const submittedResponses = item.responses.filter(
       (response) => response.status === PollSurveyResponseStatus.SUBMITTED,
     );
+    const timelineCounts = submittedResponses.reduce<Record<string, number>>(
+      (counts, response) => {
+        const dateKey = (response.submittedAt ?? response.updatedAt)
+          .toISOString()
+          .slice(0, 10);
+
+        counts[dateKey] = (counts[dateKey] ?? 0) + 1;
+        return counts;
+      },
+      {},
+    );
+    const targetCount =
+      item.targetUserIds.length > 0 ? item.targetUserIds.length : null;
 
     return {
       id: item.id,
       type: item.type,
       title: item.title,
+      status: item.status,
+      deadline: item.deadline,
+      publishDate: item.publishDate,
       totalResponses: submittedResponses.length,
-      participationRate: null,
+      targetCount,
+      participationRate: targetCount
+        ? (submittedResponses.length / targetCount) * 100
+        : null,
+      timeline: Object.entries(timelineCounts)
+        .sort(([firstDate], [secondDate]) => firstDate.localeCompare(secondDate))
+        .map(([date, count]) => ({
+          date,
+          count,
+        })),
       questions: item.questions.map((question) => {
         const answers = submittedResponses.flatMap((response) =>
           response.answers.filter(
@@ -629,7 +654,19 @@ export class PollSurveysService {
                 answer.optionId === option.id ||
                 answer.optionIds.includes(option.id),
             ).length,
-          })),
+          })).map((option, _index, allOptions) => {
+            const totalOptionVotes = allOptions.reduce(
+              (sum, current) => sum + current.count,
+              0,
+            );
+
+            return {
+              ...option,
+              percent: totalOptionVotes
+                ? (option.count / totalOptionVotes) * 100
+                : 0,
+            };
+          }),
           textAnswers:
             options.includeTextAnswers &&
             (question.type === PollSurveyQuestionType.TEXT ||

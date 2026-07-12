@@ -132,8 +132,22 @@ function formatDate(value?: string | null) {
   }).format(new Date(value));
 }
 
+function formatDateOnly(value?: string | null) {
+  if (!value) return "ثبت نشده";
+
+  return new Intl.DateTimeFormat("fa-IR", {
+    dateStyle: "medium",
+  }).format(new Date(value));
+}
+
 function typeLabel(type: PollSurveyType) {
   return type === "POLL" ? "رای‌گیری" : "نظرسنجی";
+}
+
+function questionTypeLabel(type: PollSurveyQuestionType) {
+  return (
+    questionTypeOptions.find((item) => item.value === type)?.label ?? type
+  );
 }
 
 function formatPercent(value: number) {
@@ -151,22 +165,40 @@ function exportReportCsv(result: PollSurveyResult) {
     ["عنوان", result.title],
     ["کل پاسخ‌ها", result.totalResponses],
     [],
-    ["سوال", "نوع", "گزینه/پاسخ", "تعداد/مقدار"],
+    ["سوال", "نوع", "گزینه/پاسخ", "تعداد/مقدار", "درصد"],
   ];
 
   result.questions.forEach((question) => {
     if (question.options.length) {
       question.options.forEach((option) => {
-        rows.push([question.title, question.type, option.label, option.count]);
+        rows.push([
+          question.title,
+          questionTypeLabel(question.type),
+          option.label,
+          option.count,
+          `${option.percent.toFixed(1)}%`,
+        ]);
       });
     }
 
     if (question.average !== null) {
-      rows.push([question.title, question.type, "میانگین", question.average]);
+      rows.push([
+        question.title,
+        questionTypeLabel(question.type),
+        "میانگین",
+        question.average,
+        "",
+      ]);
     }
 
     question.textAnswers.forEach((answer, index) => {
-      rows.push([question.title, question.type, `پاسخ ${index + 1}`, answer]);
+      rows.push([
+        question.title,
+        questionTypeLabel(question.type),
+        `پاسخ ${index + 1}`,
+        answer,
+        "",
+      ]);
     });
   });
 
@@ -1392,9 +1424,9 @@ export default function PollsPage() {
                   </div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
-                  <div className="text-sm text-slate-400">نوع</div>
+                  <div className="text-sm text-slate-400">مخاطب هدف</div>
                   <div className="mt-2 text-2xl font-black text-white">
-                    {typeLabel(selectedReport.type)}
+                    {selectedReport.targetCount ?? "همه"}
                   </div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-slate-950/50 p-4">
@@ -1409,6 +1441,92 @@ export default function PollsPage() {
                     {selectedReport.participationRate !== null
                       ? formatPercent(selectedReport.participationRate)
                       : "نیازمند AD"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="font-black text-white">روند پاسخ‌ها</h3>
+                      <p className="mt-1 text-xs text-slate-400">
+                        تعداد پاسخ‌های ثبت‌شده بر اساس روز
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-200">
+                      {selectedReport.timeline.length} روز
+                    </span>
+                  </div>
+                  {selectedReport.timeline.length > 0 ? (
+                    <div className="mt-5 flex h-44 items-end gap-2 overflow-x-auto pb-1">
+                      {selectedReport.timeline.map((point) => {
+                        const maxTimelineCount = Math.max(
+                          ...selectedReport.timeline.map((item) => item.count),
+                          1,
+                        );
+                        const height =
+                          (point.count / maxTimelineCount) * 100;
+
+                        return (
+                          <div
+                            key={point.date}
+                            className="flex min-w-16 flex-1 flex-col items-center gap-2"
+                          >
+                            <div className="flex h-28 w-full items-end">
+                              <motion.div
+                                className="w-full rounded-t-xl bg-cyan-400 shadow-lg shadow-cyan-500/20"
+                                initial={{ height: 0 }}
+                                animate={{ height: `${height}%` }}
+                                transition={
+                                  reduceMotion
+                                    ? { duration: 0 }
+                                    : { duration: 0.35, ease: "easeOut" }
+                                }
+                              />
+                            </div>
+                            <div className="text-center">
+                              <div className="text-xs font-black text-cyan-100">
+                                {point.count}
+                              </div>
+                              <div className="mt-1 whitespace-nowrap text-[10px] text-slate-500">
+                                {formatDateOnly(point.date)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-dashed border-white/15 p-8 text-center text-sm text-slate-400">
+                      هنوز پاسخی برای نمایش روند ثبت نشده است.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <h3 className="font-black text-white">خلاصه مدیریتی</h3>
+                  <div className="mt-4 space-y-3 text-sm text-slate-300">
+                    <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3 py-2">
+                      <span>نوع</span>
+                      <span className="font-black text-white">
+                        {typeLabel(selectedReport.type)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3 py-2">
+                      <span>وضعیت</span>
+                      <span className="font-black text-white">
+                        {statusOptions.find(
+                          (item) => item.value === selectedReport.status,
+                        )?.label ?? selectedReport.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3 py-2">
+                      <span>مهلت</span>
+                      <span className="font-black text-white">
+                        {formatDate(selectedReport.deadline)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1467,7 +1585,7 @@ export default function PollsPage() {
                         </div>
                         <span className="inline-flex items-center gap-2 rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-100">
                           <PieChart className="h-3.5 w-3.5" />
-                          {question.type}
+                          {questionTypeLabel(question.type)}
                         </span>
                       </div>
 
@@ -1499,18 +1617,13 @@ export default function PollsPage() {
 
                           <div className="space-y-3">
                             {question.options.map((option) => {
-                              const percent = selectedReport.totalResponses
-                                ? (option.count /
-                                    selectedReport.totalResponses) *
-                                  100
-                                : 0;
-
                               return (
                                 <div key={option.id}>
                                   <div className="mb-1 flex justify-between gap-3 text-xs text-slate-300">
                                     <span>{option.label}</span>
                                     <span>
-                                      {option.count} - {formatPercent(percent)}
+                                      {option.count} -{" "}
+                                      {formatPercent(option.percent)}
                                     </span>
                                   </div>
                                   <div className="h-2.5 overflow-hidden rounded-full bg-slate-800">

@@ -140,8 +140,16 @@ export interface PollSurveyResult {
   id: string;
   type: PollSurveyType;
   title: string;
+  status: PollSurveyStatus;
+  deadline?: string | null;
+  publishDate?: string | null;
   totalResponses: number;
+  targetCount: number | null;
   participationRate: number | null;
+  timeline: Array<{
+    date: string;
+    count: number;
+  }>;
   questions: Array<{
     id: string;
     title: string;
@@ -151,6 +159,7 @@ export interface PollSurveyResult {
       id: string;
       label: string;
       count: number;
+      percent: number;
     }>;
     textAnswers: string[];
     average: number | null;
