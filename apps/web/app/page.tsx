@@ -728,20 +728,18 @@ export default function Home() {
         }));
   const visibleTrainings = trainings.slice(0, 4);
   const activePollSurveys = pollSurveys
-    .filter((item) => !submittedPollSurveyIds.has(item.id))
+    .filter((item) => !pollSurveyIsSubmitted(item))
     .slice(0, 4);
   const pollSurveyStats = {
     total: pollSurveys.length,
-    pending: pollSurveys.filter((item) => !submittedPollSurveyIds.has(item.id))
-      .length,
-    submitted: pollSurveys.filter((item) => submittedPollSurveyIds.has(item.id))
-      .length,
+    pending: pollSurveys.filter((item) => !pollSurveyIsSubmitted(item)).length,
+    submitted: pollSurveys.filter((item) => pollSurveyIsSubmitted(item)).length,
   };
   const requiredPollSurvey = pollSurveys.find(
     (item) =>
       item.required &&
       item.popupEnforced &&
-      !submittedPollSurveyIds.has(item.id),
+      !pollSurveyIsSubmitted(item),
   );
   const visibleSystemStatuses =
     managedSystemStatuses.length > 0
@@ -827,8 +825,12 @@ export default function Home() {
     setPollSurveyModal(item);
   }
 
+  function pollSurveyIsSubmitted(item: PollSurvey) {
+    return item.hasSubmitted || submittedPollSurveyIds.has(item.id);
+  }
+
   function getPollSurveyUserStatus(item: PollSurvey) {
-    if (submittedPollSurveyIds.has(item.id)) {
+    if (pollSurveyIsSubmitted(item)) {
       return {
         label: "پاسخ داده‌اید",
         className: "bg-emerald-400/15 text-emerald-100",
@@ -857,7 +859,7 @@ export default function Home() {
 
   function pollSurveyIsAnswerable(item: PollSurvey) {
     return (
-      !submittedPollSurveyIds.has(item.id) &&
+      !pollSurveyIsSubmitted(item) &&
       (!item.deadline || new Date(item.deadline) >= new Date())
     );
   }
@@ -2546,6 +2548,14 @@ export default function Home() {
                 </p>
               )}
             </div>
+
+            {submitPollSurvey.isError && (
+              <div className="rounded-2xl border border-rose-300/25 bg-rose-500/10 p-3 text-sm font-bold leading-7 text-rose-100">
+                {submitPollSurvey.error instanceof Error
+                  ? submitPollSurvey.error.message
+                  : "ثبت پاسخ انجام نشد. دوباره تلاش کنید."}
+              </div>
+            )}
 
             {pollSurveyModal.type === "SURVEY" ? (
               <div className="space-y-4">

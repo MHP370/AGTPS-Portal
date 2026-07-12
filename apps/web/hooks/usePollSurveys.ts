@@ -38,7 +38,7 @@ export function getPollSurveyVisitorKey() {
 export function usePollSurveys(type?: PollSurveyType) {
   return useQuery({
     queryKey: [...pollSurveysQueryKey, type ?? "all"],
-    queryFn: () => getPollSurveys(type),
+    queryFn: () => getPollSurveys(type, getPollSurveyVisitorKey()),
   });
 }
 

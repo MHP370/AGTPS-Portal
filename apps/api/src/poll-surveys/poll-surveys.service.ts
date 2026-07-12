@@ -55,6 +55,10 @@ type PollSurveyWithResponses = Prisma.PollSurveyGetPayload<{
   include: typeof pollSurveyInclude;
 }>;
 
+type PublicPollSurvey = Prisma.PollSurveyGetPayload<{
+  include: typeof publicPollSurveyInclude;
+}>;
+
 function parseDate(value?: string | null) {
   return value ? new Date(value) : null;
 }
@@ -182,14 +186,28 @@ function assertSensitiveFieldsAreLocked(
   }
 }
 
+function sanitizePollSurveyForAdmin(item: PollSurveyWithResponses) {
+  if (!item.anonymous) return item;
+
+  return {
+    ...item,
+    responses: item.responses.map((response) => ({
+      ...response,
+      userId: null,
+      directoryUserId: null,
+      participantHash: '',
+    })),
+  };
+}
+
 @Injectable()
 export class PollSurveysService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findPublic(type?: PollSurveyType) {
+  async findPublic(type?: PollSurveyType, participantKey?: string) {
     const now = new Date();
 
-    return this.prisma.pollSurvey.findMany({
+    const items = await this.prisma.pollSurvey.findMany({
       where: {
         ...(type ? { type } : {}),
         OR: [
@@ -224,16 +242,34 @@ export class PollSurveysService {
         },
       ],
     });
+
+    if (!participantKey) {
+      return items.map((item) => ({
+        ...item,
+        hasSubmitted: false,
+      }));
+    }
+
+    const submittedHashes = new Set(
+      await this.findSubmittedHashesForParticipant(items, participantKey),
+    );
+
+    return items.map((item) => ({
+      ...item,
+      hasSubmitted: submittedHashes.has(participantHash(item.id, participantKey)),
+    }));
   }
 
-  findAllForAdmin(type?: PollSurveyType) {
-    return this.prisma.pollSurvey.findMany({
+  async findAllForAdmin(type?: PollSurveyType) {
+    const items = await this.prisma.pollSurvey.findMany({
       where: type ? { type } : undefined,
       include: pollSurveyInclude,
       orderBy: {
         updatedAt: 'desc',
       },
     });
+
+    return items.map(sanitizePollSurveyForAdmin);
   }
 
   async findOne(id: string) {
@@ -613,5 +649,31 @@ export class PollSurveysService {
         };
       }),
     };
+  }
+
+  private async findSubmittedHashesForParticipant(
+    items: PublicPollSurvey[],
+    participantKey: string,
+  ) {
+    if (!items.length) return [];
+
+    const hashByItemId = new Map(
+      items.map((item) => [item.id, participantHash(item.id, participantKey)]),
+    );
+
+    const responses = await this.prisma.pollSurveyResponse.findMany({
+      where: {
+        status: PollSurveyResponseStatus.SUBMITTED,
+        OR: Array.from(hashByItemId, ([pollSurveyId, hash]) => ({
+          pollSurveyId,
+          participantHash: hash,
+        })),
+      },
+      select: {
+        participantHash: true,
+      },
+    });
+
+    return responses.map((response) => response.participantHash);
   }
 }

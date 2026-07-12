@@ -70,6 +70,7 @@ export interface PollSurvey {
   allowParticipantCount: boolean;
   allowLiveResults: boolean;
   participantVisibility: boolean;
+  hasSubmitted?: boolean;
   questions: PollSurveyQuestion[];
   responses?: PollSurveyResponse[];
   createdAt: string;
@@ -158,8 +159,13 @@ export interface PollSurveyResult {
 
 export const pollSurveysQueryKey = ["poll-surveys"];
 
-export function getPollSurveys(type?: PollSurveyType) {
-  const query = type ? `?type=${type}` : "";
+export function getPollSurveys(type?: PollSurveyType, participantKey?: string) {
+  const params = new URLSearchParams();
+
+  if (type) params.set("type", type);
+  if (participantKey) params.set("participantKey", participantKey);
+
+  const query = params.toString() ? `?${params.toString()}` : "";
   return api.get<PollSurvey[]>(`/poll-surveys${query}`);
 }
 

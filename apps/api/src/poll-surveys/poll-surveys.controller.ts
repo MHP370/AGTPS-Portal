@@ -24,8 +24,11 @@ export class PollSurveysController {
   constructor(private readonly pollSurveysService: PollSurveysService) {}
 
   @Get()
-  findPublic(@Query('type') type?: PollSurveyType) {
-    return this.pollSurveysService.findPublic(type);
+  findPublic(
+    @Query('type') type?: PollSurveyType,
+    @Query('participantKey') participantKey?: string,
+  ) {
+    return this.pollSurveysService.findPublic(type, participantKey);
   }
 
   @Get('admin/all')
