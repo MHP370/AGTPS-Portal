@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Bell,
@@ -172,10 +172,14 @@ function hasPermission(user: AuthUser | null, permission?: string) {
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [userReady, setUserReady] = useState(false);
   const { data: enabledModules } = useEnabledPortalModules();
 
   useEffect(() => {
-    const syncUser = () => setUser(getStoredAuthUser());
+    const syncUser = () => {
+      setUser(getStoredAuthUser());
+      setUserReady(true);
+    };
 
     syncUser();
     window.addEventListener("focus", syncUser);
@@ -187,9 +191,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const enabledModuleKeys = enabledModules
-    ? new Set(enabledModules.map((module) => module.key))
-    : null;
+  const enabledModuleKeys = useMemo(
+    () =>
+      enabledModules
+        ? new Set(enabledModules.map((module) => module.key))
+        : null,
+    [enabledModules],
+  );
   const visibleNavItems = adminNavItems.filter((item) => {
     const moduleIsEnabled =
       !enabledModuleKeys ||
@@ -288,7 +296,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </header>
 
           <div className="p-8">
-            {canViewCurrentPage ? (
+            {!userReady ? (
+              <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 text-right">
+                <h1 className="text-2xl font-black text-white">
+                  در حال آماده‌سازی دسترسی...
+                </h1>
+                <p className="mt-3 text-sm leading-7 text-slate-400">
+                  اطلاعات کاربر و ماژول‌های فعال در حال بررسی است.
+                </p>
+              </div>
+            ) : canViewCurrentPage ? (
               children
             ) : (
               <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-6 text-right">
