@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AnimatePresence,
   motion,
@@ -72,7 +80,6 @@ import {
 } from "@/lib/portal";
 import {
   getIranCalendarEvents,
-  iranFixedCalendarEvents,
 } from "@/lib/iran-calendar-events";
 import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import {
@@ -462,20 +469,35 @@ export default function Home() {
     settings?.portalBackgroundImageUrl || "/images/logo/apgt-logo.png";
   const overlayColor = settings?.portalBackgroundOverlayColor || "#020617";
   const overlayOpacity = settings?.portalBackgroundOverlayOpacity ?? 0.72;
-  const portalWidgetSettings = normalizePortalWidgets(settings?.portalWidgets);
-  const portalWidgetOrder = new Map(
-    portalWidgetSettings.map((widget) => [widget.id, widget.order]),
+  const portalWidgetSettings = useMemo(
+    () => normalizePortalWidgets(settings?.portalWidgets),
+    [settings?.portalWidgets],
   );
-  const enabledPortalWidgets = new Set(
-    portalWidgetSettings
-      .filter((widget) => widget.enabled)
-      .map((widget) => widget.id),
+  const portalWidgetOrder = useMemo(
+    () => new Map(portalWidgetSettings.map((widget) => [widget.id, widget.order])),
+    [portalWidgetSettings],
   );
-  const enabledModuleKeys = enabledModules
-    ? new Set(enabledModules.map((module) => module.key))
-    : null;
-  const moduleIsEnabled = (moduleKey?: string | null) =>
-    !enabledModuleKeys || !moduleKey || enabledModuleKeys.has(moduleKey);
+  const enabledPortalWidgets = useMemo(
+    () =>
+      new Set(
+        portalWidgetSettings
+          .filter((widget) => widget.enabled)
+          .map((widget) => widget.id),
+      ),
+    [portalWidgetSettings],
+  );
+  const enabledModuleKeys = useMemo(
+    () =>
+      enabledModules
+        ? new Set(enabledModules.map((module) => module.key))
+        : null,
+    [enabledModules],
+  );
+  const moduleIsEnabled = useCallback(
+    (moduleKey?: string | null) =>
+      !enabledModuleKeys || !moduleKey || enabledModuleKeys.has(moduleKey),
+    [enabledModuleKeys],
+  );
   const sortPortalWidgets = (widgets: PortalWidgetEntry[]) =>
     widgets
       .filter(
@@ -603,25 +625,6 @@ export default function Home() {
           };
         },
       )
-    : [];
-  const selectedYearMonths = selectedJalaliDate
-    ? jalaliMonthNames.map((monthName, index) => {
-        const month = index + 1;
-        const eventsCount = iranFixedCalendarEvents.filter(
-          (event) => event.month === month,
-        ).length;
-        const meetingsCount = visibleCalendarMeetings.filter((meeting) => {
-          const jalali = getJalaliParts(new Date(meeting.startAt));
-          return jalali?.jy === selectedJalaliDate.jy && jalali?.jm === month;
-        }).length;
-
-        return {
-          month,
-          monthName,
-          eventsCount,
-          meetingsCount,
-        };
-      })
     : [];
   const selectedYearMonthCalendars = selectedJalaliDate
     ? jalaliMonthNames.map((monthName, index) => {
@@ -808,7 +811,7 @@ export default function Home() {
 
       return () => window.clearTimeout(timer);
     }
-  }, [enabledModuleKeys, pollSurveyModal, requiredPollSurvey]);
+  }, [moduleIsEnabled, pollSurveyModal, requiredPollSurvey]);
 
   function dismissHeroSlider() {
     setHeroDismissed(true);
@@ -1138,7 +1141,7 @@ export default function Home() {
     window.dispatchEvent(new Event("auth-user-updated"));
   }
 
-  function openNotification(notification: PortalNotification) {
+  const openNotification = useCallback((notification: PortalNotification) => {
     if (!notification.readAt) {
       markNotificationRead.mutate(notification.id);
     }
@@ -1162,7 +1165,7 @@ export default function Home() {
     }
 
     setNotificationsOpen(false);
-  }
+  }, [markNotificationRead, moduleIsEnabled]);
 
   useEffect(() => {
     if (
@@ -1197,7 +1200,7 @@ export default function Home() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [notifications]);
+  }, [notifications, openNotification]);
 
   async function submitQuickAction(event: React.FormEvent) {
     event.preventDefault();
@@ -1329,7 +1332,7 @@ export default function Home() {
               href="/admin/dashboard"
               className="flex items-center gap-3 rounded-2xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-white shadow-[0_0_24px_rgba(14,165,233,0.18)] hover:bg-cyan-500/20"
             >
-              پنل مدیریت
+              رفتن به داشبورد
               <Settings size={22} />
             </Link>
           </div>
@@ -1857,9 +1860,12 @@ export default function Home() {
                                 style={{ color: item.color || "#38bdf8" }}
                               >
                                 {uploadedIcon ? (
-                                  <img
+                                  <Image
                                     src={uploadedIcon}
                                     alt=""
+                                    width={20}
+                                    height={20}
+                                    unoptimized
                                     className="size-5 object-contain"
                                   />
                                 ) : (
@@ -2275,9 +2281,12 @@ export default function Home() {
                           >
                             <div className="flex items-center gap-3">
                               {uploadedIcon ? (
-                                <img
+                                <Image
                                   src={uploadedIcon}
                                   alt=""
+                                  width={32}
+                                  height={32}
+                                  unoptimized
                                   className="size-8 rounded-lg object-contain"
                                 />
                               ) : (

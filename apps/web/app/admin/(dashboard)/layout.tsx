@@ -216,9 +216,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <aside className="w-72 border-l border-slate-800 bg-slate-900">
           <div className="border-b border-slate-800 p-6">
             <Link
-              href="/admin/dashboard"
+              href="/"
               className="block rounded-2xl p-2 transition hover:bg-white/[0.04] focus:outline-none focus:ring-2 focus:ring-cyan-300/30"
-              aria-label="رفتن به داشبورد مدیریت"
+              aria-label="رفتن به صفحه اصلی پرتال"
             >
               <Logo compact />
             </Link>
