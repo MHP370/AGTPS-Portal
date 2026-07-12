@@ -16,6 +16,7 @@ import { randomUUID } from 'crypto';
 import { UploadsService } from './uploads.service';
 import type { UploadedFile as UploadedImageFile } from './uploads.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UploadPermissionsGuard } from './guards/upload-permissions.guard';
 
 const allowedImageMimeTypes = new Set([
   'image/jpeg',
@@ -64,7 +65,7 @@ function getUploadTempDirectory() {
 }
 
 @Controller('uploads')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, UploadPermissionsGuard)
 export class UploadsController {
   constructor(
     private readonly uploadsService: UploadsService,

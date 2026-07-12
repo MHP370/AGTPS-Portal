@@ -1,6 +1,8 @@
 import {
+  ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
@@ -95,16 +97,50 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  markRead(id: string) {
-    return this.prisma.portalNotification.update({
-      where: { id },
+  async markRead(id: string, currentUser?: AuthenticatedUser) {
+    if (!currentUser) {
+      throw new ForbiddenException('برای تغییر وضعیت اعلان باید وارد شوید.');
+    }
+
+    const recipientWhere =
+      await this.getNotificationRecipientWhere(currentUser);
+
+    const result = await this.prisma.portalNotification.updateMany({
+      where: {
+        AND: [
+          {
+            id,
+          },
+          recipientWhere,
+        ],
+      },
       data: {
         readAt: new Date(),
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Notification was not found.');
+    }
+
+    return this.prisma.portalNotification.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        meeting: true,
+        reminder: true,
+        task: true,
+        recipientDirectoryUser: true,
       },
     });
   }
 
   async markAllRead(currentUser?: AuthenticatedUser) {
+    if (!currentUser) {
+      throw new ForbiddenException('برای تغییر وضعیت اعلان باید وارد شوید.');
+    }
+
     const recipientWhere =
       await this.getNotificationRecipientWhere(currentUser);
 
@@ -201,7 +237,9 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  subscribe(dto: PushSubscriptionDto) {
+  async subscribe(dto: PushSubscriptionDto, currentUser?: AuthenticatedUser) {
+    const recipient = await this.resolvePushRecipient(currentUser);
+
     return this.prisma.pushSubscription.upsert({
       where: {
         endpoint: dto.endpoint,
@@ -210,18 +248,42 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
         p256dh: dto.keys.p256dh,
         auth: dto.keys.auth,
         userAgent: dto.userAgent,
-        recipientDirectoryUserId: dto.recipientDirectoryUserId,
-        recipientEmail: dto.recipientEmail,
+        recipientDirectoryUserId: recipient.recipientDirectoryUserId,
+        recipientEmail: recipient.recipientEmail,
       },
       create: {
         endpoint: dto.endpoint,
         p256dh: dto.keys.p256dh,
         auth: dto.keys.auth,
         userAgent: dto.userAgent,
-        recipientDirectoryUserId: dto.recipientDirectoryUserId,
-        recipientEmail: dto.recipientEmail,
+        recipientDirectoryUserId: recipient.recipientDirectoryUserId,
+        recipientEmail: recipient.recipientEmail,
       },
     });
+  }
+
+  private async resolvePushRecipient(currentUser?: AuthenticatedUser) {
+    if (!currentUser) {
+      return {
+        recipientDirectoryUserId: null,
+        recipientEmail: null,
+      };
+    }
+
+    const directoryUser = await this.prisma.directoryUser.findFirst({
+      where: {
+        isActive: true,
+        OR: [
+          ...(currentUser.username ? [{ username: currentUser.username }] : []),
+          ...(currentUser.email ? [{ email: currentUser.email }] : []),
+        ],
+      },
+    });
+
+    return {
+      recipientDirectoryUserId: directoryUser?.id ?? null,
+      recipientEmail: currentUser.email ?? null,
+    };
   }
 
   async unsubscribe(dto: PushSubscriptionDto) {

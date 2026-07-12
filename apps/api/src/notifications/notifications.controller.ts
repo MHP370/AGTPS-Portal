@@ -36,8 +36,15 @@ export class NotificationsController {
   }
 
   @Post('push/subscribe')
-  subscribe(@Body() dto: PushSubscriptionDto) {
-    return this.notificationsService.subscribe(dto);
+  @UseGuards(OptionalJwtAuthGuard)
+  subscribe(
+    @Body() dto: PushSubscriptionDto,
+    @Req()
+    request: Request & {
+      user?: { id: string; username?: string; email?: string };
+    },
+  ) {
+    return this.notificationsService.subscribe(dto, request.user);
   }
 
   @Post('push/unsubscribe')
@@ -57,7 +64,14 @@ export class NotificationsController {
   }
 
   @Put(':id/read')
-  markRead(@Param('id') id: string) {
-    return this.notificationsService.markRead(id);
+  @UseGuards(OptionalJwtAuthGuard)
+  markRead(
+    @Param('id') id: string,
+    @Req()
+    request: Request & {
+      user?: { id: string; username?: string; email?: string };
+    },
+  ) {
+    return this.notificationsService.markRead(id, request.user);
   }
 }
