@@ -189,6 +189,44 @@ const fixedCenterWidgetOrder: PortalWidgetId[] = [
 const dismissedHeroStorageKey = "portal-hero-dismissed";
 const submittedPollSurveysStorageKey = "portal-poll-surveys-submitted";
 
+const calendarTypeStyles = {
+  meeting: {
+    label: "جلسات کاری",
+    dot: "bg-cyan-300",
+    border: "border-cyan-300/35",
+    bg: "bg-cyan-400/12",
+    text: "text-cyan-50",
+  },
+  reminder: {
+    label: "یادآوری‌ها",
+    dot: "bg-amber-300",
+    border: "border-amber-300/35",
+    bg: "bg-amber-400/12",
+    text: "text-amber-50",
+  },
+  task: {
+    label: "تسک‌ها",
+    dot: "bg-emerald-300",
+    border: "border-emerald-300/35",
+    bg: "bg-emerald-400/12",
+    text: "text-emerald-50",
+  },
+  note: {
+    label: "یادداشت‌ها",
+    dot: "bg-violet-300",
+    border: "border-violet-300/35",
+    bg: "bg-violet-400/12",
+    text: "text-violet-50",
+  },
+  occasion: {
+    label: "مناسبت‌ها و تعطیلات",
+    dot: "bg-rose-300",
+    border: "border-rose-300/35",
+    bg: "bg-rose-400/12",
+    text: "text-rose-50",
+  },
+};
+
 function pad(value: number) {
   return String(value).padStart(2, "0");
 }
@@ -407,6 +445,7 @@ export default function Home() {
   const [quickTime, setQuickTime] = useState("09:00");
   const [quickNotifyBefore, setQuickNotifyBefore] = useState("0");
   const [heroDismissed, setHeroDismissed] = useState(false);
+  const [heroSlideIndex, setHeroSlideIndex] = useState(0);
   const [pollSurveyModal, setPollSurveyModal] = useState<PollSurvey | null>(
     null,
   );
@@ -524,8 +563,30 @@ export default function Home() {
     moduleIsEnabled(item.moduleKey),
   );
   const activeAnnouncements = announcements.filter(isAnnouncementVisible);
-  const activeSliders = sliders.filter((slider) => slider.isActive);
-  const heroSlider = activeSliders[0];
+  const activeSliders = useMemo(
+    () =>
+      sliders
+        .filter((slider) => slider.isActive)
+        .sort((first, second) => first.sortOrder - second.sortOrder),
+    [sliders],
+  );
+  const heroSliderSignature = useMemo(
+    () =>
+      activeSliders
+        .map((slider) =>
+          [
+            slider.id,
+            slider.title,
+            slider.image,
+            slider.url ?? "",
+            slider.sortOrder,
+            slider.isActive ? "1" : "0",
+          ].join(":"),
+        )
+        .join("|"),
+    [activeSliders],
+  );
+  const heroSlider = activeSliders[heroSlideIndex] ?? activeSliders[0];
   const latestNews = news.filter((item) => item.published);
   const visibleAnnouncements = activeAnnouncements.slice(0, 4);
   const visibleNews = latestNews.slice(0, 4);
@@ -626,6 +687,76 @@ export default function Home() {
         },
       )
     : [];
+  const selectedMonthEventDays = selectedMonthDays.map((day) => {
+    const dayMeetings = visibleCalendarMeetings.filter((meeting) =>
+      isSameLocalDay(day.gregorianDate, meeting.startAt),
+    );
+    const dayReminders = reminders.filter((reminder) =>
+      isSameLocalDay(day.gregorianDate, reminder.remindAt),
+    );
+    const dayTasks = tasks.filter((task) =>
+      isSameLocalDay(day.gregorianDate, task.dueDate),
+    );
+    const dayNotes = notes.filter(
+      (note) =>
+        isSameLocalDay(day.gregorianDate, note.updatedAt) ||
+        isSameLocalDay(day.gregorianDate, note.createdAt),
+    );
+
+    return {
+      ...day,
+      meetings: dayMeetings,
+      reminders: dayReminders,
+      tasks: dayTasks,
+      notes: dayNotes,
+      isHoliday: day.occasions.some((event) => event.isHoliday),
+      hasItems:
+        dayMeetings.length > 0 ||
+        dayReminders.length > 0 ||
+        dayTasks.length > 0 ||
+        dayNotes.length > 0 ||
+        day.occasions.length > 0,
+    };
+  });
+  type UpcomingCalendarItem = {
+    id: string;
+    type: "meeting" | "reminder" | "task";
+    title: string;
+    date: string;
+    detail: string;
+  };
+
+  const upcomingCalendarItems: UpcomingCalendarItem[] = [
+    ...visibleCalendarMeetings.map((meeting) => ({
+      id: `meeting-${meeting.id}`,
+      type: "meeting" as const,
+      title: meeting.title,
+      date: meeting.startAt,
+      detail: meeting.location || "بدون محل",
+    })),
+    ...reminders.map((reminder) => ({
+      id: `reminder-${reminder.id}`,
+      type: "reminder" as const,
+      title: reminder.title,
+      date: reminder.remindAt,
+      detail: "یادآوری",
+    })),
+    ...tasks
+      .filter((task) => Boolean(task.dueDate))
+      .map((task) => ({
+        id: `task-${task.id}`,
+        type: "task" as const,
+        title: task.title,
+        date: task.dueDate as string,
+        detail: `اولویت ${task.priority}`,
+      })),
+  ]
+    .filter((item) => new Date(item.date) >= startOfLocalDay(new Date()))
+    .sort(
+      (first, second) =>
+        new Date(first.date).getTime() - new Date(second.date).getTime(),
+    )
+    .slice(0, 6);
   const selectedYearMonthCalendars = selectedJalaliDate
     ? jalaliMonthNames.map((monthName, index) => {
         const month = index + 1;
@@ -787,14 +918,43 @@ export default function Home() {
     if (typeof window === "undefined") return;
 
     const timer = window.setTimeout(() => {
-      setHeroDismissed(
-        window.sessionStorage.getItem(dismissedHeroStorageKey) === "true",
-      );
       setSubmittedPollSurveyIds(getSubmittedPollSurveyIds());
     }, 0);
 
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const timer = window.setTimeout(() => {
+      if (!heroSliderSignature) {
+        setHeroDismissed(false);
+        setHeroSlideIndex(0);
+        return;
+      }
+
+      setHeroDismissed(
+        window.sessionStorage.getItem(dismissedHeroStorageKey) ===
+          heroSliderSignature,
+      );
+      setHeroSlideIndex((index) =>
+        Math.min(index, Math.max(activeSliders.length - 1, 0)),
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [activeSliders.length, heroSliderSignature]);
+
+  useEffect(() => {
+    if (reduceMotion || heroDismissed || activeSliders.length <= 1) return;
+
+    const timer = window.setInterval(() => {
+      setHeroSlideIndex((index) => (index + 1) % activeSliders.length);
+    }, 6500);
+
+    return () => window.clearInterval(timer);
+  }, [activeSliders.length, heroDismissed, reduceMotion]);
 
   useEffect(() => {
     if (
@@ -815,7 +975,10 @@ export default function Home() {
     setHeroDismissed(true);
 
     if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(dismissedHeroStorageKey, "true");
+      window.sessionStorage.setItem(
+        dismissedHeroStorageKey,
+        heroSliderSignature || "dismissed",
+      );
     }
   }
 
@@ -1544,36 +1707,90 @@ export default function Home() {
                           <X size={18} />
                         </button>
                         {heroSlider ? (
-                          <Link
-                            href={heroSlider.url || "#announcements"}
-                            target={
-                              heroSlider.url?.startsWith("http")
-                                ? "_blank"
-                                : undefined
-                            }
-                            rel={
-                              heroSlider.url?.startsWith("http")
-                                ? "noreferrer"
-                                : undefined
-                            }
-                            className="relative block min-h-48 overflow-hidden rounded-2xl bg-cover bg-center p-5"
-                            style={{
-                              backgroundImage: `url(${heroSlider.image})`,
-                            }}
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-950/45 to-transparent" />
-                            <div className="relative z-10 flex min-h-40 flex-col justify-end">
-                              <p className="text-sm font-black text-cyan-200">
-                                پیام مدیریت
-                              </p>
-                              <h1 className="mt-2 text-2xl font-black text-white">
-                                {heroSlider.title}
-                              </h1>
-                              <span className="mt-4 w-fit rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-black text-cyan-100">
-                                مشاهده جزئیات
-                              </span>
-                            </div>
-                          </Link>
+                          <div className="relative overflow-hidden rounded-2xl">
+                            <AnimatePresence mode="wait">
+                              <motion.div
+                                key={heroSlider.id}
+                                initial={
+                                  reduceMotion
+                                    ? false
+                                    : {
+                                        opacity: 0,
+                                        x: -24,
+                                        filter: "blur(8px)",
+                                      }
+                                }
+                                animate={{
+                                  opacity: 1,
+                                  x: 0,
+                                  filter: "blur(0px)",
+                                }}
+                                exit={
+                                  reduceMotion
+                                    ? undefined
+                                    : {
+                                        opacity: 0,
+                                        x: 24,
+                                        filter: "blur(8px)",
+                                      }
+                                }
+                                transition={
+                                  reduceMotion
+                                    ? { duration: 0 }
+                                    : { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
+                                }
+                              >
+                                <Link
+                                  href={heroSlider.url || "#announcements"}
+                                  target={
+                                    heroSlider.url?.startsWith("http")
+                                      ? "_blank"
+                                      : undefined
+                                  }
+                                  rel={
+                                    heroSlider.url?.startsWith("http")
+                                      ? "noreferrer"
+                                      : undefined
+                                  }
+                                  className="relative block min-h-48 overflow-hidden rounded-2xl bg-cover bg-center p-5"
+                                  style={{
+                                    backgroundImage: `url(${heroSlider.image})`,
+                                  }}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-l from-slate-950/85 via-slate-950/45 to-transparent" />
+                                  <div className="relative z-10 flex min-h-40 flex-col justify-end">
+                                    <p className="text-sm font-black text-cyan-200">
+                                      پیام مدیریت
+                                    </p>
+                                    <h1 className="mt-2 text-2xl font-black text-white">
+                                      {heroSlider.title}
+                                    </h1>
+                                    <span className="mt-4 w-fit rounded-xl bg-cyan-400/15 px-4 py-2 text-xs font-black text-cyan-100">
+                                      مشاهده جزئیات
+                                    </span>
+                                  </div>
+                                </Link>
+                              </motion.div>
+                            </AnimatePresence>
+
+                            {activeSliders.length > 1 && (
+                              <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2 rounded-full border border-white/10 bg-slate-950/45 px-3 py-2 backdrop-blur">
+                                {activeSliders.map((slider, index) => (
+                                  <button
+                                    key={slider.id}
+                                    type="button"
+                                    onClick={() => setHeroSlideIndex(index)}
+                                    className={`h-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
+                                      index === heroSlideIndex
+                                        ? "w-6 bg-cyan-300"
+                                        : "w-2 bg-white/35 hover:bg-white/60"
+                                    }`}
+                                    aria-label={`نمایش اسلاید ${index + 1}`}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
                             <div className="hidden h-36 w-56 rounded-2xl bg-gradient-to-br from-sky-200 via-slate-500 to-slate-900 md:block" />
@@ -3058,281 +3275,297 @@ export default function Home() {
         open={calendarModalOpen}
         onOpenChange={setCalendarModalOpen}
         title="تقویم کامل"
-        className="max-w-6xl bg-slate-950/95"
+        className="max-w-[1500px] bg-slate-950/95 p-4 sm:p-5"
       >
-        <div className="space-y-5 text-right" dir="rtl">
-          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2">
-            {(Object.keys(calendarViewLabels) as CalendarView[]).map((view) => (
-              <button
-                key={view}
-                type="button"
-                onClick={() => setCalendarView(view)}
-                className={`relative overflow-hidden rounded-xl px-3 py-2 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
-                  calendarView === view
-                    ? "text-cyan-50"
-                    : "text-slate-300 hover:bg-white/10"
-                }`}
-              >
-                {calendarView === view && (
-                  <motion.span
-                    layoutId="calendar-view-active"
-                    className="absolute inset-0 rounded-xl bg-cyan-400/20"
-                    transition={calendarMotionTransition}
-                  />
-                )}
-                <span className="relative z-10">
-                  {calendarViewLabels[view]}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <AnimatePresence mode="wait">
-            {calendarView === "day" && (
-              <motion.div
-                key="calendar-day"
-                variants={calendarViewMotion}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={calendarMotionTransition}
-                className="space-y-3"
-              >
-                <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
-                  <p className="text-xs text-cyan-100/75">روز انتخاب‌شده</p>
-                  <h3 className="mt-1 text-lg font-black text-cyan-50">
-                    {selectedDateLabel}
-                  </h3>
-                </div>
-
-                {selectedOccasions.map((event) => (
-                  <motion.div
-                    key={event.id}
-                    whileHover={reduceMotion ? undefined : { x: -2 }}
-                    transition={calendarMotionTransition}
-                    className={`rounded-2xl border p-4 ${
-                      event.isHoliday
-                        ? "border-rose-300/25 bg-rose-400/10 text-rose-100"
-                        : "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+        <div className="grid max-h-[78vh] gap-4 overflow-hidden text-right xl:grid-cols-[260px_1fr_320px]" dir="rtl">
+          <aside className="hidden space-y-4 overflow-y-auto pl-1 xl:block">
+            <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <h3 className="text-sm font-black text-cyan-100">نمایش تقویم</h3>
+              <div className="mt-4 space-y-2">
+                {(Object.keys(calendarViewLabels) as CalendarView[]).map((view) => (
+                  <button
+                    key={view}
+                    type="button"
+                    onClick={() => setCalendarView(view)}
+                    className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
+                      calendarView === view
+                        ? "border-cyan-300/45 bg-cyan-400/18 text-cyan-50 shadow-[0_0_28px_rgba(34,211,238,0.16)]"
+                        : "border-white/10 bg-slate-950/35 text-slate-300 hover:bg-white/10"
                     }`}
                   >
-                    <h3 className="font-bold">{event.title}</h3>
-                    <p className="mt-1 text-xs opacity-80">
-                      {event.isHoliday ? "تعطیل رسمی" : "مناسبت تقویم ایران"}
-                    </p>
-                  </motion.div>
+                    <span>{calendarViewLabels[view]}</span>
+                    <CalendarClock size={18} />
+                  </button>
                 ))}
+              </div>
+            </section>
 
-                {selectedMeetings.map((meeting) => (
-                  <motion.div
-                    key={meeting.id}
-                    whileHover={reduceMotion ? undefined : { x: -2 }}
-                    transition={calendarMotionTransition}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="font-black text-white">{meeting.title}</h3>
-                      <span className="font-mono text-cyan-100">
-                        {getPersianTime(meeting.startAt)}
+            <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <h3 className="text-sm font-black text-cyan-100">تقویم‌های من</h3>
+              <div className="mt-4 space-y-2">
+                {(Object.keys(calendarTypeStyles) as Array<keyof typeof calendarTypeStyles>).map((type) => {
+                  const style = calendarTypeStyles[type];
+
+                  return (
+                    <div
+                      key={type}
+                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-3 text-xs font-bold text-slate-200"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={`size-2.5 rounded-full ${style.dot}`} />
+                        {style.label}
+                      </span>
+                      <span className={`grid size-5 place-items-center rounded-md ${style.bg} ${style.text}`}>
+                        ✓
                       </span>
                     </div>
-                    <p className="mt-2 text-xs leading-6 text-slate-400">
-                      {meeting.location || "بدون محل"} -{" "}
-                      {meeting.participants.length} عضو
-                    </p>
-                  </motion.div>
-                ))}
+                  );
+                })}
+              </div>
+            </section>
 
-                {[...selectedReminders, ...selectedTasks, ...selectedNotes].map(
-                  (item) => (
-                    <motion.div
-                      key={item.id}
-                      whileHover={reduceMotion ? undefined : { x: -2 }}
-                      transition={calendarMotionTransition}
-                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
-                    >
-                      <h3 className="font-bold text-white">{item.title}</h3>
-                      {"body" in item && (
-                        <p className="mt-1 text-xs leading-6 text-slate-300">
-                          {item.body}
-                        </p>
-                      )}
-                      {"description" in item && item.description && (
-                        <p className="mt-1 text-xs leading-6 text-slate-300">
-                          {item.description}
-                        </p>
-                      )}
-                    </motion.div>
-                  ),
-                )}
+            <button
+              type="button"
+              onClick={() => setCalendarView("month")}
+              className="flex w-full items-center justify-between rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-400/18 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+            >
+              مدیریت تقویم‌ها
+              <Settings size={18} />
+            </button>
+          </aside>
 
-                {!selectedDayHasItems && (
-                  <motion.div
-                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-                    animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-                    transition={calendarMotionTransition}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300"
-                  >
-                    برای این روز موردی ثبت نشده است.
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
+          <main className="min-h-0 overflow-y-auto rounded-3xl border border-cyan-300/15 bg-slate-950/45 p-3 sm:p-4">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalendarDate((date) => addDays(date, -30))}
+                  className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                  aria-label="ماه قبل"
+                >
+                  <ChevronLeft className="h-5 w-5 rotate-180" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalendarDate((date) => addDays(date, 30))}
+                  className="grid size-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                  aria-label="ماه بعد"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              </div>
 
-            {calendarView === "month" && (
-              <motion.div
-                key="calendar-month"
-                variants={calendarViewMotion}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={calendarMotionTransition}
-                className="space-y-4"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedCalendarDate((date) => addDays(date, -30))
-                    }
-                    className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
-                  >
-                    ماه قبل
-                  </button>
-                  <h3 className="text-base font-black text-white">
-                    {selectedJalaliDate
-                      ? `${jalaliMonthNames[selectedJalaliDate.jm - 1]} ${selectedJalaliDate.jy}`
-                      : ""}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedCalendarDate((date) => addDays(date, 30))
-                    }
-                    className="rounded-xl border border-white/10 px-3 py-2 text-xs font-bold text-slate-200 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
-                  >
-                    ماه بعد
-                  </button>
-                </div>
-                <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-                  {selectedMonthDays.map((day) => {
-                    const dayKey = toLocalDateKey(day.gregorianDate);
-                    const meetingsCount = visibleCalendarMeetings.filter(
-                      (meeting) =>
-                        isSameLocalDay(day.gregorianDate, meeting.startAt),
-                    ).length;
-                    const workCount =
-                      reminders.filter((reminder) =>
-                        isSameLocalDay(day.gregorianDate, reminder.remindAt),
-                      ).length +
-                      tasks.filter((task) =>
-                        isSameLocalDay(day.gregorianDate, task.dueDate),
-                      ).length;
-                    const isSelected = dayKey === selectedDateKey;
-                    const isToday = dayKey === todayKey;
-                    const isHoliday = day.occasions.some(
-                      (event) => event.isHoliday,
-                    );
+              <div className="text-center">
+                <p className="text-xs font-bold text-cyan-100/70">{selectedDateLabel}</p>
+                <h2 className="mt-1 text-2xl font-black text-white">
+                  {selectedJalaliDate
+                    ? `${jalaliMonthNames[selectedJalaliDate.jm - 1]} ${selectedJalaliDate.jy}`
+                    : "تقویم"}
+                </h2>
+              </div>
 
-                    return (
-                      <motion.button
-                        key={dayKey}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCalendarDate(day.gregorianDate);
-                          setCalendarView("day");
-                        }}
-                        whileHover={reduceMotion ? undefined : { y: -2 }}
-                        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
-                        transition={calendarMotionTransition}
-                        className={`min-h-20 rounded-xl border p-2 text-right transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 ${
-                          isSelected
-                            ? "border-cyan-300 bg-cyan-400/20 shadow-[0_0_24px_rgba(34,211,238,0.18)]"
-                            : "border-white/10 bg-white/[0.04] hover:border-cyan-300/30"
-                        } ${isToday ? "ring-1 ring-cyan-300/40" : ""}`}
-                      >
-                        <span
-                          className={`text-sm font-black ${
-                            isHoliday ? "text-rose-200" : "text-white"
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalendarDate(new Date())}
+                  className="rounded-xl border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:bg-cyan-400/20 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                >
+                  امروز
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openQuickAction("reminder")}
+                  className="rounded-xl bg-cyan-500 px-4 py-2 text-xs font-black text-white transition hover:bg-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                >
+                  رویداد جدید +
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-1 xl:hidden">
+              {(Object.keys(calendarViewLabels) as CalendarView[]).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setCalendarView(view)}
+                  className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                    calendarView === view
+                      ? "bg-cyan-400/20 text-cyan-50"
+                      : "text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  {calendarViewLabels[view]}
+                </button>
+              ))}
+            </div>
+
+            <AnimatePresence mode="wait">
+              {calendarView === "month" && (
+                <motion.div
+                  key="calendar-board-month"
+                  variants={calendarViewMotion}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={calendarMotionTransition}
+                  className="overflow-hidden rounded-2xl border border-white/10"
+                >
+                  <div className="grid grid-cols-7 bg-cyan-950/30 text-center text-xs font-black text-slate-300">
+                    {["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"].map((dayName) => (
+                      <div key={dayName} className="border-l border-white/10 px-2 py-3 last:border-l-0">
+                        {dayName}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7">
+                    {selectedMonthEventDays.map((day) => {
+                      const dayKey = toLocalDateKey(day.gregorianDate);
+                      const isSelected = dayKey === selectedDateKey;
+                      const isToday = dayKey === todayKey;
+
+                      return (
+                        <motion.button
+                          key={dayKey}
+                          type="button"
+                          onClick={() => setSelectedCalendarDate(day.gregorianDate)}
+                          whileHover={reduceMotion ? undefined : { y: -2 }}
+                          whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+                          transition={calendarMotionTransition}
+                          className={`min-h-28 border-l border-t border-white/10 p-2 text-right transition focus:outline-none focus:ring-2 focus:ring-cyan-300/50 sm:min-h-36 ${
+                            isSelected
+                              ? "bg-cyan-400/18 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.55)]"
+                              : "bg-white/[0.025] hover:bg-white/[0.055]"
                           }`}
                         >
-                          {day.jalaliDay}
-                        </span>
-                        <span className="mt-2 block text-[10px] leading-5 text-slate-400">
-                          {meetingsCount > 0 && `${meetingsCount} جلسه`}
-                          {meetingsCount > 0 && workCount > 0 ? "، " : ""}
-                          {workCount > 0 && `${workCount} کار`}
-                          {day.occasions.length > 0 && (
-                            <span className="block text-rose-200">مناسبت</span>
-                          )}
-                        </span>
-                      </motion.button>
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <span
+                              className={`grid size-7 place-items-center rounded-full text-sm font-black ${
+                                isSelected
+                                  ? "bg-cyan-400 text-slate-950"
+                                  : isToday
+                                    ? "border border-cyan-300 text-cyan-100"
+                                    : day.isHoliday
+                                      ? "text-rose-200"
+                                      : "text-white"
+                              }`}
+                            >
+                              {day.jalaliDay}
+                            </span>
+                            {day.isHoliday && <span className="text-[10px] font-bold text-rose-200">تعطیل</span>}
+                          </div>
+
+                          <div className="space-y-1">
+                            {day.meetings.slice(0, 2).map((meeting) => (
+                              <span key={meeting.id} className={`block rounded-lg border px-2 py-1 text-[10px] leading-5 ${calendarTypeStyles.meeting.border} ${calendarTypeStyles.meeting.bg} ${calendarTypeStyles.meeting.text}`}>
+                                {meeting.title}
+                              </span>
+                            ))}
+                            {day.reminders.slice(0, 1).map((reminder) => (
+                              <span key={reminder.id} className={`block rounded-lg border px-2 py-1 text-[10px] leading-5 ${calendarTypeStyles.reminder.border} ${calendarTypeStyles.reminder.bg} ${calendarTypeStyles.reminder.text}`}>
+                                {reminder.title}
+                              </span>
+                            ))}
+                            {day.tasks.slice(0, 1).map((task) => (
+                              <span key={task.id} className={`block rounded-lg border px-2 py-1 text-[10px] leading-5 ${calendarTypeStyles.task.border} ${calendarTypeStyles.task.bg} ${calendarTypeStyles.task.text}`}>
+                                {task.title}
+                              </span>
+                            ))}
+                            {day.occasions.slice(0, 1).map((occasion) => (
+                              <span key={occasion.id} className={`block rounded-lg border px-2 py-1 text-[10px] leading-5 ${calendarTypeStyles.occasion.border} ${calendarTypeStyles.occasion.bg} ${calendarTypeStyles.occasion.text}`}>
+                                {occasion.title}
+                              </span>
+                            ))}
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+
+              {calendarView === "day" && (
+                <motion.div
+                  key="calendar-board-day"
+                  variants={calendarViewMotion}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={calendarMotionTransition}
+                  className="space-y-3"
+                >
+                  <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+                    <p className="text-xs text-cyan-100/75">روز انتخاب‌شده</p>
+                    <h3 className="mt-1 text-lg font-black text-cyan-50">{selectedDateLabel}</h3>
+                  </div>
+                  {[
+                    ...selectedMeetings.map((meeting) => ({ id: meeting.id, type: "meeting" as const, title: meeting.title, detail: `${getPersianTime(meeting.startAt)} · ${meeting.location || "بدون محل"}` })),
+                    ...selectedReminders.map((reminder) => ({ id: reminder.id, type: "reminder" as const, title: reminder.title, detail: `یادآوری در ${getPersianTime(reminder.remindAt)}` })),
+                    ...selectedTasks.map((task) => ({ id: task.id, type: "task" as const, title: task.title, detail: `اولویت ${task.priority}` })),
+                    ...selectedNotes.map((note) => ({ id: note.id, type: "note" as const, title: note.title, detail: note.body })),
+                    ...selectedOccasions.map((occasion) => ({ id: occasion.id, type: "occasion" as const, title: occasion.title, detail: occasion.isHoliday ? "تعطیل رسمی" : "مناسبت تقویم ایران" })),
+                  ].map((item) => {
+                    const style = calendarTypeStyles[item.type];
+
+                    return (
+                      <motion.div
+                        key={`${item.type}-${item.id}`}
+                        whileHover={reduceMotion ? undefined : { x: -2 }}
+                        transition={calendarMotionTransition}
+                        className={`rounded-2xl border p-4 ${style.border} ${style.bg}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1 size-2.5 shrink-0 rounded-full ${style.dot}`} />
+                          <div className="min-w-0">
+                            <h3 className={`font-black ${style.text}`}>{item.title}</h3>
+                            <p className="mt-1 line-clamp-3 text-xs leading-6 text-slate-300">{item.detail}</p>
+                          </div>
+                        </div>
+                      </motion.div>
                     );
                   })}
-                </div>
-              </motion.div>
-            )}
+                  {!selectedDayHasItems && (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-slate-300">
+                      برای این روز موردی ثبت نشده است.
+                    </div>
+                  )}
+                </motion.div>
+              )}
 
-            {calendarView === "year" && (
-              <motion.div
-                key="calendar-year"
-                variants={calendarViewMotion}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={calendarMotionTransition}
-                className="space-y-4"
-              >
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <div>
-                    <p className="text-xs text-cyan-100/70">نمای سالانه</p>
-                    <h3 className="mt-1 text-lg font-black text-white">
-                      سال {selectedJalaliDate?.jy}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {calendarView === "year" && (
+                <motion.div
+                  key="calendar-board-year"
+                  variants={calendarViewMotion}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={calendarMotionTransition}
+                  className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+                >
                   {selectedYearMonthCalendars.map((month) => (
                     <motion.section
                       key={month.month}
                       whileHover={reduceMotion ? undefined : { y: -3 }}
                       transition={calendarMotionTransition}
-                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-[0_18px_55px_rgba(0,0,0,0.18)]"
+                      className="rounded-2xl border border-white/10 bg-white/[0.04] p-3"
                     >
                       <button
                         type="button"
                         onClick={() => {
                           if (!selectedJalaliDate) return;
-                          setSelectedCalendarDate(
-                            fromLocalDateKey(
-                              jalaliToGregorian(
-                                selectedJalaliDate.jy,
-                                month.month,
-                                1,
-                              ),
-                            ),
-                          );
+                          setSelectedCalendarDate(fromLocalDateKey(jalaliToGregorian(selectedJalaliDate.jy, month.month, 1)));
                           setCalendarView("month");
                         }}
                         className="flex w-full items-center justify-between rounded-xl px-2 py-1.5 text-right transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
                       >
-                        <span className="font-black text-white">
-                          {month.monthName}
-                        </span>
-                        <span className="text-[11px] font-bold text-cyan-100/70">
-                          مشاهده ماه
-                        </span>
+                        <span className="font-black text-white">{month.monthName}</span>
+                        <span className="text-[11px] font-bold text-cyan-100/70">مشاهده ماه</span>
                       </button>
                       <div className="mt-3 grid grid-cols-7 gap-1">
                         {month.days.map((day) => {
                           const dayKey = toLocalDateKey(day.gregorianDate);
                           const isSelected = dayKey === selectedDateKey;
                           const isToday = dayKey === todayKey;
-                          const hasItems =
-                            day.meetingsCount > 0 ||
-                            day.workCount > 0 ||
-                            day.occasions.length > 0;
+                          const hasItems = day.meetingsCount > 0 || day.workCount > 0 || day.occasions.length > 0;
 
                           return (
                             <button
@@ -3351,25 +3584,125 @@ export default function Home() {
                               } ${isToday ? "ring-1 ring-cyan-300/50" : ""}`}
                             >
                               {day.jalaliDay}
-                              {hasItems && (
-                                <span
-                                  className={`absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full ${
-                                    day.isHoliday
-                                      ? "bg-rose-200"
-                                      : "bg-cyan-300"
-                                  }`}
-                                />
-                              )}
+                              {hasItems && <span className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-cyan-300" />}
                             </button>
                           );
                         })}
                       </div>
                     </motion.section>
                   ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </main>
+
+          <aside className="space-y-4 overflow-y-auto pr-1">
+            <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalendarDate((date) => addDays(date, -30))}
+                  className="grid size-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/10"
+                  aria-label="ماه قبل"
+                >
+                  <ChevronLeft className="h-4 w-4 rotate-180" />
+                </button>
+                <h3 className="font-black text-cyan-100">
+                  {selectedJalaliDate
+                    ? `${jalaliMonthNames[selectedJalaliDate.jm - 1]} ${selectedJalaliDate.jy}`
+                    : "ماه"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCalendarDate((date) => addDays(date, 30))}
+                  className="grid size-9 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/10"
+                  aria-label="ماه بعد"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-slate-400">
+                {["ش", "ی", "د", "س", "چ", "پ", "ج"].map((dayName) => (
+                  <span key={dayName}>{dayName}</span>
+                ))}
+                {selectedMonthEventDays.map((day) => {
+                  const dayKey = toLocalDateKey(day.gregorianDate);
+                  const isSelected = dayKey === selectedDateKey;
+                  const isToday = dayKey === todayKey;
+
+                  return (
+                    <button
+                      key={dayKey}
+                      type="button"
+                      onClick={() => setSelectedCalendarDate(day.gregorianDate)}
+                      className={`relative aspect-square rounded-lg text-xs font-black transition ${
+                        isSelected
+                          ? "bg-cyan-400 text-slate-950"
+                          : day.isHoliday
+                            ? "text-rose-200 hover:bg-rose-400/15"
+                            : "text-slate-200 hover:bg-white/10"
+                      } ${isToday ? "ring-1 ring-cyan-300/50" : ""}`}
+                    >
+                      {day.jalaliDay}
+                      {day.hasItems && <span className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-cyan-300" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <h3 className="font-black text-cyan-100">رویدادهای روز {selectedDateLabel}</h3>
+              <div className="mt-4 space-y-2">
+                {[
+                  ...selectedMeetings.map((meeting) => ({ id: meeting.id, type: "meeting" as const, title: meeting.title, time: getPersianTime(meeting.startAt), place: meeting.location || "بدون محل" })),
+                  ...selectedReminders.map((reminder) => ({ id: reminder.id, type: "reminder" as const, title: reminder.title, time: getPersianTime(reminder.remindAt), place: "یادآوری" })),
+                  ...selectedTasks.map((task) => ({ id: task.id, type: "task" as const, title: task.title, time: "", place: `اولویت ${task.priority}` })),
+                  ...selectedOccasions.map((occasion) => ({ id: occasion.id, type: "occasion" as const, title: occasion.title, time: "", place: occasion.isHoliday ? "تعطیل رسمی" : "مناسبت" })),
+                ].slice(0, 6).map((item) => {
+                  const style = calendarTypeStyles[item.type];
+
+                  return (
+                    <div key={`${item.type}-${item.id}`} className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+                      <div className="flex items-start gap-3">
+                        <span className={`mt-1 size-2.5 shrink-0 rounded-full ${style.dot}`} />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-black text-white">{item.title}</h4>
+                          <p className="mt-1 text-xs text-slate-400">{item.time} {item.place}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!selectedDayHasItems && <div className="rounded-2xl border border-dashed border-white/15 p-4 text-center text-xs text-slate-400">رویدادی برای این روز ثبت نشده است.</div>}
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <h3 className="font-black text-cyan-100">رویدادهای پیش رو</h3>
+              <div className="mt-4 space-y-2">
+                {upcomingCalendarItems.map((item) => {
+                  const style = calendarTypeStyles[item.type];
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedCalendarDate(startOfLocalDay(new Date(item.date)))}
+                      className="flex w-full items-start gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3 text-right transition hover:bg-white/10"
+                    >
+                      <span className={`mt-1 h-9 w-1 shrink-0 rounded-full ${style.dot}`} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-black text-white">{item.title}</span>
+                        <span className="mt-1 block text-xs text-slate-400">{formatJalaliDate(new Date(item.date))} · {item.detail}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+                {upcomingCalendarItems.length === 0 && <div className="rounded-2xl border border-dashed border-white/15 p-4 text-center text-xs text-slate-400">رویداد پیش‌رویی ثبت نشده است.</div>}
+              </div>
+            </section>
+          </aside>
         </div>
       </Dialog>
 
