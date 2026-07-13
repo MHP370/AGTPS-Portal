@@ -47,6 +47,9 @@ export function useCreateApplication() {
       queryClient.invalidateQueries({
         queryKey: applicationQueryKey,
       });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
+      });
     },
   });
 }
@@ -67,6 +70,9 @@ export function useUpdateApplication() {
       queryClient.invalidateQueries({
         queryKey: applicationQueryKey,
       });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
+      });
     },
   });
 }
@@ -81,6 +87,9 @@ export function useDeleteApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: applicationQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
       });
     },
   });

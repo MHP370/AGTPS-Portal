@@ -55,6 +55,13 @@ export class SystemStatusesController {
     return this.systemStatusesService.update(id, dto);
   }
 
+  @Post(':id/check')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('system-statuses.manage')
+  checkNow(@Param('id') id: string) {
+    return this.systemStatusesService.checkNow(id);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('system-statuses.manage')

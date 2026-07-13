@@ -7,6 +7,10 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  applicationQueryKey,
+  portalApplicationQueryKey,
+} from "@/lib/applications";
+import {
   categoryQueryKey,
   createCategory,
   deleteCategory,
@@ -33,6 +37,12 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({
         queryKey: categoryQueryKey,
       });
+      queryClient.invalidateQueries({
+        queryKey: applicationQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
+      });
     },
   });
 }
@@ -53,6 +63,12 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({
         queryKey: categoryQueryKey,
       });
+      queryClient.invalidateQueries({
+        queryKey: applicationQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
+      });
     },
   });
 }
@@ -67,6 +83,12 @@ export function useDeleteCategory() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: categoryQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: applicationQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: portalApplicationQueryKey,
       });
     },
   });

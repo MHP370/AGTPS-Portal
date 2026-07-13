@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  checkSystemStatus,
   createSystemStatus,
   deleteSystemStatus,
   getAdminSystemStatuses,
@@ -63,6 +64,17 @@ export function useDeleteSystemStatus() {
 
   return useMutation({
     mutationFn: deleteSystemStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: systemStatusesQueryKey });
+    },
+  });
+}
+
+export function useCheckSystemStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: checkSystemStatus,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: systemStatusesQueryKey });
     },

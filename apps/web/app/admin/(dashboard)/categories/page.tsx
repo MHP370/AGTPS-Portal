@@ -34,6 +34,7 @@ export default function CategoriesPage() {
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const [selectedCategory, setSelectedCategory] =
     useState<Category | null>(null);
@@ -45,7 +46,18 @@ export default function CategoriesPage() {
   async function handleDelete() {
     if (!selectedCategory) return;
 
-    await deleteCategory.mutateAsync(selectedCategory.id);
+    setDeleteError("");
+
+    try {
+      await deleteCategory.mutateAsync(selectedCategory.id);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error
+          ? err.message
+          : "حذف دسته‌بندی انجام نشد.",
+      );
+      return;
+    }
 
     setOpenDelete(false);
     setSelectedCategory(null);
@@ -90,6 +102,12 @@ export default function CategoriesPage() {
       </div>
 
       {/* SEARCH */}
+      {deleteError && (
+        <div className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200">
+          {deleteError}
+        </div>
+      )}
+
       <SearchBox
         value={search}
         onChange={setSearch}
@@ -119,6 +137,21 @@ export default function CategoriesPage() {
             ),
           },
           {
+            key: "status",
+            title: "وضعیت",
+            render: (c: Category) => (
+              <span
+                className={
+                  c.isActive
+                    ? "rounded-lg bg-emerald-900/40 px-3 py-1 text-xs text-emerald-300"
+                    : "rounded-lg bg-slate-800 px-3 py-1 text-xs text-slate-300"
+                }
+              >
+                {c.isActive ? "فعال" : "غیرفعال"}
+              </span>
+            ),
+          },
+          {
             key: "actions",
             title: "عملیات",
             render: (c: Category) => (
@@ -138,6 +171,7 @@ export default function CategoriesPage() {
                   size="sm"
                   variant="danger"
                   onClick={() => {
+                    setDeleteError("");
                     setSelectedCategory(c);
                     setOpenDelete(true);
                   }}

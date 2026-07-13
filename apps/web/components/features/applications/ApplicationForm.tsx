@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type {
   Application,
@@ -81,6 +81,32 @@ export function ApplicationForm({
   );
   const effectiveCategoryId =
     categoryId && categoryExists ? categoryId : categories[0]?.id ?? "";
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setTitle(application?.title ?? "");
+      setKey(application?.key ?? "");
+      setSlug(application?.slug ?? "");
+      setCategoryId(application?.category?.id ?? categories[0]?.id ?? "");
+      setStatus(application?.status || "ACTIVE");
+      setNetworkType(application?.networkType || "INTRANET");
+      setDescription(application?.description ?? "");
+      setIcon(application?.icon ?? "MonitorCog");
+      setColor(application?.color ?? "#0891b2");
+      setVersion(application?.version ?? "");
+      setOwner(application?.owner ?? "");
+      setSupportDepartment(application?.supportDepartment ?? "");
+      setGuideUrl(application?.guideUrl ?? "");
+      setSortOrder(String(application?.sortOrder ?? 0));
+      setIsActive(application?.isActive ?? true);
+      setIsFeatured(application?.isFeatured ?? false);
+      setIsNew(application?.isNew ?? false);
+      setOpenInNewTab(application?.openInNewTab ?? true);
+      setFormError("");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [application, categories]);
 
   function resetCreateForm() {
     setTitle("");
@@ -201,6 +227,7 @@ export function ApplicationForm({
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
+                {category.isActive === false ? " (غیرفعال)" : ""}
               </option>
             ))}
           </select>

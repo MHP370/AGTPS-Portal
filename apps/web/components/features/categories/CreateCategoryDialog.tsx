@@ -22,6 +22,8 @@ export function CreateCategoryDialog({
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [sortOrder, setSortOrder] = useState("0");
+  const [isActive, setIsActive] = useState(true);
   const [error, setError] = useState("");
 
   async function submit(e: React.FormEvent) {
@@ -29,9 +31,15 @@ export function CreateCategoryDialog({
 
     const trimmedName = name.trim();
     const trimmedSlug = slug.trim();
+    const parsedSortOrder = Number(sortOrder || 0);
 
     if (!trimmedName || !trimmedSlug) {
       setError("نام و اسلاگ الزامی هستند.");
+      return;
+    }
+
+    if (!Number.isInteger(parsedSortOrder) || parsedSortOrder < 0) {
+      setError("ترتیب نمایش باید عدد صحیح صفر یا بزرگ‌تر باشد.");
       return;
     }
 
@@ -41,6 +49,8 @@ export function CreateCategoryDialog({
       await createCategory.mutateAsync({
         name: trimmedName,
         slug: trimmedSlug,
+        sortOrder: parsedSortOrder,
+        isActive,
       });
     } catch (err) {
       setError(
@@ -51,6 +61,8 @@ export function CreateCategoryDialog({
 
     setName("");
     setSlug("");
+    setSortOrder("0");
+    setIsActive(true);
 
     onOpenChange(false);
   }
@@ -84,6 +96,26 @@ export function CreateCategoryDialog({
             }
           />
         </FormField>
+
+        <FormField label="ترتیب نمایش">
+          <Input
+            type="number"
+            min={0}
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            disabled={createCategory.isPending}
+          />
+        </FormField>
+
+        <label className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-sm text-slate-200">
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            disabled={createCategory.isPending}
+          />
+          فعال باشد
+        </label>
 
         <div className="flex justify-end">
           <Button type="submit" disabled={createCategory.isPending}>

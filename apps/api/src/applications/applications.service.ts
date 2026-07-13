@@ -18,12 +18,40 @@ export class ApplicationsService {
 
   async findAll() {
     return this.prisma.application.findMany({
+      include: {
+        category: true,
+        sites: {
+          include: {
+            site: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          sortOrder: 'asc',
+        },
+        {
+          title: 'asc',
+        },
+      ],
+    });
+  }
+
+  async findPortalApplications() {
+    return this.prisma.application.findMany({
       where: {
         isActive: true,
+        status: 'ACTIVE',
+        category: {
+          isActive: true,
+        },
       },
       include: {
         category: true,
         sites: {
+          where: {
+            isActive: true,
+          },
           include: {
             site: true,
           },

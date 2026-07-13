@@ -10,6 +10,6 @@ export class PortalApplicationsController {
 
   @Get()
   findAll() {
-    return this.applicationsService.findAll();
+    return this.applicationsService.findPortalApplications();
   }
 }

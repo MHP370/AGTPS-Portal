@@ -879,16 +879,28 @@ export default function Home() {
           id: item.title,
           title: item.title,
           status: item.status,
-          icon: item.icon.name,
-          color: [
-            "#34d399",
+	          icon: item.icon.name,
+	          color: [
+	            "#34d399",
             "#38bdf8",
             "#22d3ee",
             "#f59e0b",
             "#a78bfa",
-            "#60a5fa",
-          ][index % 6],
-        }));
+	            "#60a5fa",
+	          ][index % 6],
+	          checkType: "MANUAL" as const,
+	          target: null,
+	          method: "GET",
+	          expectedStatusCodes: "200-399",
+	          expectedKeyword: null,
+	          intervalSeconds: 300,
+	          timeoutMs: 5000,
+	          lastHealthState: "UNKNOWN" as const,
+	          lastCheckedAt: null,
+	          lastResponseTimeMs: null,
+	          lastError: null,
+	          nextCheckAt: null,
+	        }));
   const calendarMotionTransition: Transition = reduceMotion
     ? { duration: 0 }
     : { duration: 0.22, ease: [0.16, 1, 0.3, 1] };
@@ -2068,6 +2080,15 @@ export default function Home() {
                         const uploadedIcon = isUploadedIcon(item.icon)
                           ? item.icon
                           : null;
+                        const statusColor =
+                          item.lastHealthState === "DOWN"
+                            ? "#f87171"
+                            : item.lastHealthState === "DEGRADED"
+                              ? "#fbbf24"
+                              : item.lastHealthState === "UNKNOWN"
+                                ? "#94a3b8"
+                                : item.color || "#34d399";
+
                         return (
                           <div
                             key={item.id}
@@ -2076,7 +2097,7 @@ export default function Home() {
                             <div className="flex items-center gap-3">
                               <span
                                 className="grid size-8 place-items-center rounded-lg bg-white/[0.04]"
-                                style={{ color: item.color || "#38bdf8" }}
+                                style={{ color: statusColor }}
                               >
                                 {uploadedIcon ? (
                                   <Image
@@ -2096,8 +2117,8 @@ export default function Home() {
                             <span
                               className="rounded-full px-3 py-1 text-xs font-bold"
                               style={{
-                                backgroundColor: `${item.color || "#34d399"}22`,
-                                color: item.color || "#34d399",
+                                backgroundColor: `${statusColor}22`,
+                                color: statusColor,
                               }}
                             >
                               {item.status}

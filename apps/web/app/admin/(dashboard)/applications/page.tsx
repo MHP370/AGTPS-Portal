@@ -40,6 +40,7 @@ export default function ApplicationsPage() {
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
+  const [pageMessage, setPageMessage] = useState("");
 
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
@@ -90,12 +91,29 @@ export default function ApplicationsPage() {
 
       <ApplicationsTable
         applications={data}
-        onCreate={() => setOpenCreate(true)}
+        onCreate={() => {
+          if (categories.length === 0) {
+            setPageMessage(
+              "برای افزودن سامانه، ابتدا حداقل یک دسته‌بندی بسازید.",
+            );
+            return;
+          }
+
+          setPageMessage("");
+          setOpenCreate(true);
+        }}
         onEdit={(application) => {
+          setPageMessage("");
           setSelectedApplication(application);
           setOpenEdit(true);
         }}
       />
+
+      {pageMessage && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          {pageMessage}
+        </div>
+      )}
 
       <CreateApplicationDialog
         open={openCreate}

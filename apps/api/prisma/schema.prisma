@@ -934,9 +934,37 @@ model SystemStatus {
   icon  String?
   color String?
 
+  checkType           SystemHealthCheckType @default(MANUAL)
+  target              String?
+  method              String                @default("GET")
+  expectedStatusCodes String                @default("200-399")
+  expectedKeyword     String?
+  intervalSeconds     Int                   @default(300)
+  timeoutMs           Int                   @default(5000)
+  lastHealthState     SystemHealthState     @default(UNKNOWN)
+  lastCheckedAt       DateTime?
+  lastResponseTimeMs  Int?
+  lastError           String?               @db.Text
+  nextCheckAt         DateTime?
+
   sortOrder Int     @default(0)
   isActive  Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum SystemHealthCheckType {
+  MANUAL
+  HTTP
+  TCP
+  PING
+  SMB
+}
+
+enum SystemHealthState {
+  UNKNOWN
+  UP
+  DEGRADED
+  DOWN
 }

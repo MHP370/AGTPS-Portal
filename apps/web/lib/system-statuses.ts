@@ -1,5 +1,8 @@
 import { api } from "./api";
 
+export type SystemHealthCheckType = "MANUAL" | "HTTP" | "TCP" | "PING" | "SMB";
+export type SystemHealthState = "UNKNOWN" | "UP" | "DEGRADED" | "DOWN";
+
 export interface SystemStatusItem {
   id: string;
   title: string;
@@ -7,6 +10,18 @@ export interface SystemStatusItem {
   description?: string | null;
   icon?: string | null;
   color?: string | null;
+  checkType: SystemHealthCheckType;
+  target?: string | null;
+  method: string;
+  expectedStatusCodes: string;
+  expectedKeyword?: string | null;
+  intervalSeconds: number;
+  timeoutMs: number;
+  lastHealthState: SystemHealthState;
+  lastCheckedAt?: string | null;
+  lastResponseTimeMs?: number | null;
+  lastError?: string | null;
+  nextCheckAt?: string | null;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;
@@ -15,10 +30,17 @@ export interface SystemStatusItem {
 
 export interface CreateSystemStatusDto {
   title: string;
-  status: string;
+  status?: string;
   description?: string;
   icon?: string;
   color?: string;
+  checkType?: SystemHealthCheckType;
+  target?: string;
+  method?: string;
+  expectedStatusCodes?: string;
+  expectedKeyword?: string;
+  intervalSeconds?: number;
+  timeoutMs?: number;
   sortOrder?: number;
   isActive?: boolean;
 }
@@ -46,4 +68,8 @@ export function updateSystemStatus(
 
 export function deleteSystemStatus(id: string) {
   return api.delete<void>(`/system-statuses/${id}`);
+}
+
+export function checkSystemStatus(id: string) {
+  return api.post<SystemStatusItem>(`/system-statuses/${id}/check`);
 }
