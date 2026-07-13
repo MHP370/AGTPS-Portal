@@ -227,6 +227,13 @@ const calendarTypeStyles = {
   },
 };
 
+const systemHealthLabels = {
+  UP: "سالم",
+  DEGRADED: "اختلال",
+  DOWN: "قطع",
+  UNKNOWN: "نامشخص",
+};
+
 function pad(value: number) {
   return String(value).padStart(2, "0");
 }
@@ -272,6 +279,17 @@ function formatPersianDateTime(value?: string | null) {
   return new Intl.DateTimeFormat("fa-IR", {
     dateStyle: "medium",
     timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function formatSystemCheckTime(value?: string | null) {
+  if (!value) return "بررسی نشده";
+
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   }).format(new Date(value));
 }
 
@@ -457,9 +475,17 @@ export default function Home() {
     Set<string>
   >(() => new Set());
   const handledNotificationDeepLink = useRef(false);
-  const { data: settings } = useSettings();
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    isError: settingsError,
+  } = useSettings();
   const { data: enabledModules } = useEnabledPortalModules();
-  const { data: sliders = [] } = useSliders();
+  const {
+    data: sliders,
+    isLoading: slidersLoading,
+    isError: slidersError,
+  } = useSliders();
   const {
     data: managedSystemStatuses = [],
     isLoading: systemStatusesLoading,
@@ -505,7 +531,9 @@ export default function Home() {
   const updateTask = useUpdateTask();
   const submitPollSurvey = useSubmitPollSurveyResponse(pollSurveyModal?.id);
   const backgroundImageUrl =
-    settings?.portalBackgroundImageUrl || "/images/logo/apgt-logo.png";
+    !settingsLoading && !settingsError
+      ? settings?.portalBackgroundImageUrl
+      : undefined;
   const overlayColor = settings?.portalBackgroundOverlayColor || "#020617";
   const overlayOpacity = settings?.portalBackgroundOverlayOpacity ?? 0.72;
   const portalWidgetSettings = useMemo(
@@ -565,7 +593,7 @@ export default function Home() {
   const activeAnnouncements = announcements.filter(isAnnouncementVisible);
   const activeSliders = useMemo(
     () =>
-      sliders
+      (sliders ?? [])
         .filter((slider) => slider.isActive)
         .sort((first, second) => first.sortOrder - second.sortOrder),
     [sliders],
@@ -1421,7 +1449,9 @@ export default function Home() {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: `url(${backgroundImageUrl})`,
+          backgroundImage: backgroundImageUrl
+            ? `url(${backgroundImageUrl})`
+            : undefined,
         }}
       />
       <div
@@ -1435,7 +1465,23 @@ export default function Home() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(56,189,248,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.06)_1px,transparent_1px)] bg-[size:72px_72px] opacity-60" />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1920px] flex-col px-4 py-4">
         <header className="mb-5 flex min-h-24 flex-nowrap items-center justify-between gap-4 overflow-x-auto rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">
-          <Logo />
+          {settingsLoading ? (
+            <div className="flex shrink-0 items-center gap-4">
+              <div className="size-16 animate-pulse rounded-2xl bg-white/10" />
+              <div className="space-y-2">
+                <div className="h-5 w-52 animate-pulse rounded-full bg-white/10" />
+                <div className="h-3 w-44 animate-pulse rounded-full bg-white/10" />
+              </div>
+            </div>
+          ) : (
+            <Logo
+              logo={settings?.logo}
+              companyName={
+                settings?.companyName ||
+                "شرکت مخازن سبز پتروشیمی عسلویه"
+              }
+            />
+          )}
           <nav className="flex min-w-0 flex-1 flex-nowrap justify-center gap-2 overflow-x-auto">
             {visiblePortalNavItems.map((item, index) => {
               const Icon = item.icon;
@@ -1718,7 +1764,16 @@ export default function Home() {
                         >
                           <X size={18} />
                         </button>
-                        {heroSlider ? (
+                        {slidersLoading ? (
+                          <div className="relative min-h-48 overflow-hidden rounded-2xl bg-white/[0.04] p-5">
+                            <div className="absolute inset-0 animate-pulse bg-gradient-to-l from-slate-800/70 via-slate-800/25 to-transparent" />
+                            <div className="relative z-10 flex min-h-40 flex-col justify-end gap-3">
+                              <div className="h-4 w-28 rounded-full bg-white/10" />
+                              <div className="h-7 w-64 rounded-full bg-white/10" />
+                              <div className="h-9 w-32 rounded-xl bg-white/10" />
+                            </div>
+                          </div>
+                        ) : heroSlider ? (
                           <div className="relative overflow-hidden rounded-2xl">
                             <AnimatePresence mode="wait">
                               <motion.div
@@ -1802,6 +1857,10 @@ export default function Home() {
                                 ))}
                               </div>
                             )}
+                          </div>
+                        ) : slidersError ? (
+                          <div className="rounded-2xl border border-red-300/20 bg-red-500/10 p-5 text-sm text-red-100">
+                            بارگذاری اسلایدر انجام نشد.
                           </div>
                         ) : (
                           <div className="flex items-center gap-6 rounded-2xl bg-white/[0.04] p-3">
@@ -2057,7 +2116,20 @@ export default function Home() {
                 node: (
                   <GlassPanel id="status">
                     <SectionHeader title="وضعیت سیستم ها" />
-                    <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10">
+                    {!systemStatusesLoading && !systemStatusesError && (
+                      <div className="mb-3 grid grid-cols-3 gap-2 text-center text-[11px] font-bold">
+                        <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/10 px-2 py-2 text-emerald-100">
+                          {visibleSystemStatuses.filter((item) => item.lastHealthState === "UP").length} سالم
+                        </div>
+                        <div className="rounded-xl border border-amber-300/15 bg-amber-400/10 px-2 py-2 text-amber-100">
+                          {visibleSystemStatuses.filter((item) => item.lastHealthState === "DEGRADED").length} اختلال
+                        </div>
+                        <div className="rounded-xl border border-red-300/15 bg-red-400/10 px-2 py-2 text-red-100">
+                          {visibleSystemStatuses.filter((item) => item.lastHealthState === "DOWN").length} قطع
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-2">
                       {systemStatusesLoading && (
                         <div className="p-3">
                           <WidgetState title="در حال بررسی وضعیت سیستم‌ها..." />
@@ -2092,37 +2164,52 @@ export default function Home() {
                         return (
                           <div
                             key={item.id}
-                            className="flex items-center justify-between bg-white/[0.03] px-4 py-3"
+                            className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3"
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 items-start gap-3">
+                                <span
+                                  className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/[0.04]"
+                                  style={{ color: statusColor }}
+                                >
+                                  {uploadedIcon ? (
+                                    <Image
+                                      src={uploadedIcon}
+                                      alt=""
+                                      width={20}
+                                      height={20}
+                                      unoptimized
+                                      className="size-5 object-contain"
+                                    />
+                                  ) : (
+                                    <Icon size={21} />
+                                  )}
+                                </span>
+                                <div className="min-w-0">
+                                  <div className="truncate font-bold">{item.title}</div>
+                                  <div className="mt-1 text-[11px] leading-5 text-slate-400">
+                                    {formatSystemCheckTime(item.lastCheckedAt)}
+                                    {item.lastResponseTimeMs != null
+                                      ? ` · ${item.lastResponseTimeMs}ms`
+                                      : ""}
+                                  </div>
+                                  {item.lastError && (
+                                    <div className="mt-1 max-w-48 truncate text-[11px] text-red-200">
+                                      {item.lastError}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                               <span
-                                className="grid size-8 place-items-center rounded-lg bg-white/[0.04]"
-                                style={{ color: statusColor }}
+                                className="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
+                                style={{
+                                  backgroundColor: `${statusColor}22`,
+                                  color: statusColor,
+                                }}
                               >
-                                {uploadedIcon ? (
-                                  <Image
-                                    src={uploadedIcon}
-                                    alt=""
-                                    width={20}
-                                    height={20}
-                                    unoptimized
-                                    className="size-5 object-contain"
-                                  />
-                                ) : (
-                                  <Icon size={21} />
-                                )}
+                                {systemHealthLabels[item.lastHealthState] ?? item.status}
                               </span>
-                              <span className="font-bold">{item.title}</span>
                             </div>
-                            <span
-                              className="rounded-full px-3 py-1 text-xs font-bold"
-                              style={{
-                                backgroundColor: `${statusColor}22`,
-                                color: statusColor,
-                              }}
-                            >
-                              {item.status}
-                            </span>
                           </div>
                         );
                         })}
