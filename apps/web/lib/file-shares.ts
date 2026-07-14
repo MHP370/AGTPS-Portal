@@ -50,6 +50,26 @@ export interface FileShareListResponse {
   items: FileShareItem[];
 }
 
+export interface FileShareAuditItem {
+  id: string;
+  action: "LIST" | "PREVIEW" | "DOWNLOAD" | "UPLOAD" | "DELETE";
+  path: string;
+  detail?: string | null;
+  createdAt: string;
+  share: {
+    id: string;
+    title: string;
+    key: string;
+  };
+  user?: {
+    id: string;
+    username: string;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  } | null;
+}
+
 export interface CreateFileShareDto {
   key: string;
   title: string;
@@ -74,6 +94,10 @@ export function getFileShares() {
 
 export function getAdminFileShares() {
   return api.get<FileShare[]>("/file-shares/admin/all");
+}
+
+export function getFileShareAudit() {
+  return api.get<FileShareAuditItem[]>("/file-shares/admin/audit");
 }
 
 export function getFileShareItems(shareId: string, path = "") {

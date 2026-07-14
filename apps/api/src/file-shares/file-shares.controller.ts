@@ -59,6 +59,12 @@ export class FileSharesController {
     return this.fileSharesService.remove(id);
   }
 
+  @Get('admin/audit')
+  @Permissions('file-shares.manage')
+  findAudit() {
+    return this.fileSharesService.findAudit();
+  }
+
   @Get()
   @Permissions('file-shares.view')
   findAccessible(

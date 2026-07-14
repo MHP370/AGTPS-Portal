@@ -47,6 +47,7 @@ export default function FileSharesPage() {
   const [selectedFile, setSelectedFile] = useState<FileShareItem | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [previewError, setPreviewError] = useState("");
+  const [search, setSearch] = useState("");
   const selectedShare = shares.find((share) => share.id === selectedShareId);
   const { data, isLoading: itemsLoading } = useFileShareItems(
     selectedShareId,
@@ -62,6 +63,7 @@ export default function FileSharesPage() {
   useEffect(() => {
     setCurrentPath("");
     setSelectedFile(null);
+    setSearch("");
   }, [selectedShareId]);
 
   useEffect(() => {
@@ -100,6 +102,32 @@ export default function FileSharesPage() {
     parts.pop();
     return parts.join("/");
   }, [currentPath]);
+  const breadcrumbs = useMemo(() => {
+    const parts = currentPath.split("/").filter(Boolean);
+
+    return [
+      {
+        label: selectedShare?.title ?? "ریشه",
+        path: "",
+      },
+      ...parts.map((part, index) => ({
+        label: part,
+        path: parts.slice(0, index + 1).join("/"),
+      })),
+    ];
+  }, [currentPath, selectedShare?.title]);
+  const visibleItems = useMemo(() => {
+    const items = data?.items ?? [];
+    const query = search.trim().toLowerCase();
+
+    if (!query) return items;
+
+    return items.filter((item) =>
+      [item.name, item.extension ?? ""].some((value) =>
+        value.toLowerCase().includes(query),
+      ),
+    );
+  }, [data?.items, search]);
 
   async function downloadSelectedFile() {
     if (!selectedFile || !selectedShareId) return;
@@ -178,21 +206,52 @@ export default function FileSharesPage() {
                   /{currentPath}
                 </p>
               </div>
-              {currentPath && (
-                <Button
-                  variant="secondary"
-                  onClick={() => setCurrentPath(parentPath)}
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="جستجو در همین فولدر..."
+                  className="h-10 min-w-52 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-white placeholder:text-slate-500"
+                />
+                {currentPath && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setCurrentPath(parentPath);
+                      setSelectedFile(null);
+                    }}
+                  >
+                    پوشه قبلی
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {breadcrumbs.map((crumb, index) => (
+                <button
+                  key={`${crumb.path}-${index}`}
+                  type="button"
+                  onClick={() => {
+                    setCurrentPath(crumb.path);
+                    setSelectedFile(null);
+                  }}
+                  className={`rounded-full border px-3 py-1 text-xs font-bold transition ${
+                    index === breadcrumbs.length - 1
+                      ? "border-cyan-300/40 bg-cyan-400/15 text-cyan-100"
+                      : "border-slate-800 bg-white/[0.03] text-slate-300 hover:bg-white/[0.06]"
+                  }`}
                 >
-                  پوشه قبلی
-                </Button>
-              )}
+                  {crumb.label}
+                </button>
+              ))}
             </div>
 
             {itemsLoading ? (
               <p className="text-sm text-slate-400">در حال خواندن فولدر...</p>
             ) : (
               <div className="grid gap-2">
-                {data?.items.map((item) => (
+                {visibleItems.map((item) => (
                   <button
                     key={item.path}
                     type="button"
@@ -200,6 +259,7 @@ export default function FileSharesPage() {
                       if (item.type === "folder") {
                         setCurrentPath(item.path);
                         setSelectedFile(null);
+                        setSearch("");
                         return;
                       }
                       setSelectedFile(item);

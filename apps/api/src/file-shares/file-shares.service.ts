@@ -122,6 +122,33 @@ export class FileSharesService {
     });
   }
 
+  findAudit() {
+    return this.prisma.smbFileAudit.findMany({
+      take: 200,
+      include: {
+        share: {
+          select: {
+            id: true,
+            title: true,
+            key: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
   async findAccessibleShares(user: RequestUser) {
     const shares = await this.prisma.smbShare.findMany({
       where: {

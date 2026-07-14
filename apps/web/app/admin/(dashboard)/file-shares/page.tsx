@@ -13,12 +13,34 @@ import {
   useAdminFileShares,
   useCreateFileShare,
   useDeleteFileShare,
+  useFileShareAudit,
   useUpdateFileShare,
 } from "@/hooks/useFileShares";
-import type { FileShare } from "@/lib/file-shares";
+import type { FileShare, ShareAccess } from "@/lib/file-shares";
+
+type AdminFileShareTab = "shares" | "history";
+
+const accessLabels: Array<{
+  key: keyof Omit<ShareAccess, "id">;
+  label: string;
+}> = [
+  { key: "canRead", label: "خواندن" },
+  { key: "canDownload", label: "دانلود" },
+  { key: "canUpload", label: "آپلود" },
+  { key: "canDelete", label: "حذف" },
+];
+
+const actionLabels: Record<string, string> = {
+  LIST: "مرور فولدر",
+  PREVIEW: "نمایش فایل",
+  DOWNLOAD: "دانلود",
+  UPLOAD: "آپلود",
+  DELETE: "حذف",
+};
 
 export default function AdminFileSharesPage() {
   const { data: shares = [] } = useAdminFileShares();
+  const { data: audit = [] } = useFileShareAudit();
   const { data: users = [] } = useDirectoryUsers();
   const { data: groups = [] } = useDirectoryGroups();
   const createShare = useCreateFileShare();
@@ -26,6 +48,7 @@ export default function AdminFileSharesPage() {
   const deleteShare = useDeleteFileShare();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<AdminFileShareTab>("shares");
   const [editing, setEditing] = useState<FileShare | null>(null);
   const [key, setKey] = useState("");
   const [title, setTitle] = useState("");
@@ -38,8 +61,8 @@ export default function AdminFileSharesPage() {
   const [allowDelete, setAllowDelete] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [sortOrder, setSortOrder] = useState("0");
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [userAccesses, setUserAccesses] = useState<ShareAccess[]>([]);
+  const [groupAccesses, setGroupAccesses] = useState<ShareAccess[]>([]);
   const [error, setError] = useState("");
 
   function resetForm() {
@@ -55,8 +78,8 @@ export default function AdminFileSharesPage() {
     setAllowDelete(false);
     setIsActive(true);
     setSortOrder("0");
-    setSelectedUserIds([]);
-    setSelectedGroupIds([]);
+    setUserAccesses([]);
+    setGroupAccesses([]);
     setError("");
   }
 
@@ -78,29 +101,67 @@ export default function AdminFileSharesPage() {
     setAllowDelete(share.allowDelete);
     setIsActive(Boolean(share.isActive));
     setSortOrder(String(share.sortOrder ?? 0));
-    setSelectedUserIds(
-      share.userAccesses?.map((access) => access.directoryUserId) ?? [],
+    setUserAccesses(
+      share.userAccesses?.map((access) => ({
+        id: access.directoryUserId,
+        canRead: access.canRead,
+        canDownload: access.canDownload,
+        canUpload: access.canUpload,
+        canDelete: access.canDelete,
+      })) ?? [],
     );
-    setSelectedGroupIds(
-      share.groupAccesses?.map((access) => access.directoryGroupId) ?? [],
+    setGroupAccesses(
+      share.groupAccesses?.map((access) => ({
+        id: access.directoryGroupId,
+        canRead: access.canRead,
+        canDownload: access.canDownload,
+        canUpload: access.canUpload,
+        canDelete: access.canDelete,
+      })) ?? [],
     );
     setError("");
     setDialogOpen(true);
   }
 
-  function toggleUser(id: string) {
-    setSelectedUserIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+  function toggleAccess(
+    id: string,
+    type: "user" | "group",
+  ) {
+    const setter = type === "user" ? setUserAccesses : setGroupAccesses;
+
+    setter((current) =>
+      current.some((item) => item.id === id)
+        ? current.filter((item) => item.id !== id)
+        : [
+            ...current,
+            {
+              id,
+              canRead: true,
+              canDownload: allowDownload,
+              canUpload: false,
+              canDelete: false,
+            },
+          ],
     );
   }
 
-  function toggleGroup(id: string) {
-    setSelectedGroupIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+  function updateAccessFlag(
+    id: string,
+    type: "user" | "group",
+    key: keyof Omit<ShareAccess, "id">,
+    checked: boolean,
+  ) {
+    const setter = type === "user" ? setUserAccesses : setGroupAccesses;
+
+    setter((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              [key]: checked,
+            }
+          : item,
+      ),
     );
   }
 
@@ -124,20 +185,8 @@ export default function AdminFileSharesPage() {
       allowDelete,
       isActive,
       sortOrder: Number(sortOrder || 0),
-      userAccesses: selectedUserIds.map((id) => ({
-        id,
-        canRead: true,
-        canDownload: allowDownload,
-        canUpload: allowUpload,
-        canDelete: allowDelete,
-      })),
-      groupAccesses: selectedGroupIds.map((id) => ({
-        id,
-        canRead: true,
-        canDownload: allowDownload,
-        canUpload: allowUpload,
-        canDelete: allowDelete,
-      })),
+      userAccesses,
+      groupAccesses,
     };
 
     if (editing) {
@@ -175,6 +224,38 @@ export default function AdminFileSharesPage() {
         را از همان مسیر stream کند.
       </div>
 
+      <div className="grid gap-3 md:grid-cols-2">
+        {[
+          {
+            id: "shares" as const,
+            label: "Shareها",
+            description: "تعریف مسیرها و سطح دسترسی کاربران و گروه‌ها",
+          },
+          {
+            id: "history" as const,
+            label: "History",
+            description: "آخرین مرورها، نمایش‌ها و دانلودهای کاربران",
+          },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-2xl border p-4 text-right transition ${
+              activeTab === tab.id
+                ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-50"
+                : "border-slate-800 bg-slate-900/60 text-slate-300 hover:bg-slate-800/60"
+            }`}
+          >
+            <span className="block font-black">{tab.label}</span>
+            <span className="mt-2 block text-xs leading-6 text-slate-400">
+              {tab.description}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "shares" && (
       <DataTable
         data={shares}
         columns={[
@@ -243,6 +324,60 @@ export default function AdminFileSharesPage() {
           },
         ]}
       />
+      )}
+
+      {activeTab === "history" && (
+        <DataTable
+          data={audit}
+          columns={[
+            {
+              key: "action",
+              title: "عملیات",
+              render: (item) => actionLabels[item.action] ?? item.action,
+            },
+            {
+              key: "share",
+              title: "Share",
+              render: (item) => (
+                <div>
+                  <div className="font-bold">{item.share.title}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {item.share.key}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "user",
+              title: "کاربر",
+              render: (item) =>
+                item.user
+                  ? [item.user.firstName, item.user.lastName]
+                      .filter(Boolean)
+                      .join(" ") || item.user.username
+                  : "-",
+            },
+            {
+              key: "path",
+              title: "مسیر",
+              render: (item) => (
+                <span dir="ltr" className="text-xs text-slate-300">
+                  {item.path}
+                </span>
+              ),
+            },
+            {
+              key: "createdAt",
+              title: "زمان",
+              render: (item) =>
+                new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                }).format(new Date(item.createdAt)),
+            },
+          ]}
+        />
+      )}
 
       <Dialog
         open={dialogOpen}
@@ -322,11 +457,50 @@ export default function AdminFileSharesPage() {
                     </span>
                     <input
                       type="checkbox"
-                      checked={selectedUserIds.includes(user.id)}
-                      onChange={() => toggleUser(user.id)}
+                      checked={userAccesses.some((item) => item.id === user.id)}
+                      onChange={() => toggleAccess(user.id, "user")}
                     />
                   </label>
                 ))}
+              </div>
+              <div className="space-y-2">
+                {userAccesses.map((access) => {
+                  const user = users.find((item) => item.id === access.id);
+                  if (!user) return null;
+
+                  return (
+                    <div
+                      key={access.id}
+                      className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"
+                    >
+                      <div className="mb-2 text-sm font-bold">
+                        {user.displayName}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-4">
+                        {accessLabels.map((item) => (
+                          <label
+                            key={item.key}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.04] px-2 py-2 text-xs"
+                          >
+                            {item.label}
+                            <input
+                              type="checkbox"
+                              checked={Boolean(access[item.key])}
+                              onChange={(event) =>
+                                updateAccessFlag(
+                                  access.id,
+                                  "user",
+                                  item.key,
+                                  event.target.checked,
+                                )
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
 
@@ -346,11 +520,50 @@ export default function AdminFileSharesPage() {
                     </span>
                     <input
                       type="checkbox"
-                      checked={selectedGroupIds.includes(group.id)}
-                      onChange={() => toggleGroup(group.id)}
+                      checked={groupAccesses.some((item) => item.id === group.id)}
+                      onChange={() => toggleAccess(group.id, "group")}
                     />
                   </label>
                 ))}
+              </div>
+              <div className="space-y-2">
+                {groupAccesses.map((access) => {
+                  const group = groups.find((item) => item.id === access.id);
+                  if (!group) return null;
+
+                  return (
+                    <div
+                      key={access.id}
+                      className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"
+                    >
+                      <div className="mb-2 text-sm font-bold">
+                        {group.title}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-4">
+                        {accessLabels.map((item) => (
+                          <label
+                            key={item.key}
+                            className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.04] px-2 py-2 text-xs"
+                          >
+                            {item.label}
+                            <input
+                              type="checkbox"
+                              checked={Boolean(access[item.key])}
+                              onChange={(event) =>
+                                updateAccessFlag(
+                                  access.id,
+                                  "group",
+                                  item.key,
+                                  event.target.checked,
+                                )
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           </div>

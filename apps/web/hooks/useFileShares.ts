@@ -11,6 +11,7 @@ import {
   deleteFileShare,
   fileSharesQueryKey,
   getAdminFileShares,
+  getFileShareAudit,
   getFileShareItems,
   getFileShares,
   updateFileShare,
@@ -28,6 +29,13 @@ export function useAdminFileShares() {
   return useQuery({
     queryKey: [...fileSharesQueryKey, "admin"],
     queryFn: getAdminFileShares,
+  });
+}
+
+export function useFileShareAudit() {
+  return useQuery({
+    queryKey: [...fileSharesQueryKey, "audit"],
+    queryFn: getFileShareAudit,
   });
 }
 
