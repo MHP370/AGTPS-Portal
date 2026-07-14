@@ -12,8 +12,8 @@ function mod(a: number, b: number) {
 }
 
 function jalCal(jy: number) {
-  let bl = breaks.length;
-  let gy = jy + 621;
+  const bl = breaks.length;
+  const gy = jy + 621;
   let leapJ = -14;
   let jp = breaks[0];
   let jump = 0;

@@ -1,6 +1,6 @@
 "use client";
 
-import { LockKeyhole, Mail, Network, ShieldCheck, UserRound } from "lucide-react";
+import { LockKeyhole, Network, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AdminLogoutButton } from "@/components/auth/AdminLogoutButton";

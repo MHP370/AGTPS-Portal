@@ -2,7 +2,6 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
-import { ReactNode } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 

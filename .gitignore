@@ -18,11 +18,17 @@ npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
+# Local AI/design guidance clones
+.ai-skills/
+
 # Node
 node_modules/
 .next/
 dist/
 coverage/
+
+# Runtime uploads
+apps/web/public/uploads/
 
 # Laravel
 vendor/

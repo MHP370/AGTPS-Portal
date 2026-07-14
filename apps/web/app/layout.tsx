@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import { Vazirmatn } from "next/font/google";
 import "./globals.css";
-import Providers from "./providers";
 import { QueryProvider } from "@/providers/QueryProvider";
 
 const vazirmatn = Vazirmatn({

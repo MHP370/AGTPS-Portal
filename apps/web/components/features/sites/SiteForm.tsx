@@ -43,22 +43,26 @@ export function SiteForm({
   useEffect(() => {
     if (!site) return;
 
-    setName(site.name);
-    setCode(site.code);
-    setBaseUrl(site.baseUrl ?? "");
-    setIpRange(site.ipRange ?? "");
-    setDescription(site.description ?? "");
-    setAddress(site.address ?? "");
-    setPhone(site.phone ?? "");
-    setEmail(site.email ?? "");
-    setLogo(site.logo ?? "");
-    setImage(site.image ?? "");
-    setLatitude(site.latitude === undefined || site.latitude === null ? "" : String(site.latitude));
-    setLongitude(site.longitude === undefined || site.longitude === null ? "" : String(site.longitude));
-    setColor(site.color || "#22d3ee");
-    setSortOrder(String(site.sortOrder ?? 0));
-    setIsActive(site.isActive);
-    setFormError("");
+    const timer = window.setTimeout(() => {
+      setName(site.name);
+      setCode(site.code);
+      setBaseUrl(site.baseUrl ?? "");
+      setIpRange(site.ipRange ?? "");
+      setDescription(site.description ?? "");
+      setAddress(site.address ?? "");
+      setPhone(site.phone ?? "");
+      setEmail(site.email ?? "");
+      setLogo(site.logo ?? "");
+      setImage(site.image ?? "");
+      setLatitude(site.latitude === undefined || site.latitude === null ? "" : String(site.latitude));
+      setLongitude(site.longitude === undefined || site.longitude === null ? "" : String(site.longitude));
+      setColor(site.color || "#22d3ee");
+      setSortOrder(String(site.sortOrder ?? 0));
+      setIsActive(site.isActive);
+      setFormError("");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [site]);
 
   async function submit(e: React.FormEvent) {

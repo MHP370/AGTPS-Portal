@@ -33,26 +33,30 @@ export function NewsForm({
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    if (news) {
-      setTitle(news.title);
-      setBody(news.body);
-      setCategory(news.category ?? "");
-      setSiteId(news.siteId);
-      setImage(news.image ?? "");
-      setAttachmentUrl(news.attachmentUrl ?? "");
-      setPublished(news.published);
-      setFormError("");
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      if (news) {
+        setTitle(news.title);
+        setBody(news.body);
+        setCategory(news.category ?? "");
+        setSiteId(news.siteId);
+        setImage(news.image ?? "");
+        setAttachmentUrl(news.attachmentUrl ?? "");
+        setPublished(news.published);
+        setFormError("");
+        return;
+      }
 
-    setTitle("");
-    setBody("");
-    setCategory("");
-    setSiteId("");
-    setImage("");
-    setAttachmentUrl("");
-    setPublished(true);
-    setFormError("");
+      setTitle("");
+      setBody("");
+      setCategory("");
+      setSiteId("");
+      setImage("");
+      setAttachmentUrl("");
+      setPublished(true);
+      setFormError("");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [news]);
 
   async function submit(event: React.FormEvent) {

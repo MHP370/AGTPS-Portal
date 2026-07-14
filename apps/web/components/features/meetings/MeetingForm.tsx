@@ -65,44 +65,48 @@ export function MeetingForm({
   const activeDirectoryUsers = directoryUsers.filter((user) => user.isActive);
 
   useEffect(() => {
-    if (meeting) {
-      setTitle(meeting.title);
-      setDescription(meeting.description ?? "");
-      setLocation(meeting.location ?? "");
-      setStartDate(toDateInputValue(meeting.startAt));
-      setStartTime(toTimeInputValue(meeting.startAt) || "09:00");
-      setEndDate(toDateInputValue(meeting.endAt));
-      setEndTime(toTimeInputValue(meeting.endAt));
-      setStatus(meeting.status);
-      setVisibility(meeting.visibility);
-      setOrganizerDirectoryUserId(meeting.organizerDirectoryUserId ?? "");
-      setIsPublished(meeting.isPublished);
-      setParticipants(
-        meeting.participants.length > 0
-          ? meeting.participants.map((participant) => ({
-              directoryUserId: participant.directoryUserId ?? "",
-              displayName: participant.displayName,
-              email: participant.email ?? "",
-            }))
-          : [{ directoryUserId: "", displayName: "", email: "" }],
-      );
-      setFormError("");
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      if (meeting) {
+        setTitle(meeting.title);
+        setDescription(meeting.description ?? "");
+        setLocation(meeting.location ?? "");
+        setStartDate(toDateInputValue(meeting.startAt));
+        setStartTime(toTimeInputValue(meeting.startAt) || "09:00");
+        setEndDate(toDateInputValue(meeting.endAt));
+        setEndTime(toTimeInputValue(meeting.endAt));
+        setStatus(meeting.status);
+        setVisibility(meeting.visibility);
+        setOrganizerDirectoryUserId(meeting.organizerDirectoryUserId ?? "");
+        setIsPublished(meeting.isPublished);
+        setParticipants(
+          meeting.participants.length > 0
+            ? meeting.participants.map((participant) => ({
+                directoryUserId: participant.directoryUserId ?? "",
+                displayName: participant.displayName,
+                email: participant.email ?? "",
+              }))
+            : [{ directoryUserId: "", displayName: "", email: "" }],
+        );
+        setFormError("");
+        return;
+      }
 
-    setTitle("");
-    setDescription("");
-    setLocation("");
-    setStartDate(new Date().toISOString().slice(0, 10));
-    setStartTime("09:00");
-    setEndDate("");
-    setEndTime("");
-    setStatus("SCHEDULED");
-    setVisibility("PUBLIC");
-    setOrganizerDirectoryUserId("");
-    setIsPublished(true);
-    setParticipants([{ directoryUserId: "", displayName: "", email: "" }]);
-    setFormError("");
+      setTitle("");
+      setDescription("");
+      setLocation("");
+      setStartDate(new Date().toISOString().slice(0, 10));
+      setStartTime("09:00");
+      setEndDate("");
+      setEndTime("");
+      setStatus("SCHEDULED");
+      setVisibility("PUBLIC");
+      setOrganizerDirectoryUserId("");
+      setIsPublished(true);
+      setParticipants([{ directoryUserId: "", displayName: "", email: "" }]);
+      setFormError("");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [meeting]);
 
   function updateParticipant(

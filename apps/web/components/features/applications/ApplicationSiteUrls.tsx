@@ -45,19 +45,23 @@ export function ApplicationSiteUrls({
   }, [application.sites]);
 
   useEffect(() => {
-    const nextValues: Record<string, SiteUrlState> = {};
+    const timer = window.setTimeout(() => {
+      const nextValues: Record<string, SiteUrlState> = {};
 
-    for (const site of sites) {
-      const applicationSite = applicationSitesBySiteId.get(site.id);
+      for (const site of sites) {
+        const applicationSite = applicationSitesBySiteId.get(site.id);
 
-      nextValues[site.id] = {
-        url: applicationSite?.url ?? "",
-        isActive: applicationSite?.isActive ?? true,
-      };
-    }
+        nextValues[site.id] = {
+          url: applicationSite?.url ?? "",
+          isActive: applicationSite?.isActive ?? true,
+        };
+      }
 
-    setValues(nextValues);
-    setError("");
+      setValues(nextValues);
+      setError("");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [applicationSitesBySiteId, sites]);
 
   const isSaving =

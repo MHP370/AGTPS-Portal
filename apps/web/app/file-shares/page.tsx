@@ -55,15 +55,23 @@ export default function FileSharesPage() {
   );
 
   useEffect(() => {
-    if (!selectedShareId && shares.length > 0) {
-      setSelectedShareId(shares[0].id);
-    }
+    const timer = window.setTimeout(() => {
+      if (!selectedShareId && shares.length > 0) {
+        setSelectedShareId(shares[0].id);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [selectedShareId, shares]);
 
   useEffect(() => {
-    setCurrentPath("");
-    setSelectedFile(null);
-    setSearch("");
+    const timer = window.setTimeout(() => {
+      setCurrentPath("");
+      setSelectedFile(null);
+      setSearch("");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [selectedShareId]);
 
   useEffect(() => {

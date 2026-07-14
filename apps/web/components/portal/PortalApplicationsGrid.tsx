@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createElement } from "react";
 import { MonitorCog } from "lucide-react";
 
 import { usePortalApplications } from "@/hooks/useApplications";
@@ -50,7 +51,6 @@ function PortalApplicationCard({
   index: number;
   selectedSiteId?: string | null;
 }) {
-  const Icon = getApplicationIcon(application);
   const uploadedIcon = isUploadedIcon(application.icon) ? application.icon : null;
   const href = getApplicationUrl(application, selectedSiteId);
   const color = isHexColor(application.color)
@@ -75,10 +75,10 @@ function PortalApplicationCard({
           <img
             src={uploadedIcon}
             alt=""
-            className="size-8 object-contain"
+          className="size-8 object-contain"
           />
         ) : (
-          <Icon size={30} />
+          createElement(getApplicationIcon(application), { size: 30 })
         )}
       </div>
       <h3 className="font-black text-white">{application.title}</h3>

@@ -25,6 +25,30 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+async function subscribeBrowserPushIfAvailable(isPushSupported: boolean) {
+  if (!isPushSupported) return false;
+
+  const config = await getPushConfig();
+  if (!config.enabled || !config.publicKey) return false;
+
+  const registration = await navigator.serviceWorker.register("/sw.js");
+  const existingSubscription = await registration.pushManager.getSubscription();
+  const subscription =
+    existingSubscription ??
+    (await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+    }));
+  const currentUser = getStoredAuthUser();
+
+  await subscribeToPushNotifications(subscription.toJSON(), {
+    recipientDirectoryUserId: currentUser?.directoryUser?.id,
+    recipientEmail: currentUser?.email,
+  });
+
+  return true;
+}
+
 export function useBrowserNotifications(notifications: PortalNotification[]) {
   const [permission, setPermission] =
     useState<NotificationPermission>("default");
@@ -37,7 +61,11 @@ export function useBrowserNotifications(notifications: PortalNotification[]) {
       return;
     }
 
-    setPermission(Notification.permission);
+    const timer = window.setTimeout(() => {
+      setPermission(Notification.permission);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   const isSupported = useMemo(
@@ -73,35 +101,14 @@ export function useBrowserNotifications(notifications: PortalNotification[]) {
     setPermission(nextPermission);
 
     if (nextPermission === "granted") {
-      await subscribeToBrowserPush();
+      const subscribed = await subscribeBrowserPushIfAvailable(isPushSupported);
+      if (subscribed) {
+        setPushEnabled(true);
+        setIsPushSubscribed(true);
+      }
     }
 
     return nextPermission;
-  }
-
-  async function subscribeToBrowserPush() {
-    if (!isPushSupported) return;
-
-    const config = await getPushConfig();
-    if (!config.enabled || !config.publicKey) return;
-
-    const registration = await navigator.serviceWorker.register("/sw.js");
-    const existingSubscription =
-      await registration.pushManager.getSubscription();
-    const subscription =
-      existingSubscription ??
-      (await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(config.publicKey),
-      }));
-    const currentUser = getStoredAuthUser();
-
-    await subscribeToPushNotifications(subscription.toJSON(), {
-      recipientDirectoryUserId: currentUser?.directoryUser?.id,
-      recipientEmail: currentUser?.email,
-    });
-    setPushEnabled(true);
-    setIsPushSubscribed(true);
   }
 
   useEffect(() => {
@@ -109,7 +116,12 @@ export function useBrowserNotifications(notifications: PortalNotification[]) {
       return;
     }
 
-    void subscribeToBrowserPush();
+    void subscribeBrowserPushIfAvailable(isPushSupported).then((subscribed) => {
+      if (subscribed) {
+        setPushEnabled(true);
+        setIsPushSubscribed(true);
+      }
+    });
   }, [isPushSupported, permission, pushEnabled]);
 
   useEffect(() => {

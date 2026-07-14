@@ -40,28 +40,32 @@ export function AnnouncementForm({
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    if (announcement) {
-      setTitle(announcement.title);
-      setBody(announcement.body);
-      setCategory(announcement.category ?? "");
-      setAttachmentUrl(announcement.attachmentUrl ?? "");
-      setStartDate(toDateInputValue(announcement.startDate));
-      setEndDate(toDateInputValue(announcement.endDate));
-      setPriority(String(announcement.priority ?? 1));
-      setPublished(announcement.published);
-      setFormError("");
-      return;
-    }
+    const timer = window.setTimeout(() => {
+      if (announcement) {
+        setTitle(announcement.title);
+        setBody(announcement.body);
+        setCategory(announcement.category ?? "");
+        setAttachmentUrl(announcement.attachmentUrl ?? "");
+        setStartDate(toDateInputValue(announcement.startDate));
+        setEndDate(toDateInputValue(announcement.endDate));
+        setPriority(String(announcement.priority ?? 1));
+        setPublished(announcement.published);
+        setFormError("");
+        return;
+      }
 
-    setTitle("");
-    setBody("");
-    setCategory("");
-    setAttachmentUrl("");
-    setStartDate(new Date().toISOString().slice(0, 10));
-    setEndDate("");
-    setPriority("1");
-    setPublished(true);
-    setFormError("");
+      setTitle("");
+      setBody("");
+      setCategory("");
+      setAttachmentUrl("");
+      setStartDate(new Date().toISOString().slice(0, 10));
+      setEndDate("");
+      setPriority("1");
+      setPublished(true);
+      setFormError("");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [announcement]);
 
   async function submit(event: React.FormEvent) {
