@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsArray,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -83,4 +84,16 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   trainingAllowedFileExtensions?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requireUserPersonnelCode?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requireUserBirthDate?: boolean;
+
+  @IsOptional()
+  @IsIn(['FULL_NAME', 'PERSONNEL_CODE', 'USERNAME'])
+  topbarUserDisplayMode?: 'FULL_NAME' | 'PERSONNEL_CODE' | 'USERNAME';
 }

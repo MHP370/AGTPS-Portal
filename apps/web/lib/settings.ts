@@ -24,6 +24,9 @@ export interface PortalSettings {
   activeDirectoryLastCheckedAt?: string | null;
   trainingMaxUploadSizeMb?: number;
   trainingAllowedFileExtensions?: string;
+  requireUserPersonnelCode?: boolean;
+  requireUserBirthDate?: boolean;
+  topbarUserDisplayMode?: "FULL_NAME" | "PERSONNEL_CODE" | "USERNAME";
 }
 
 export interface UpdatePortalSettingsDto {
@@ -45,6 +48,9 @@ export interface UpdatePortalSettingsDto {
   activeDirectoryGroupSearchBase?: string;
   trainingMaxUploadSizeMb?: number;
   trainingAllowedFileExtensions?: string;
+  requireUserPersonnelCode?: boolean;
+  requireUserBirthDate?: boolean;
+  topbarUserDisplayMode?: "FULL_NAME" | "PERSONNEL_CODE" | "USERNAME";
 }
 
 export const settingsQueryKey = ["settings"];

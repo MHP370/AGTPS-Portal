@@ -132,6 +132,11 @@ model User {
 
   firstName String?
   lastName  String?
+  personnelCode String?
+  birthDate DateTime?
+  allowEmailChange    Boolean @default(false)
+  allowPasswordChange Boolean @default(true)
+  allowProfileEdit    Boolean @default(true)
 
   isActive Boolean @default(true)
 
@@ -146,6 +151,7 @@ model User {
   inPersonTrainingParticipants InPersonTrainingParticipant[]
   createdPollSurveys           PollSurvey[]                  @relation("PollSurveyCreator")
   pollSurveyResponses          PollSurveyResponse[]
+  smbAudits                    SmbFileAudit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -189,6 +195,7 @@ model DirectoryUser {
   trainingProgress             TrainingProgress[]
   inPersonTrainingParticipants InPersonTrainingParticipant[]
   pollSurveyResponses          PollSurveyResponse[]
+  smbShareAccesses             SmbShareUserAccess[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -204,6 +211,7 @@ model DirectoryGroup {
 
   members DirectoryGroupMember[]
   roles   DirectoryGroupRole[]
+  smbShareAccesses SmbShareGroupAccess[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -566,6 +574,85 @@ model PortalModule {
   updatedAt DateTime @updatedAt
 }
 
+model SmbShare {
+  id String @id @default(cuid())
+
+  key         String  @unique
+  title       String
+  description String? @db.Text
+  rootPath    String
+  icon        String?
+  color       String?
+
+  allowDownload Boolean @default(true)
+  allowUpload   Boolean @default(false)
+  allowDelete   Boolean @default(false)
+
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  userAccesses  SmbShareUserAccess[]
+  groupAccesses SmbShareGroupAccess[]
+  audits        SmbFileAudit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SmbShareUserAccess {
+  shareId         String
+  directoryUserId String
+
+  canRead     Boolean @default(true)
+  canDownload Boolean @default(true)
+  canUpload   Boolean @default(false)
+  canDelete   Boolean @default(false)
+
+  share SmbShare      @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  user  DirectoryUser @relation(fields: [directoryUserId], references: [id], onDelete: Cascade)
+
+  @@id([shareId, directoryUserId])
+}
+
+model SmbShareGroupAccess {
+  shareId          String
+  directoryGroupId String
+
+  canRead     Boolean @default(true)
+  canDownload Boolean @default(true)
+  canUpload   Boolean @default(false)
+  canDelete   Boolean @default(false)
+
+  share SmbShare       @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  group DirectoryGroup @relation(fields: [directoryGroupId], references: [id], onDelete: Cascade)
+
+  @@id([shareId, directoryGroupId])
+}
+
+model SmbFileAudit {
+  id String @id @default(cuid())
+
+  shareId String
+  userId  String?
+
+  action SmbFileAuditAction
+  path   String
+  detail String? @db.Text
+
+  share SmbShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  user  User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
+
+enum SmbFileAuditAction {
+  LIST
+  PREVIEW
+  DOWNLOAD
+  UPLOAD
+  DELETE
+}
+
 model TrainingCategory {
   id String @id @default(cuid())
 
@@ -922,6 +1009,16 @@ model Setting {
 
   trainingMaxUploadSizeMb       Int    @default(2048)
   trainingAllowedFileExtensions String @default("mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z")
+
+  requireUserPersonnelCode Boolean @default(false)
+  requireUserBirthDate     Boolean @default(false)
+  topbarUserDisplayMode    TopbarUserDisplayMode @default(FULL_NAME)
+}
+
+enum TopbarUserDisplayMode {
+  FULL_NAME
+  PERSONNEL_CODE
+  USERNAME
 }
 
 model SystemStatus {

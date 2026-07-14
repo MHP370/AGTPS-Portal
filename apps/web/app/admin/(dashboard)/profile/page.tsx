@@ -1,10 +1,18 @@
 "use client";
 
-import { Network, ShieldCheck, UserRound } from "lucide-react";
+import { LockKeyhole, Mail, Network, ShieldCheck, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { AdminLogoutButton } from "@/components/auth/AdminLogoutButton";
 import { Badge } from "@/components/ui/Badge";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { PersianDateInput } from "@/components/ui/PersianDateInput";
+import {
+  useAuthUser,
+  useChangeOwnPassword,
+  useUpdateProfile,
+} from "@/hooks/useAuthUser";
 import type { AuthUser } from "@/lib/auth";
 
 function displayName(user?: AuthUser | null) {
@@ -19,10 +27,83 @@ function displayName(user?: AuthUser | null) {
 
 export default function AdminProfilePage() {
   const { data: user, isLoading } = useAuthUser();
+  const updateProfile = useUpdateProfile();
+  const changePassword = useChangeOwnPassword();
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [personnelCode, setPersonnelCode] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [formMessage, setFormMessage] = useState("");
+  const [formError, setFormError] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const roleDetails = user?.roleDetails?.length
     ? user.roleDetails
     : (user?.roles.map((role) => ({ id: role, name: role, title: role })) ??
       []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const timer = window.setTimeout(() => {
+      setFirstName(user.firstName ?? "");
+      setLastName(user.lastName ?? "");
+      setEmail(user.email ?? "");
+      setPersonnelCode(user.personnelCode ?? "");
+      setBirthDate(user.birthDate ?? "");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [user]);
+
+  async function submitProfile(event: React.FormEvent) {
+    event.preventDefault();
+    setFormMessage("");
+    setFormError("");
+
+    try {
+      await updateProfile.mutateAsync({
+        email: user?.allowEmailChange ? email.trim() || undefined : undefined,
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+        personnelCode: personnelCode.trim() || undefined,
+        birthDate: birthDate || undefined,
+      });
+      setFormMessage("اطلاعات پروفایل ذخیره شد.");
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "ذخیره پروفایل انجام نشد.",
+      );
+    }
+  }
+
+  async function submitPassword(event: React.FormEvent) {
+    event.preventDefault();
+    setPasswordMessage("");
+    setPasswordError("");
+
+    if (newPassword.length < 8) {
+      setPasswordError("رمز جدید باید حداقل ۸ کاراکتر باشد.");
+      return;
+    }
+
+    try {
+      await changePassword.mutateAsync({
+        currentPassword,
+        newPassword,
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setPasswordMessage("رمز عبور تغییر کرد.");
+    } catch (error) {
+      setPasswordError(
+        error instanceof Error ? error.message : "تغییر رمز انجام نشد.",
+      );
+    }
+  }
 
   return (
     <div className="space-y-6 text-right">
@@ -71,6 +152,173 @@ export default function AdminProfilePage() {
           </section>
 
           <div className="grid gap-6 xl:grid-cols-2">
+            <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 xl:col-span-2">
+              <div className="mb-4 flex items-center gap-3">
+                <UserRound className="text-cyan-200" size={22} />
+                <h2 className="text-xl font-black text-white">
+                  اطلاعات فردی
+                </h2>
+              </div>
+
+              <form onSubmit={submitProfile} className="space-y-4">
+                {(formError || formMessage) && (
+                  <div
+                    className={
+                      formError
+                        ? "rounded-xl border border-red-800 bg-red-950/40 p-3 text-sm text-red-200"
+                        : "rounded-xl border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200"
+                    }
+                  >
+                    {formError || formMessage}
+                  </div>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-2 md:col-span-2">
+                    <span className="text-sm font-bold text-slate-200">
+                      ایمیل
+                    </span>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      disabled={
+                        updateProfile.isPending || !user?.allowEmailChange
+                      }
+                    />
+                    {!user?.allowEmailChange && (
+                      <span className="block text-xs text-slate-500">
+                        تغییر ایمیل برای این حساب توسط ادمین غیرفعال شده است.
+                      </span>
+                    )}
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-200">
+                      نام
+                    </span>
+                    <Input
+                      value={firstName}
+                      onChange={(event) => setFirstName(event.target.value)}
+                      disabled={
+                        updateProfile.isPending || !user?.allowProfileEdit
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-200">
+                      نام خانوادگی
+                    </span>
+                    <Input
+                      value={lastName}
+                      onChange={(event) => setLastName(event.target.value)}
+                      disabled={
+                        updateProfile.isPending || !user?.allowProfileEdit
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-200">
+                      کد پرسنلی
+                    </span>
+                    <Input
+                      value={personnelCode}
+                      onChange={(event) =>
+                        setPersonnelCode(event.target.value)
+                      }
+                      disabled={
+                        updateProfile.isPending || !user?.allowProfileEdit
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-200">
+                      تاریخ تولد
+                    </span>
+                    <PersianDateInput
+                      value={birthDate}
+                      onChange={setBirthDate}
+                      disabled={
+                        updateProfile.isPending || !user?.allowProfileEdit
+                      }
+                    />
+                  </label>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={updateProfile.isPending}>
+                    {updateProfile.isPending
+                      ? "در حال ذخیره..."
+                      : "ذخیره اطلاعات فردی"}
+                  </Button>
+                </div>
+              </form>
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 xl:col-span-2">
+              <div className="mb-4 flex items-center gap-3">
+                <LockKeyhole className="text-cyan-200" size={22} />
+                <h2 className="text-xl font-black text-white">تغییر رمز</h2>
+              </div>
+
+              {user?.authSource === "ACTIVE_DIRECTORY" ? (
+                <p className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-7 text-amber-100">
+                  رمز کاربران اکتیو دایرکتوری باید از مسیر رسمی AD تغییر کند.
+                </p>
+              ) : !user?.allowPasswordChange ? (
+                <p className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-7 text-slate-400">
+                  تغییر رمز برای این حساب توسط ادمین غیرفعال شده است.
+                </p>
+              ) : (
+                <form onSubmit={submitPassword} className="space-y-4">
+                  {(passwordError || passwordMessage) && (
+                    <div
+                      className={
+                        passwordError
+                          ? "rounded-xl border border-red-800 bg-red-950/40 p-3 text-sm text-red-200"
+                          : "rounded-xl border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200"
+                      }
+                    >
+                      {passwordError || passwordMessage}
+                    </div>
+                  )}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(event) =>
+                        setCurrentPassword(event.target.value)
+                      }
+                      placeholder="رمز فعلی"
+                    />
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      placeholder="رمز جدید حداقل ۸ کاراکتر"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      disabled={
+                        changePassword.isPending ||
+                        !currentPassword ||
+                        newPassword.length < 8
+                      }
+                    >
+                      {changePassword.isPending
+                        ? "در حال تغییر..."
+                        : "تغییر رمز"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </section>
+
             <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
               <div className="mb-4 flex items-center gap-3">
                 <ShieldCheck className="text-cyan-200" size={22} />

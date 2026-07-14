@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 
 @Injectable()
 export class UsersService {
@@ -58,6 +60,11 @@ export class UsersService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        personnelCode: user.personnelCode,
+        birthDate: user.birthDate?.toISOString().slice(0, 10) ?? null,
+        allowEmailChange: user.allowEmailChange,
+        allowPasswordChange: user.allowPasswordChange,
+        allowProfileEdit: user.allowProfileEdit,
         isActive: user.isActive,
         roles: user.roles.map((item) => item.role),
         directoryUser,
@@ -109,5 +116,79 @@ export class UsersService {
     return {
       ok: true,
     };
+  }
+
+  async updateProfile(id: string, dto: UpdateUserProfileDto) {
+    const birthDate = dto.birthDate ? new Date(dto.birthDate) : null;
+
+    if (dto.birthDate && Number.isNaN(birthDate?.getTime())) {
+      throw new BadRequestException('Invalid birth date.');
+    }
+
+    if (dto.email) {
+      const existingEmailUser = await this.prisma.user.findFirst({
+        where: {
+          email: dto.email.trim(),
+          NOT: {
+            id,
+          },
+        },
+      });
+
+      if (existingEmailUser) {
+        throw new ConflictException('Email is already used by another user.');
+      }
+    }
+
+    if (dto.newPassword) {
+      const user = await this.prisma.user.findUniqueOrThrow({
+        where: {
+          id,
+        },
+      });
+      const directoryUser =
+        await this.prisma.directoryUser.findFirst({
+          where: {
+            OR: [
+              {
+                username: user.username,
+              },
+              {
+                email: user.email,
+              },
+            ],
+          },
+        });
+
+      if (directoryUser?.source === 'ACTIVE_DIRECTORY') {
+        throw new BadRequestException(
+          'Active Directory user passwords must be changed in Active Directory.',
+        );
+      }
+    }
+
+    const password = dto.newPassword
+      ? await bcrypt.hash(dto.newPassword, 10)
+      : undefined;
+
+    await this.prisma.user.update({
+      where: {
+        id,
+      },
+      data: {
+        email: dto.email?.trim(),
+        firstName: dto.firstName?.trim() || null,
+        lastName: dto.lastName?.trim() || null,
+        personnelCode: dto.personnelCode?.trim() || null,
+        birthDate,
+        isActive: dto.isActive,
+        allowEmailChange: dto.allowEmailChange,
+        allowPasswordChange: dto.allowPasswordChange,
+        allowProfileEdit: dto.allowProfileEdit,
+        password,
+      },
+    });
+
+    return this.findAll();
   }
 }

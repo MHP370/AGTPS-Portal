@@ -10,6 +10,7 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { ChangeUserPasswordDto } from './dto/change-user-password.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -30,5 +31,14 @@ export class UsersController {
     @Body() dto: ChangeUserPasswordDto,
   ) {
     return this.usersService.changePassword(id, dto.password);
+  }
+
+  @Put(':id/profile')
+  @Permissions('users.manage')
+  updateProfile(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserProfileDto,
+  ) {
+    return this.usersService.updateProfile(id, dto);
   }
 }

@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/ui/DataTable";
+import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
+import { PersianDateInput } from "@/components/ui/PersianDateInput";
 import {
   useCreateDirectoryGroup,
   useCreateDirectoryUser,
@@ -16,17 +18,74 @@ import {
 } from "@/hooks/useDirectory";
 import {
   useChangeUserPassword,
+  useUpdateAdminUserProfile,
   useUsers,
 } from "@/hooks/useUsers";
 import type {
   DirectoryGroup,
   DirectorySource,
 } from "@/lib/directory";
+import type { AdminUser } from "@/lib/users";
 
 const sourceLabels: Record<DirectorySource, string> = {
   INTERNAL: "داخلی",
   ACTIVE_DIRECTORY: "اکتیو دایرکتوری",
 };
+
+type DirectoryTab =
+  | "directoryUsers"
+  | "directoryGroups"
+  | "createUser"
+  | "createGroup"
+  | "systemUsers"
+  | "password";
+
+const directoryTabs: Array<{
+  id: DirectoryTab;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "directoryUsers",
+    label: "کاربران",
+    description: "لیست کاربران داخلی و اکتیو دایرکتوری",
+  },
+  {
+    id: "directoryGroups",
+    label: "گروه‌ها",
+    description: "گروه‌ها و عضویت کاربران",
+  },
+  {
+    id: "createUser",
+    label: "افزودن کاربر",
+    description: "ساخت کاربر داخلی یا AD دستی",
+  },
+  {
+    id: "createGroup",
+    label: "افزودن گروه",
+    description: "ساخت گروه داخلی یا AD دستی",
+  },
+  {
+    id: "systemUsers",
+    label: "کاربران سامانه",
+    description: "پروفایل، کد پرسنلی و تاریخ تولد",
+  },
+  {
+    id: "password",
+    label: "تغییر رمز",
+    description: "فقط کاربران غیر AD",
+  },
+];
+
+function formatPersianDate(value?: string | null) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(new Date(value));
+}
 
 export default function DirectoryPage() {
   const { data: users = [] } = useDirectoryUsers();
@@ -38,6 +97,7 @@ export default function DirectoryPage() {
   const updateGroupMembers = useUpdateDirectoryGroupMembers();
   const deleteGroup = useDeleteDirectoryGroup();
   const changePassword = useChangeUserPassword();
+  const updateUserProfile = useUpdateAdminUserProfile();
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -52,9 +112,23 @@ export default function DirectoryPage() {
   const [groupSource, setGroupSource] =
     useState<DirectorySource>("INTERNAL");
   const [passwordUserId, setPasswordUserId] = useState("");
+  const [passwordUserSearch, setPasswordUserSearch] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [selectedGroup, setSelectedGroup] =
     useState<DirectoryGroup | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [activeTab, setActiveTab] =
+    useState<DirectoryTab>("directoryUsers");
+  const [editEmail, setEditEmail] = useState("");
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editPersonnelCode, setEditPersonnelCode] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [editAllowEmailChange, setEditAllowEmailChange] = useState(false);
+  const [editAllowPasswordChange, setEditAllowPasswordChange] = useState(true);
+  const [editAllowProfileEdit, setEditAllowProfileEdit] = useState(true);
+  const [editNewPassword, setEditNewPassword] = useState("");
   const selectedGroupUserIds = useMemo(
     () =>
       new Set(
@@ -62,6 +136,24 @@ export default function DirectoryPage() {
       ),
     [selectedGroup],
   );
+  const filteredPasswordUsers = useMemo(() => {
+    const search = passwordUserSearch.trim().toLowerCase();
+
+    return systemUsers.filter((user) => {
+      if (!search) return true;
+
+      return [
+        user.username,
+        user.email,
+        user.firstName,
+        user.lastName,
+        user.personnelCode,
+        user.directoryUser?.displayName,
+      ]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(search));
+    });
+  }, [passwordUserSearch, systemUsers]);
 
   async function addUser(event: React.FormEvent) {
     event.preventDefault();
@@ -136,7 +228,45 @@ export default function DirectoryPage() {
     });
 
     setPasswordUserId("");
+    setPasswordUserSearch("");
     setNewPassword("");
+  }
+
+  function openEditUser(user: AdminUser) {
+    setEditingUser(user);
+    setEditEmail(user.email ?? "");
+    setEditFirstName(user.firstName ?? "");
+    setEditLastName(user.lastName ?? "");
+    setEditPersonnelCode(user.personnelCode ?? "");
+    setEditBirthDate(user.birthDate ?? "");
+    setEditIsActive(user.isActive);
+    setEditAllowEmailChange(user.allowEmailChange);
+    setEditAllowPasswordChange(user.allowPasswordChange);
+    setEditAllowProfileEdit(user.allowProfileEdit);
+    setEditNewPassword("");
+  }
+
+  async function submitUserProfile(event: React.FormEvent) {
+    event.preventDefault();
+    if (!editingUser) return;
+
+    await updateUserProfile.mutateAsync({
+      id: editingUser.id,
+      dto: {
+        email: editEmail.trim() || undefined,
+        firstName: editFirstName.trim() || undefined,
+        lastName: editLastName.trim() || undefined,
+        personnelCode: editPersonnelCode.trim() || undefined,
+        birthDate: editBirthDate || undefined,
+        isActive: editIsActive,
+        allowEmailChange: editAllowEmailChange,
+        allowPasswordChange: editAllowPasswordChange,
+        allowProfileEdit: editAllowProfileEdit,
+        newPassword: editNewPassword.trim() || undefined,
+      },
+    });
+
+    setEditingUser(null);
   }
 
   return (
@@ -148,7 +278,27 @@ export default function DirectoryPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {directoryTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-2xl border p-4 text-right transition ${
+              activeTab === tab.id
+                ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-50 shadow-[0_0_28px_rgba(34,211,238,0.14)]"
+                : "border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+            }`}
+          >
+            <span className="block font-black">{tab.label}</span>
+            <span className="mt-2 block text-xs leading-6 text-slate-400">
+              {tab.description}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "createUser" && (
         <form
           onSubmit={addUser}
           className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
@@ -224,7 +374,9 @@ export default function DirectoryPage() {
             افزودن کاربر
           </Button>
         </form>
+      )}
 
+      {activeTab === "createGroup" && (
         <form
           onSubmit={addGroup}
           className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
@@ -259,9 +411,9 @@ export default function DirectoryPage() {
             افزودن گروه
           </Button>
         </form>
-      </div>
+      )}
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+      {activeTab === "directoryUsers" && (
         <section className="space-y-4">
           <h2 className="text-xl font-bold">کاربران</h2>
           <DataTable
@@ -306,7 +458,9 @@ export default function DirectoryPage() {
             ]}
           />
         </section>
+      )}
 
+      {activeTab === "directoryGroups" && (
         <section className="space-y-4">
           <h2 className="text-xl font-bold">گروه‌ها</h2>
           <div className="space-y-3">
@@ -373,8 +527,87 @@ export default function DirectoryPage() {
             </div>
           )}
         </section>
-      </div>
+      )}
 
+      {activeTab === "systemUsers" && (
+      <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <div>
+          <h2 className="text-xl font-bold">کاربران سامانه</h2>
+          <p className="mt-2 text-sm text-slate-400">
+            فیلدهای پروفایل کاربران داخلی و اکتیو دایرکتوری از این بخش قابل مشاهده و اصلاح است.
+          </p>
+        </div>
+
+        <DataTable
+          data={systemUsers}
+          columns={[
+            {
+              key: "username",
+              title: "کاربر",
+              render: (user) => (
+                <div>
+                  <div className="font-semibold">
+                    {[user.firstName, user.lastName].filter(Boolean).join(" ") ||
+                      user.username}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-400">
+                    {user.username} ·{" "}
+                    {user.directoryUser?.source
+                      ? sourceLabels[user.directoryUser.source]
+                      : "داخلی"}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "email",
+              title: "ایمیل",
+              render: (user) => user.email,
+            },
+            {
+              key: "personnelCode",
+              title: "کد پرسنلی",
+              render: (user) => user.personnelCode ?? "-",
+            },
+            {
+              key: "birthDate",
+              title: "تاریخ تولد",
+              render: (user) => formatPersianDate(user.birthDate),
+            },
+            {
+              key: "isActive",
+              title: "وضعیت",
+              render: (user) => (
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-bold ${
+                    user.isActive
+                      ? "bg-emerald-500/15 text-emerald-200"
+                      : "bg-rose-500/15 text-rose-200"
+                  }`}
+                >
+                  {user.isActive ? "فعال" : "غیرفعال"}
+                </span>
+              ),
+            },
+            {
+              key: "actions",
+              title: "عملیات",
+              render: (user) => (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => openEditUser(user)}
+                >
+                  ویرایش
+                </Button>
+              ),
+            },
+          ]}
+        />
+      </section>
+      )}
+
+      {activeTab === "password" && (
       <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
         <div>
           <h2 className="text-xl font-bold">تغییر رمز کاربران داخلی</h2>
@@ -385,15 +618,20 @@ export default function DirectoryPage() {
 
         <form
           onSubmit={submitPasswordChange}
-          className="grid gap-3 lg:grid-cols-[1fr_1fr_auto]"
+          className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]"
         >
+          <Input
+            value={passwordUserSearch}
+            onChange={(event) => setPasswordUserSearch(event.target.value)}
+            placeholder="جستجوی زنده کاربر، ایمیل یا کد پرسنلی"
+          />
           <select
             value={passwordUserId}
             onChange={(event) => setPasswordUserId(event.target.value)}
             className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-3 text-white"
           >
             <option value="">انتخاب کاربر</option>
-            {systemUsers.map((user) => (
+            {filteredPasswordUsers.map((user) => (
               <option
                 key={user.id}
                 value={user.id}
@@ -422,6 +660,112 @@ export default function DirectoryPage() {
           </Button>
         </form>
       </section>
+      )}
+
+      <Dialog
+        open={Boolean(editingUser)}
+        onOpenChange={(open) => {
+          if (!open) setEditingUser(null);
+        }}
+        title="ویرایش پروفایل کاربر"
+      >
+        <form onSubmit={submitUserProfile} className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              type="email"
+              value={editEmail}
+              onChange={(event) => setEditEmail(event.target.value)}
+              placeholder="ایمیل"
+            />
+            <Input
+              value={editFirstName}
+              onChange={(event) => setEditFirstName(event.target.value)}
+              placeholder="نام"
+            />
+            <Input
+              value={editLastName}
+              onChange={(event) => setEditLastName(event.target.value)}
+              placeholder="نام خانوادگی"
+            />
+            <Input
+              value={editPersonnelCode}
+              onChange={(event) => setEditPersonnelCode(event.target.value)}
+              placeholder="کد پرسنلی"
+            />
+            <PersianDateInput
+              value={editBirthDate}
+              onChange={setEditBirthDate}
+            />
+            <Input
+              type="password"
+              value={editNewPassword}
+              onChange={(event) => setEditNewPassword(event.target.value)}
+              placeholder="رمز جدید کاربر - اختیاری"
+              disabled={!editingUser?.canChangePassword}
+            />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-white/[0.03] p-3 text-sm text-slate-200">
+              <span>کاربر فعال باشد</span>
+              <input
+                type="checkbox"
+                checked={editIsActive}
+                onChange={(event) => setEditIsActive(event.target.checked)}
+              />
+            </label>
+            <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-white/[0.03] p-3 text-sm text-slate-200">
+              <span>کاربر بتواند ایمیل خودش را تغییر دهد</span>
+              <input
+                type="checkbox"
+                checked={editAllowEmailChange}
+                onChange={(event) =>
+                  setEditAllowEmailChange(event.target.checked)
+                }
+              />
+            </label>
+            <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-white/[0.03] p-3 text-sm text-slate-200">
+              <span>کاربر بتواند رمز خودش را تغییر دهد</span>
+              <input
+                type="checkbox"
+                checked={editAllowPasswordChange}
+                onChange={(event) =>
+                  setEditAllowPasswordChange(event.target.checked)
+                }
+              />
+            </label>
+            <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-white/[0.03] p-3 text-sm text-slate-200">
+              <span>کاربر بتواند پروفایل خودش را ویرایش کند</span>
+              <input
+                type="checkbox"
+                checked={editAllowProfileEdit}
+                onChange={(event) =>
+                  setEditAllowProfileEdit(event.target.checked)
+                }
+              />
+            </label>
+          </div>
+
+          {editingUser && !editingUser.canChangePassword && (
+            <p className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-sm leading-7 text-amber-100">
+              رمز کاربران اکتیو دایرکتوری از پورتال تغییر نمی‌کند.
+            </p>
+          )}
+
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditingUser(null)}
+            >
+              انصراف
+            </Button>
+            <Button type="submit" disabled={updateUserProfile.isPending}>
+              ذخیره تغییرات
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

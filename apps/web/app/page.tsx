@@ -41,6 +41,7 @@ import PortalApplicationsGrid from "@/components/portal/PortalApplicationsGrid";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { PersianDateInput } from "@/components/ui/PersianDateInput";
+import { ProfileCompletionDialog } from "@/components/auth/ProfileCompletionDialog";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 import { useDownloads } from "@/hooks/useDownloads";
@@ -87,6 +88,7 @@ import {
   type PortalWidgetId,
 } from "@/lib/portal-widgets";
 import { clearAuthSession, getStoredAuthUser, type AuthUser } from "@/lib/auth";
+import { getUserDisplayName } from "@/lib/user-display";
 import {
   getJalaliMonthLength,
   gregorianToJalali,
@@ -863,11 +865,10 @@ export default function Home() {
     notifications.find((item) => item.id === selectedNotificationId) ??
     filteredNotifications[0] ??
     null;
-  const authUserName =
-    authUser?.fullName ||
-    [authUser?.firstName, authUser?.lastName].filter(Boolean).join(" ") ||
-    authUser?.directoryUser?.displayName ||
-    authUser?.username;
+  const authUserName = getUserDisplayName(
+    authUser,
+    settings?.topbarUserDisplayMode,
+  );
   const visibleDownloads =
     downloads.length > 0
       ? downloads
@@ -1502,7 +1503,7 @@ export default function Home() {
             {authUser ? (
               <div className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 md:flex">
                 <Link
-                  href="/admin/profile"
+                  href="/admin/dashboard"
                   className="flex items-center gap-2 text-xs font-black text-slate-100 hover:text-cyan-100"
                 >
                   <UserRound size={17} />
@@ -1551,13 +1552,6 @@ export default function Home() {
                   فعال‌سازی اعلان
                 </button>
               )}
-            <Link
-              href="/admin/dashboard"
-              className="flex items-center gap-3 rounded-2xl border border-cyan-300/40 bg-cyan-500/10 px-5 py-3 text-sm font-black text-white shadow-[0_0_24px_rgba(14,165,233,0.18)] hover:bg-cyan-500/20"
-            >
-              رفتن به داشبورد
-              <Settings size={22} />
-            </Link>
           </div>
         </header>
 
@@ -3813,6 +3807,8 @@ export default function Home() {
           </aside>
         </div>
       </Dialog>
+
+      <ProfileCompletionDialog />
 
       <Dialog
         open={Boolean(quickAction)}

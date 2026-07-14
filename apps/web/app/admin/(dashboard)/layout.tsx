@@ -10,6 +10,7 @@ import {
   CloudDownload,
   Database,
   FileText,
+  FolderOpen,
   FolderTree,
   GraduationCap,
   House,
@@ -27,9 +28,12 @@ import {
 
 import { AdminAuthGuard } from "@/components/auth/AdminAuthGuard";
 import { AdminLogoutButton } from "@/components/auth/AdminLogoutButton";
+import { ProfileCompletionDialog } from "@/components/auth/ProfileCompletionDialog";
 import Logo from "@/components/layout/Logo";
 import { getStoredAuthUser, type AuthUser } from "@/lib/auth";
 import { useEnabledPortalModules } from "@/hooks/usePortalModules";
+import { useSettings } from "@/hooks/useSettings";
+import { getUserDisplayName } from "@/lib/user-display";
 
 type AdminNavItem = {
   href: string;
@@ -114,6 +118,13 @@ const adminNavItems: AdminNavItem[] = [
     moduleKey: "downloads",
   },
   {
+    href: "/admin/file-shares",
+    label: "فایل شیر",
+    icon: FolderOpen,
+    permission: "file-shares.manage",
+    moduleKey: "file-shares",
+  },
+  {
     href: "/admin/system-statuses",
     label: "وضعیت سیستم‌ها",
     icon: Activity,
@@ -174,6 +185,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [userReady, setUserReady] = useState(false);
   const { data: enabledModules } = useEnabledPortalModules();
+  const { data: settings } = useSettings();
 
   useEffect(() => {
     const syncUser = () => {
@@ -276,20 +288,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-4">
               <Link
                 href="/admin/dashboard"
-                className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-bold text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-400/15"
-              >
-                <House className="h-4 w-4" />
-                نمایش داشبورد
-              </Link>
-              <Link
-                href="/admin/profile"
                 className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-100"
               >
-                {user?.fullName ||
-                  user?.firstName ||
-                  user?.directoryUser?.displayName ||
-                  user?.username ||
-                  "کاربر"}
+                {getUserDisplayName(user, settings?.topbarUserDisplayMode)}
               </Link>
               <AdminLogoutButton />
             </div>
@@ -320,6 +321,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             )}
           </div>
         </main>
+        <ProfileCompletionDialog />
       </div>
     </AdminAuthGuard>
   );

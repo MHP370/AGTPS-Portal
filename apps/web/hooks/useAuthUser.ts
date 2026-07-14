@@ -1,8 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getMe, getStoredAuthUser, setStoredAuthUser } from "@/lib/auth";
+import {
+  changeOwnPassword,
+  getMe,
+  getStoredAuthUser,
+  setStoredAuthUser,
+  updateProfile,
+  type ChangeOwnPasswordDto,
+  type UpdateProfileDto,
+} from "@/lib/auth";
 
 export const authUserQueryKey = ["auth", "me"];
 
@@ -17,5 +25,25 @@ export function useAuthUser() {
     },
     initialData: getStoredAuthUser() ?? undefined,
     retry: false,
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: UpdateProfileDto) => updateProfile(dto),
+    onSuccess: (user) => {
+      setStoredAuthUser(user);
+      window.dispatchEvent(new Event("auth-user-updated"));
+      queryClient.setQueryData(authUserQueryKey, user);
+      queryClient.invalidateQueries({ queryKey: authUserQueryKey });
+    },
+  });
+}
+
+export function useChangeOwnPassword() {
+  return useMutation({
+    mutationFn: (dto: ChangeOwnPasswordDto) => changeOwnPassword(dto),
   });
 }

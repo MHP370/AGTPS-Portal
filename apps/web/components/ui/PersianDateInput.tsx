@@ -20,6 +20,9 @@ interface PersianDateTimeInputProps extends PersianDateInputProps {
   minuteStep?: number;
 }
 
+const MIN_JALALI_YEAR = 1300;
+const MAX_JALALI_YEAR = 1500;
+
 function getCurrentJalaliDate() {
   return gregorianToJalali(new Date().toISOString().slice(0, 10)) ?? {
     jy: 1405,
@@ -37,8 +40,8 @@ export function PersianDateInput({
   const current = getCurrentJalaliDate();
   const selected = gregorianToJalali(value) ?? current;
   const years = Array.from(
-    { length: 21 },
-    (_, index) => current.jy - 5 + index,
+    { length: MAX_JALALI_YEAR - MIN_JALALI_YEAR + 1 },
+    (_, index) => MIN_JALALI_YEAR + index,
   );
   const daysInMonth = getJalaliMonthLength(selected.jy, selected.jm);
   const day = Math.min(selected.jd, daysInMonth);

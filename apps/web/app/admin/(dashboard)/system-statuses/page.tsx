@@ -69,6 +69,25 @@ const healthStateClassNames: Record<SystemHealthState, string> = {
   DOWN: "bg-red-500/15 text-red-200",
 };
 
+type SystemStatusTab = "systems" | "healthChecks";
+
+const systemStatusTabs: Array<{
+  id: SystemStatusTab;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "systems",
+    label: "لیست سامانه‌ها",
+    description: "مشاهده، ویرایش، حذف و بررسی لحظه‌ای",
+  },
+  {
+    id: "healthChecks",
+    label: "تنظیمات Health Check",
+    description: "نوع بررسی مناسب برای هر سرویس",
+  },
+];
+
 function formatCheckTime(value?: string | null) {
   if (!value) return "هنوز بررسی نشده";
 
@@ -104,6 +123,7 @@ export default function SystemStatusesPage() {
   const [isActive, setIsActive] = useState(true);
   const [formError, setFormError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [activeTab, setActiveTab] = useState<SystemStatusTab>("systems");
 
   function resetForm() {
     setEditing(null);
@@ -259,6 +279,26 @@ export default function SystemStatusesPage() {
         <Button onClick={openCreateForm}>
           افزودن سامانه
         </Button>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {systemStatusTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-2xl border p-4 text-right transition ${
+              activeTab === tab.id
+                ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-50 shadow-[0_0_28px_rgba(34,211,238,0.14)]"
+                : "border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+            }`}
+          >
+            <span className="block font-black">{tab.label}</span>
+            <span className="mt-2 block text-xs leading-6 text-slate-400">
+              {tab.description}
+            </span>
+          </button>
+        ))}
       </div>
 
       <Dialog
@@ -474,12 +514,40 @@ export default function SystemStatusesPage() {
 	      </form>
       </Dialog>
 
-	      {actionError && (
+      {activeTab === "healthChecks" && (
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {checkTypeOptions.map((option) => (
+            <div
+              key={option.value}
+              className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black text-white">
+                  {option.label}
+                </h2>
+                <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-100">
+                  {option.value}
+                </span>
+              </div>
+              <p className="mt-3 text-sm leading-7 text-slate-400">
+                {option.description}
+              </p>
+              <p className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs leading-6 text-slate-500">
+                برای افزودن سامانه جدید، دکمه «افزودن سامانه» را بزنید و در
+                مودال، نوع بررسی را از همین گزینه‌ها انتخاب کنید.
+              </p>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {activeTab === "systems" && actionError && (
         <div className="rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200">
           {actionError}
         </div>
       )}
 
+      {activeTab === "systems" && (
       <DataTable
         data={statuses}
         columns={[
@@ -606,6 +674,7 @@ export default function SystemStatusesPage() {
           },
         ]}
       />
+      )}
     </div>
   );
 }

@@ -50,6 +50,45 @@ const activeDirectoryStatusLabels: Record<string, string> = {
 
 const fixedCenterWidgetIds = new Set(["hero", "map", "systems"]);
 
+type SettingsTab =
+  | "branding"
+  | "widgets"
+  | "files"
+  | "profile"
+  | "activeDirectory";
+
+const settingsTabs: Array<{
+  id: SettingsTab;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: "branding",
+    label: "عمومی و ظاهر",
+    description: "نام سازمان، لوگو، رنگ و بکگراند",
+  },
+  {
+    id: "widgets",
+    label: "ویجت‌های صفحه اصلی",
+    description: "نمایش و ترتیب ماژول‌های پرتال",
+  },
+  {
+    id: "files",
+    label: "فایل‌ها و آپلود",
+    description: "حجم و پسوندهای مجاز آموزش",
+  },
+  {
+    id: "profile",
+    label: "پروفایل کاربران",
+    description: "اجباری بودن کد پرسنلی و تاریخ تولد",
+  },
+  {
+    id: "activeDirectory",
+    label: "اکتیو دایرکتوری",
+    description: "LDAP، Bind و تست اتصال",
+  },
+];
+
 function SettingsSection({
   title,
   description,
@@ -158,39 +197,53 @@ export default function SettingsPage() {
     useState(
       "mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z",
     );
+  const [requireUserPersonnelCode, setRequireUserPersonnelCode] =
+    useState(false);
+  const [requireUserBirthDate, setRequireUserBirthDate] = useState(false);
+  const [topbarUserDisplayMode, setTopbarUserDisplayMode] = useState<
+    "FULL_NAME" | "PERSONNEL_CODE" | "USERNAME"
+  >("FULL_NAME");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("branding");
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
     if (!settings) return;
 
-    setCompanyName(settings.companyName || "AGTPS Portal");
-    setLogo(settings.logo ?? "");
-    setPrimaryColor(settings.primaryColor || "#22d3ee");
-    setBackgroundImageUrl(
-      settings.portalBackgroundImageUrl || defaultBackgroundImage,
-    );
-    setOverlayColor(settings.portalBackgroundOverlayColor || "#020617");
-    setOverlayOpacity(String(settings.portalBackgroundOverlayOpacity ?? 0.78));
-    setPortalWidgets(normalizePortalWidgets(settings.portalWidgets));
-    setFooterText(settings.footerText ?? "");
-    setAdEnabled(Boolean(settings.activeDirectoryEnabled));
-    setAdUrl(settings.activeDirectoryUrl ?? "");
-    setAdDomain(settings.activeDirectoryDomain ?? "");
-    setAdBaseDn(settings.activeDirectoryBaseDn ?? "");
-    setAdBindDn(settings.activeDirectoryBindDn ?? "");
-    setAdBindPassword(
-      settings.activeDirectoryBindPassword ? savedPasswordMarker : "",
-    );
-    setAdUserSearchBase(settings.activeDirectoryUserSearchBase ?? "");
-    setAdGroupSearchBase(settings.activeDirectoryGroupSearchBase ?? "");
-    setTrainingMaxUploadSizeMb(
-      String(settings.trainingMaxUploadSizeMb ?? 2048),
-    );
-    setTrainingAllowedFileExtensions(
-      settings.trainingAllowedFileExtensions ||
-        "mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z",
-    );
+    const timer = window.setTimeout(() => {
+      setCompanyName(settings.companyName || "AGTPS Portal");
+      setLogo(settings.logo ?? "");
+      setPrimaryColor(settings.primaryColor || "#22d3ee");
+      setBackgroundImageUrl(
+        settings.portalBackgroundImageUrl || defaultBackgroundImage,
+      );
+      setOverlayColor(settings.portalBackgroundOverlayColor || "#020617");
+      setOverlayOpacity(String(settings.portalBackgroundOverlayOpacity ?? 0.78));
+      setPortalWidgets(normalizePortalWidgets(settings.portalWidgets));
+      setFooterText(settings.footerText ?? "");
+      setAdEnabled(Boolean(settings.activeDirectoryEnabled));
+      setAdUrl(settings.activeDirectoryUrl ?? "");
+      setAdDomain(settings.activeDirectoryDomain ?? "");
+      setAdBaseDn(settings.activeDirectoryBaseDn ?? "");
+      setAdBindDn(settings.activeDirectoryBindDn ?? "");
+      setAdBindPassword(
+        settings.activeDirectoryBindPassword ? savedPasswordMarker : "",
+      );
+      setAdUserSearchBase(settings.activeDirectoryUserSearchBase ?? "");
+      setAdGroupSearchBase(settings.activeDirectoryGroupSearchBase ?? "");
+      setTrainingMaxUploadSizeMb(
+        String(settings.trainingMaxUploadSizeMb ?? 2048),
+      );
+      setTrainingAllowedFileExtensions(
+        settings.trainingAllowedFileExtensions ||
+          "mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z",
+      );
+      setRequireUserPersonnelCode(Boolean(settings.requireUserPersonnelCode));
+      setRequireUserBirthDate(Boolean(settings.requireUserBirthDate));
+      setTopbarUserDisplayMode(settings.topbarUserDisplayMode || "FULL_NAME");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [settings]);
 
   async function submit(event: React.FormEvent) {
@@ -259,6 +312,9 @@ export default function SettingsPage() {
         trainingMaxUploadSizeMb: parsedTrainingMaxUploadSizeMb,
         trainingAllowedFileExtensions:
           trainingAllowedFileExtensions.trim() || undefined,
+        requireUserPersonnelCode,
+        requireUserBirthDate,
+        topbarUserDisplayMode,
       });
       setSuccess("تنظیمات ذخیره شد.");
     } catch (err) {
@@ -352,28 +408,51 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <form
-        id="portal-settings-form"
-        onSubmit={submit}
-        className="grid gap-6 xl:grid-cols-[1fr_420px]"
-      >
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {settingsTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-2xl border p-4 text-right transition ${
+              activeTab === tab.id
+                ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-50 shadow-[0_0_28px_rgba(34,211,238,0.14)]"
+                : "border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60"
+            }`}
+          >
+            <span className="block font-black">{tab.label}</span>
+            <span className="mt-2 block text-xs leading-6 text-slate-400">
+              {tab.description}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {(formError || success) && (
+        <div
+          className={
+            formError
+              ? "rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200"
+              : "rounded-lg border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200"
+          }
+        >
+          {formError || success}
+        </div>
+      )}
+
+      {activeTab !== "activeDirectory" && (
+        <form
+          id="portal-settings-form"
+          onSubmit={submit}
+          className="grid gap-6 xl:grid-cols-[1fr_420px]"
+        >
+        {activeTab === "branding" && (
+          <>
         <SettingsSection
           title="تنظیمات عمومی و برندینگ"
           description="نام سازمان، لوگو، رنگ اصلی و متن پایین صفحه را مدیریت کنید."
           icon={Building2}
         >
-          {(formError || success) && (
-            <div
-              className={
-                formError
-                  ? "rounded-lg border border-red-800 bg-red-950/40 p-3 text-sm text-red-200"
-                  : "rounded-lg border border-emerald-800 bg-emerald-950/40 p-3 text-sm text-emerald-200"
-              }
-            >
-              {formError || success}
-            </div>
-          )}
-
           <InlineSectionTitle title="هویت سازمان" icon={ShieldCheck} />
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -513,7 +592,10 @@ export default function SettingsPage() {
             </div>
           </div>
         </SettingsSection>
+          </>
+        )}
 
+        {activeTab === "widgets" && (
         <SettingsSection
           title="ویجت‌های صفحه اصلی"
           description="نمایش ویجت‌های پورتال و ترتیب آن‌ها را مدیریت کنید."
@@ -613,7 +695,9 @@ export default function SettingsPage() {
             </Button>
           </div>
         </SettingsSection>
+        )}
 
+        {activeTab === "files" && (
         <SettingsSection
           title="تنظیمات فایل‌های آموزشی"
           description="حجم مجاز و پسوندهای قابل آپلود در ماژول آموزش را مدیریت کنید."
@@ -659,8 +743,79 @@ export default function SettingsPage() {
             </Button>
           </div>
         </SettingsSection>
-      </form>
+        )}
 
+        {activeTab === "profile" && (
+        <SettingsSection
+          title="سیاست پروفایل کاربران"
+          description="اجباری بودن تکمیل اطلاعات فردی و نحوه نمایش کاربر در topbar را مدیریت کنید."
+          icon={Users}
+          className="xl:col-span-2"
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-sm font-black text-white">
+              <input
+                type="checkbox"
+                checked={requireUserPersonnelCode}
+                onChange={(event) =>
+                  setRequireUserPersonnelCode(event.target.checked)
+                }
+                disabled={updateSettings.isPending}
+              />
+              کد پرسنلی اجباری باشد
+            </label>
+
+            <label className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-sm font-black text-white">
+              <input
+                type="checkbox"
+                checked={requireUserBirthDate}
+                onChange={(event) =>
+                  setRequireUserBirthDate(event.target.checked)
+                }
+                disabled={updateSettings.isPending}
+              />
+              تاریخ تولد اجباری باشد
+            </label>
+
+            <IconFormField label="نمایش کاربر در topbar" icon={Users}>
+              <select
+                value={topbarUserDisplayMode}
+                onChange={(event) =>
+                  setTopbarUserDisplayMode(
+                    event.target.value as
+                      | "FULL_NAME"
+                      | "PERSONNEL_CODE"
+                      | "USERNAME",
+                  )
+                }
+                disabled={updateSettings.isPending}
+                className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="FULL_NAME">نام و نام خانوادگی</option>
+                <option value="PERSONNEL_CODE">کد پرسنلی</option>
+                <option value="USERNAME">نام کاربری</option>
+              </select>
+            </IconFormField>
+          </div>
+
+          <p className="rounded-xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm leading-7 text-cyan-100">
+            اگر گزینه اجباری فعال باشد، کاربرانی که اطلاعاتشان ناقص است بعد از
+            ورود، قبل از ادامه کار باید پروفایل خود را تکمیل کنند.
+          </p>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={updateSettings.isPending}>
+              {updateSettings.isPending
+                ? "در حال ذخیره..."
+                : "ذخیره سیاست پروفایل"}
+            </Button>
+          </div>
+        </SettingsSection>
+        )}
+        </form>
+      )}
+
+      {activeTab === "activeDirectory" && (
       <SettingsSection
         title="اتصال اکتیو دایرکتوری"
         description="تنظیمات اتصال LDAP/AD را وارد کنید و وضعیت اتصال را تست کنید."
@@ -803,6 +958,7 @@ export default function SettingsPage() {
           </Button>
         </div>
       </SettingsSection>
+      )}
     </div>
   );
 }

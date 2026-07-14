@@ -17,6 +17,11 @@ export interface AuthUser {
 
   firstName: string | null;
   lastName: string | null;
+  personnelCode?: string | null;
+  birthDate?: string | null;
+  allowEmailChange?: boolean;
+  allowPasswordChange?: boolean;
+  allowProfileEdit?: boolean;
   fullName?: string | null;
 
   isActive: boolean;
@@ -28,6 +33,12 @@ export interface AuthUser {
     title: string;
   }>;
   permissions: string[];
+  profileCompletionRequired?: boolean;
+  missingProfileFields?: Array<"personnelCode" | "birthDate">;
+  profileRequirements?: {
+    personnelCode: boolean;
+    birthDate: boolean;
+  };
   directoryUser?: {
     id: string;
     username: string;
@@ -128,4 +139,25 @@ export async function login(dto: LoginDto): Promise<LoginResponse> {
 
 export function getMe() {
   return api.get<AuthUser>("/auth/me");
+}
+
+export interface UpdateProfileDto {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  personnelCode?: string;
+  birthDate?: string;
+}
+
+export function updateProfile(dto: UpdateProfileDto) {
+  return api.put<AuthUser>("/auth/profile", dto);
+}
+
+export interface ChangeOwnPasswordDto {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export function changeOwnPassword(dto: ChangeOwnPasswordDto) {
+  return api.put<{ ok: boolean }>("/auth/password", dto);
 }

@@ -26,6 +26,7 @@ import { PortalModulesModule } from './portal-modules/portal-modules.module';
 import { SystemStatusesModule } from './system-statuses/system-statuses.module';
 import { TrainingsModule } from './trainings/trainings.module';
 import { PollSurveysModule } from './poll-surveys/poll-surveys.module';
+import { FileSharesModule } from './file-shares/file-shares.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { PollSurveysModule } from './poll-surveys/poll-surveys.module';
     SystemStatusesModule,
     TrainingsModule,
     PollSurveysModule,
+    FileSharesModule,
   ],
 
   controllers: [AppController],

@@ -9,7 +9,9 @@ import {
 import {
   changeUserPassword,
   getUsers,
+  updateAdminUserProfile,
   usersQueryKey,
+  type UpdateAdminUserProfileDto,
 } from "@/lib/users";
 
 export function useUsers() {
@@ -31,6 +33,24 @@ export function useChangeUserPassword() {
       password: string;
     }) => changeUserPassword(id, password),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usersQueryKey });
+    },
+  });
+}
+
+export function useUpdateAdminUserProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      dto,
+    }: {
+      id: string;
+      dto: UpdateAdminUserProfileDto;
+    }) => updateAdminUserProfile(id, dto),
+    onSuccess: (users) => {
+      queryClient.setQueryData(usersQueryKey, users);
       queryClient.invalidateQueries({ queryKey: usersQueryKey });
     },
   });

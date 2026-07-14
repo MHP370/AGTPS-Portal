@@ -116,6 +116,14 @@ async function main() {
       title: 'Manage Downloads',
     },
     {
+      name: 'file-shares.view',
+      title: 'View File Shares',
+    },
+    {
+      name: 'file-shares.manage',
+      title: 'Manage File Shares',
+    },
+    {
       name: 'system-statuses.manage',
       title: 'Manage System Statuses',
     },
@@ -583,6 +591,18 @@ async function main() {
       sortOrder: 9,
     },
     {
+      key: 'file-shares',
+      title: 'فایل شیر',
+      description:
+        'مرور امن فولدرهای شبکه و فایل‌های SMB بر اساس دسترسی کاربر و گروه.',
+      icon: 'FolderOpen',
+      route: '/admin/file-shares',
+      permission: 'file-shares.manage',
+      isCore: false,
+      isEnabled: true,
+      sortOrder: 10,
+    },
+    {
       key: 'training',
       title: 'آموزش',
       description:
@@ -592,7 +612,7 @@ async function main() {
       permission: 'training.manage',
       isCore: false,
       isEnabled: false,
-      sortOrder: 10,
+      sortOrder: 11,
     },
     {
       key: 'poll-survey',
@@ -604,7 +624,7 @@ async function main() {
       permission: 'poll.manage',
       isCore: false,
       isEnabled: true,
-      sortOrder: 11,
+      sortOrder: 12,
     },
     {
       key: 'directory',
@@ -615,7 +635,7 @@ async function main() {
       permission: 'directory.manage',
       isCore: false,
       isEnabled: true,
-      sortOrder: 12,
+      sortOrder: 13,
     },
     {
       key: 'access',
@@ -626,7 +646,7 @@ async function main() {
       permission: 'access.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 13,
+      sortOrder: 14,
     },
     {
       key: 'announcements',
@@ -637,7 +657,7 @@ async function main() {
       permission: 'announcements.publish',
       isCore: false,
       isEnabled: true,
-      sortOrder: 14,
+      sortOrder: 15,
     },
     {
       key: 'sliders',
@@ -648,7 +668,7 @@ async function main() {
       permission: 'sliders.manage',
       isCore: false,
       isEnabled: true,
-      sortOrder: 15,
+      sortOrder: 16,
     },
     {
       key: 'settings',
@@ -659,7 +679,7 @@ async function main() {
       permission: 'settings.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 16,
+      sortOrder: 17,
     },
     {
       key: 'modules',
@@ -671,7 +691,7 @@ async function main() {
       permission: 'modules.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 17,
+      sortOrder: 18,
     },
   ];
 

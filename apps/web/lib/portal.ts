@@ -7,6 +7,7 @@ import {
   CloudDownload,
   Database,
   FileText,
+  FolderOpen,
   Globe,
   GraduationCap,
   Headphones,
@@ -92,6 +93,12 @@ export const portalNavItems: PortalNavItem[] = [
     icon: CloudDownload,
     href: "#downloads",
     moduleKey: "downloads",
+  },
+  {
+    title: "فایل شیر",
+    icon: FolderOpen,
+    href: "/file-shares",
+    moduleKey: "file-shares",
   },
   {
     title: "آموزش",
