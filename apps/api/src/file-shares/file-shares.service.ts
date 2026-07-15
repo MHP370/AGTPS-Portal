@@ -6,6 +6,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import {
+  Prisma,
   SmbFileAuditAction,
   type SmbShare,
 } from '@prisma/client';
@@ -86,13 +87,17 @@ export class FileSharesService {
   }
 
   async create(dto: CreateFileShareDto) {
-    return this.prisma.smbShare.create({
-      data: this.toShareData(dto) as any,
-      include: {
-        userAccesses: true,
-        groupAccesses: true,
-      },
-    });
+    try {
+      return await this.prisma.smbShare.create({
+        data: this.toShareData(dto, 'create') as any,
+        include: {
+          userAccesses: true,
+          groupAccesses: true,
+        },
+      });
+    } catch (error) {
+      this.handlePrismaWriteError(error);
+    }
   }
 
   async update(id: string, dto: UpdateFileShareDto) {
@@ -102,16 +107,20 @@ export class FileSharesService {
       },
     });
 
-    return this.prisma.smbShare.update({
-      where: {
-        id,
-      },
-      data: this.toShareData(dto) as any,
-      include: {
-        userAccesses: true,
-        groupAccesses: true,
-      },
-    });
+    try {
+      return await this.prisma.smbShare.update({
+        where: {
+          id,
+        },
+        data: this.toShareData(dto, 'update') as any,
+        include: {
+          userAccesses: true,
+          groupAccesses: true,
+        },
+      });
+    } catch (error) {
+      this.handlePrismaWriteError(error);
+    }
   }
 
   remove(id: string) {
@@ -284,15 +293,24 @@ export class FileSharesService {
     };
   }
 
-  private toShareData(dto: Partial<CreateFileShareDto>) {
+  private toShareData(
+    dto: Partial<CreateFileShareDto>,
+    mode: 'create' | 'update',
+  ) {
     const { userAccesses, groupAccesses, ...share } = dto;
+    const relationMode =
+      mode === 'update'
+        ? {
+            deleteMany: {},
+          }
+        : {};
 
     return {
       ...share,
       rootPath: share.rootPath?.trim(),
       userAccesses: userAccesses
         ? {
-            deleteMany: {},
+            ...relationMode,
             create: userAccesses.map((access) => ({
               directoryUserId: access.id,
               canRead: access.canRead ?? true,
@@ -304,7 +322,7 @@ export class FileSharesService {
         : undefined,
       groupAccesses: groupAccesses
         ? {
-            deleteMany: {},
+            ...relationMode,
             create: groupAccesses.map((access) => ({
               directoryGroupId: access.id,
               canRead: access.canRead ?? true,
@@ -315,6 +333,22 @@ export class FileSharesService {
           }
         : undefined,
     };
+  }
+
+  private handlePrismaWriteError(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        throw new BadRequestException('A file share with this key already exists.');
+      }
+
+      if (error.code === 'P2003') {
+        throw new BadRequestException(
+          'One of the selected users or groups is not valid.',
+        );
+      }
+    }
+
+    throw error;
   }
 
   private async getShareWithAccess(user: RequestUser, shareId: string) {

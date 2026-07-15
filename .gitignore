@@ -30,6 +30,9 @@ coverage/
 # Runtime uploads
 apps/web/public/uploads/
 
+# Production deployment secrets
+docker/.env
+
 # Laravel
 vendor/
 bootstrap/cache/*

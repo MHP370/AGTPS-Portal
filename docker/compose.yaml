@@ -6,47 +6,76 @@ networks:
 
 volumes:
   postgres-data:
-  redis-data:
+  portal-uploads:
 
 services:
+  postgres:
+    image: postgres:17
+    container_name: agtps-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    networks:
+      - agtps-network
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api.Dockerfile
+    container_name: agtps-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_SECRET: ${JWT_SECRET}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
+    volumes:
+      - portal-uploads:/app/apps/web/public/uploads
+      - ${FILE_SHARES_ROOT:-./file-shares}:/mnt/file-shares
+    networks:
+      - agtps-network
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    container_name: agtps-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    volumes:
+      - portal-uploads:/app/apps/web/public/uploads
+    networks:
+      - agtps-network
 
   nginx:
     image: nginx:1.28-alpine
     container_name: agtps-nginx
     restart: unless-stopped
+    depends_on:
+      - web
+      - api
     ports:
-      - "${NGINX_PORT}:80"
+      - "${NGINX_PORT:-80}:80"
     volumes:
-      - ./nginx:/etc/nginx/conf.d
-    networks:
-      - agtps-network
-
-  postgres:
-    image: postgres:17
-    container_name: agtps-postgres
-    restart: unless-stopped
-
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-
-    ports:
-      - "5432:5432"
-
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-
-    networks:
-      - agtps-network
-
-
-  redis:
-    image: redis:8-alpine
-    container_name: agtps-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
+      - ./nginx:/etc/nginx/conf.d:ro
     networks:
       - agtps-network

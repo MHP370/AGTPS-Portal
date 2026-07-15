@@ -167,6 +167,7 @@ export default function AdminFileSharesPage() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    setError("");
 
     if (!key.trim() || !title.trim() || !rootPath.trim()) {
       setError("کلید، عنوان و مسیر ریشه الزامی هستند.");
@@ -189,13 +190,22 @@ export default function AdminFileSharesPage() {
       groupAccesses,
     };
 
-    if (editing) {
-      await updateShare.mutateAsync({
-        id: editing.id,
-        dto,
-      });
-    } else {
-      await createShare.mutateAsync(dto);
+    try {
+      if (editing) {
+        await updateShare.mutateAsync({
+          id: editing.id,
+          dto,
+        });
+      } else {
+        await createShare.mutateAsync(dto);
+      }
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "ذخیره فایل شیر انجام نشد.",
+      );
+      return;
     }
 
     setDialogOpen(false);

@@ -5,6 +5,7 @@ export type PortalWidgetId =
   | "map"
   | "systems"
   | "training"
+  | "file-shares"
   | "poll-survey"
   | "status"
   | "calendar"
@@ -63,6 +64,13 @@ export const defaultPortalWidgets: PortalWidgetSetting[] = [
     enabled: true,
     order: 40,
     column: "center",
+  },
+  {
+    id: "file-shares",
+    title: "فایل شیر سازمانی",
+    enabled: true,
+    order: 45,
+    column: "right",
   },
   {
     id: "poll-survey",

@@ -23,6 +23,7 @@ import {
   ChevronLeft,
   CloudDownload,
   Download,
+  FolderOpen,
   GraduationCap,
   ListTodo,
   LogOut,
@@ -45,6 +46,7 @@ import { ProfileCompletionDialog } from "@/components/auth/ProfileCompletionDial
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 import { useDownloads } from "@/hooks/useDownloads";
+import { useFileShares } from "@/hooks/useFileShares";
 import { useMeetings } from "@/hooks/useMeetings";
 import { useNews } from "@/hooks/useNews";
 import {
@@ -174,6 +176,7 @@ const portalWidgetModuleKeys: Record<PortalWidgetId, string | null> = {
   map: "sites",
   systems: "applications",
   training: "training",
+  "file-shares": "file-shares",
   "poll-survey": "poll-survey",
   status: "system-statuses",
   calendar: "meetings",
@@ -510,6 +513,11 @@ export default function Home() {
     isLoading: trainingsLoading,
     isError: trainingsError,
   } = useTrainings();
+  const {
+    data: fileShares = [],
+    isLoading: fileSharesLoading,
+    isError: fileSharesError,
+  } = useFileShares();
   const {
     data: pollSurveys = [],
     isLoading: pollSurveysLoading,
@@ -2004,6 +2012,43 @@ export default function Home() {
 
           <aside className="space-y-5">
             {sortPortalWidgets([
+              {
+                id: "file-shares",
+                node: (
+                  <GlassPanel id="file-shares">
+                    <SectionHeader
+                      title="فایل شیر سازمانی"
+                      viewAllHref="/file-shares"
+                    />
+                    <Link
+                      href="/file-shares"
+                      className="group flex items-center gap-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4 text-right transition hover:border-cyan-300/45 hover:bg-cyan-400/15 focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+                    >
+                      <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-cyan-300/15 text-cyan-100 ring-1 ring-cyan-200/20 transition group-hover:scale-105">
+                        <FolderOpen size={26} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-black text-white">
+                          مرور فایل‌های سازمانی
+                        </span>
+                        <span className="mt-1 block text-xs leading-6 text-slate-300">
+                          {fileSharesLoading
+                            ? "در حال بررسی دسترسی‌ها..."
+                            : fileSharesError
+                              ? "بارگذاری فایل‌شیر انجام نشد."
+                              : fileShares.length > 0
+                                ? `${fileShares.length} فایل‌شیر برای حساب شما فعال است.`
+                                : "فعلا فایل‌شیری برای حساب شما تعریف نشده است."}
+                        </span>
+                      </span>
+                      <ChevronLeft
+                        size={19}
+                        className="text-cyan-100 transition group-hover:-translate-x-1"
+                      />
+                    </Link>
+                  </GlassPanel>
+                ),
+              },
               {
                 id: "poll-survey",
                 node: (
