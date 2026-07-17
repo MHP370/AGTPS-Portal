@@ -17,6 +17,7 @@ import { Reflector } from '@nestjs/core';
 import { RolesGuard } from './guards/roles.guard';
 
 import { PrismaModule } from '../prisma/prisma.module';
+import { AuditLogsModule } from '../audit-logs/audit-logs.module';
 
 import { PermissionsGuard } from './guards/permissions.guard';
 
@@ -25,6 +26,7 @@ import { PermissionsGuard } from './guards/permissions.guard';
     UsersModule,
     PassportModule,
     PrismaModule,
+    AuditLogsModule,
 
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'AGTPS_SECRET_KEY_CHANGE_ME',

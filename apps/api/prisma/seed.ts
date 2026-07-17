@@ -1,6 +1,8 @@
 import {
   ApplicationStatus,
   NetworkType,
+  NotificationTemplateCategory,
+  NotificationTemplateStatus,
   PollSurveyQuestionType,
   PollSurveyStatus,
   PollSurveyType,
@@ -12,6 +14,42 @@ import {
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
+
+function notificationTemplateHtml({
+  eyebrow,
+  title,
+  body,
+  buttonText = '{{ButtonText}}',
+  buttonUrl = '{{ButtonUrl}}',
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+  buttonText?: string;
+  buttonUrl?: string;
+}) {
+  return `
+<div dir="rtl" style="margin:0;background:#020617;color:#e5eefb;font-family:Vazirmatn,Tahoma,Arial,sans-serif;padding:28px;">
+  <div style="max-width:680px;margin:0 auto;border:1px solid rgba(34,211,238,.24);border-radius:22px;overflow:hidden;background:#0f172a;box-shadow:0 24px 80px rgba(8,145,178,.18);">
+    <div style="padding:24px 28px;background:linear-gradient(135deg,rgba(8,145,178,.45),rgba(15,23,42,.96));border-bottom:1px solid rgba(34,211,238,.18);">
+      <div style="font-size:12px;font-weight:800;color:#67e8f9;letter-spacing:.4px;">${eyebrow}</div>
+      <h1 style="margin:10px 0 0;font-size:24px;line-height:1.7;color:#ffffff;">${title}</h1>
+      <div style="margin-top:8px;font-size:13px;color:#cbd5e1;">{{CompanyName}} · {{CurrentDate}}</div>
+    </div>
+    <div style="padding:28px;line-height:2;font-size:14px;color:#dbeafe;">
+      ${body}
+      <div style="margin-top:26px;">
+        <a href="${buttonUrl}" style="display:inline-block;background:#0891b2;color:#ffffff;text-decoration:none;border-radius:14px;padding:12px 22px;font-weight:900;border:1px solid rgba(103,232,249,.4);">${buttonText}</a>
+      </div>
+    </div>
+    <div style="padding:18px 28px;border-top:1px solid rgba(148,163,184,.18);background:#0b1120;color:#94a3b8;font-size:12px;line-height:1.8;">
+      این پیام به صورت خودکار از مرکز اعلان‌های AGTPS Portal ارسال شده است.
+      <br />
+      {{PortalUrl}}
+    </div>
+  </div>
+</div>`;
+}
 
 async function main() {
   const password = await bcrypt.hash('Admin@123', 10);
@@ -130,6 +168,54 @@ async function main() {
     {
       name: 'modules.manage',
       title: 'Manage Portal Modules',
+    },
+    {
+      name: 'notification.view',
+      title: 'View Notification Center',
+    },
+    {
+      name: 'notification.manage',
+      title: 'Manage Notification Center',
+    },
+    {
+      name: 'notification.templates.manage',
+      title: 'Manage Notification Templates',
+    },
+    {
+      name: 'notification.smtp.manage',
+      title: 'Manage Notification SMTP',
+    },
+    {
+      name: 'notification.reports.view',
+      title: 'View Notification Reports',
+    },
+    {
+      name: 'backup.view',
+      title: 'View Backups',
+    },
+    {
+      name: 'backup.manage',
+      title: 'Manage Backups',
+    },
+    {
+      name: 'audit.view',
+      title: 'View Audit Logs',
+    },
+    {
+      name: 'ceo.messages.view',
+      title: 'View Direct Communication',
+    },
+    {
+      name: 'ceo.messages.reply',
+      title: 'Reply Direct Communication',
+    },
+    {
+      name: 'ceo.messages.manage',
+      title: 'Manage Direct Communication',
+    },
+    {
+      name: 'ceo.settings.manage',
+      title: 'Manage Direct Communication Settings',
     },
     {
       name: 'training.view',
@@ -627,6 +713,54 @@ async function main() {
       sortOrder: 12,
     },
     {
+      key: 'notification-center',
+      title: 'مرکز اعلان‌ها',
+      description:
+        'مدیریت SMTP، صف ارسال ایمیل، قالب‌ها و تاریخچه اعلان‌ها.',
+      icon: 'BellRing',
+      route: '/admin/notifications',
+      permission: 'notification.view',
+      isCore: false,
+      isEnabled: true,
+      sortOrder: 13,
+    },
+    {
+      key: 'backup-center',
+      title: 'مرکز بکاپ',
+      description:
+        'بکاپ دستی دیتابیس و فایل‌های مهم، دانلود امن و اعلان نتیجه بکاپ.',
+      icon: 'DatabaseBackup',
+      route: '/admin/backups',
+      permission: 'backup.view',
+      isCore: false,
+      isEnabled: true,
+      sortOrder: 14,
+    },
+    {
+      key: 'direct-communication',
+      title: 'ارتباط مستقیم مدیران',
+      description:
+        'تعریف مدیرعامل و مدیران بخش‌ها برای ارتباط مستقیم امن سازمانی.',
+      icon: 'MessageSquareLock',
+      route: '/admin/direct-communication',
+      permission: 'ceo.settings.manage',
+      isCore: false,
+      isEnabled: true,
+      sortOrder: 15,
+    },
+    {
+      key: 'audit-logs',
+      title: 'گزارش رویدادها',
+      description:
+        'ثبت عملیات حساس مدیریتی و امنیتی بدون نگهداری محتوای محرمانه.',
+      icon: 'ScrollText',
+      route: '/admin/audit-logs',
+      permission: 'audit.view',
+      isCore: false,
+      isEnabled: true,
+      sortOrder: 16,
+    },
+    {
       key: 'directory',
       title: 'اکتیو دایرکتوری',
       description: 'تنظیمات و همگام‌سازی کاربران و گروه‌های سازمانی.',
@@ -635,7 +769,7 @@ async function main() {
       permission: 'directory.manage',
       isCore: false,
       isEnabled: true,
-      sortOrder: 13,
+      sortOrder: 17,
     },
     {
       key: 'access',
@@ -646,7 +780,7 @@ async function main() {
       permission: 'access.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 14,
+      sortOrder: 18,
     },
     {
       key: 'announcements',
@@ -657,7 +791,7 @@ async function main() {
       permission: 'announcements.publish',
       isCore: false,
       isEnabled: true,
-      sortOrder: 15,
+      sortOrder: 19,
     },
     {
       key: 'sliders',
@@ -668,7 +802,7 @@ async function main() {
       permission: 'sliders.manage',
       isCore: false,
       isEnabled: true,
-      sortOrder: 16,
+      sortOrder: 20,
     },
     {
       key: 'settings',
@@ -679,7 +813,7 @@ async function main() {
       permission: 'settings.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 17,
+      sortOrder: 21,
     },
     {
       key: 'modules',
@@ -691,7 +825,7 @@ async function main() {
       permission: 'modules.manage',
       isCore: true,
       isEnabled: true,
-      sortOrder: 18,
+      sortOrder: 22,
     },
   ];
 
@@ -1031,6 +1165,241 @@ async function main() {
       pollSurveyId: sampleSurvey.id,
     },
   });
+
+  const notificationTemplates = [
+    {
+      key: 'general-message',
+      title: 'پیام عمومی پرتال',
+      category: NotificationTemplateCategory.GENERAL,
+      subject: '{{CompanyName}} - {{Title}}',
+      htmlBody: notificationTemplateHtml({
+        eyebrow: 'AGTPS PORTAL',
+        title: '{{Title}}',
+        body: '<p>سلام {{UserName}}</p><p>{{Message}}</p>',
+      }),
+      textBody: 'سلام {{UserName}}\n\n{{Message}}\n\n{{PortalUrl}}',
+    },
+    {
+      key: 'announcement-published',
+      title: 'اطلاعیه جدید',
+      category: NotificationTemplateCategory.ANNOUNCEMENTS,
+      subject: 'اطلاعیه جدید: {{Title}}',
+      htmlBody: notificationTemplateHtml({
+        eyebrow: 'اطلاعیه سازمانی',
+        title: '{{Title}}',
+        body:
+          '<p>سلام {{UserName}}</p><p>یک اطلاعیه جدید در پرتال منتشر شده است.</p><div style="margin-top:16px;padding:16px;border-radius:16px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.18);">{{Message}}</div>',
+        buttonText: 'مشاهده اطلاعیه',
+      }),
+      textBody: 'اطلاعیه جدید: {{Title}}\n\n{{Message}}\n\n{{ButtonUrl}}',
+    },
+    {
+      key: 'meeting-invite',
+      title: 'دعوت به جلسه',
+      category: NotificationTemplateCategory.MEETINGS,
+      subject: 'دعوت جلسه: {{Title}}',
+      htmlBody: notificationTemplateHtml({
+        eyebrow: 'تقویم جلسات',
+        title: '{{Title}}',
+        body:
+          '<p>سلام {{UserName}}</p><p>شما به جلسه زیر دعوت شده‌اید.</p><ul style="padding-right:20px;color:#cbd5e1;line-height:2;"><li>زمان: {{MeetingTime}}</li><li>مکان: {{Location}}</li></ul><p>{{Description}}</p>',
+        buttonText: 'مشاهده جلسه',
+      }),
+      textBody:
+        'دعوت جلسه: {{Title}}\nزمان: {{MeetingTime}}\nمکان: {{Location}}\n{{Description}}\n{{ButtonUrl}}',
+    },
+    {
+      key: 'training-assigned',
+      title: 'آموزش جدید',
+      category: NotificationTemplateCategory.TRAINING,
+      subject: 'آموزش جدید برای شما: {{Title}}',
+      htmlBody: notificationTemplateHtml({
+        eyebrow: 'آموزش سازمانی',
+        title: '{{Title}}',
+        body:
+          '<p>سلام {{UserName}}</p><p>یک محتوای آموزشی برای شما فعال شده است.</p><p>دسته: {{Category}}</p><p>مهلت: {{Deadline}}</p>',
+        buttonText: 'شروع آموزش',
+      }),
+      textBody:
+        'آموزش جدید: {{Title}}\nدسته: {{Category}}\nمهلت: {{Deadline}}\n{{ButtonUrl}}',
+    },
+    {
+      key: 'poll-survey-reminder',
+      title: 'یادآوری نظرسنجی و رای‌گیری',
+      category: NotificationTemplateCategory.POLLS,
+      subject: 'یادآوری مشارکت: {{Title}}',
+      htmlBody: notificationTemplateHtml({
+        eyebrow: 'مشارکت سازمانی',
+        title: '{{Title}}',
+        body:
+          '<p>سلام {{UserName}}</p><p>لطفا در نظرسنجی/رای‌گیری زیر شرکت کنید.</p><p>مهلت مشارکت: {{Deadline}}</p><p>{{Description}}</p>',
+        buttonText: 'ثبت پاسخ',
+      }),
+      textBody:
+        'یادآوری مشارکت: {{Title}}\nمهلت: {{Deadline}}\n{{Description}}\n{{ButtonUrl}}',
+    },
+    {
+      key: 'backup-success',
+      title: 'بکاپ موفق',
+      category: NotificationTemplateCategory.BACKUPS,
+      subject: 'بکاپ AGTPS با موفقیت انجام شد',
+      htmlBody: notificationTemplateHtml({
+        eyebrow: 'Backup Center',
+        title: 'بکاپ با موفقیت انجام شد',
+        body:
+          '<p>بکاپ زمان‌بندی‌شده با موفقیت ساخته شد.</p><ul style="padding-right:20px;color:#cbd5e1;line-height:2;"><li>زمان: {{BackupTime}}</li><li>حجم: {{BackupSize}}</li><li>مسیر: {{BackupPath}}</li></ul>',
+        buttonText: 'مشاهده بکاپ‌ها',
+      }),
+      textBody:
+        'بکاپ موفق\nزمان: {{BackupTime}}\nحجم: {{BackupSize}}\nمسیر: {{BackupPath}}',
+    },
+    {
+      key: 'backup-failed',
+      title: 'خطای بکاپ',
+      category: NotificationTemplateCategory.BACKUPS,
+      subject: 'خطا در بکاپ AGTPS',
+      htmlBody: notificationTemplateHtml({
+        eyebrow: 'Backup Center',
+        title: 'بکاپ انجام نشد',
+        body:
+          '<p>در اجرای بکاپ خطا رخ داده است.</p><div style="margin-top:16px;padding:16px;border-radius:16px;background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.28);color:#fecdd3;">{{ErrorMessage}}</div>',
+        buttonText: 'بررسی خطا',
+      }),
+      textBody: 'خطای بکاپ\n{{ErrorMessage}}',
+    },
+  ];
+
+  await Promise.all(
+    notificationTemplates.map((template) =>
+      prisma.notificationTemplate.upsert({
+        where: {
+          key: template.key,
+        },
+        update: {
+          title: template.title,
+          category: template.category,
+          status: NotificationTemplateStatus.PUBLISHED,
+          subject: template.subject,
+          htmlBody: template.htmlBody,
+          textBody: template.textBody,
+        },
+        create: {
+          ...template,
+          status: NotificationTemplateStatus.PUBLISHED,
+        },
+      }),
+    ),
+  );
+
+  const templateByKey = new Map(
+    (
+      await prisma.notificationTemplate.findMany({
+        where: {
+          key: {
+            in: notificationTemplates.map((template) => template.key),
+          },
+        },
+        select: {
+          id: true,
+          key: true,
+        },
+      })
+    ).map((template) => [template.key, template.id]),
+  );
+
+  const notificationRules = [
+    {
+      eventKey: 'announcement.published',
+      title: 'انتشار اطلاعیه',
+      description: 'هنگام انتشار اطلاعیه جدید',
+      moduleKey: 'announcements',
+      portalEnabled: true,
+      emailEnabled: false,
+      templateKey: 'announcement-published',
+      priority: 50,
+    },
+    {
+      eventKey: 'meeting.invite',
+      title: 'دعوت به جلسه',
+      description: 'هنگام ایجاد جلسه و دعوت اعضا',
+      moduleKey: 'meetings',
+      portalEnabled: true,
+      emailEnabled: true,
+      templateKey: 'meeting-invite',
+      priority: 20,
+    },
+    {
+      eventKey: 'meeting.update',
+      title: 'به‌روزرسانی جلسه',
+      description: 'هنگام ویرایش اعضا یا اطلاعات جلسه',
+      moduleKey: 'meetings',
+      portalEnabled: true,
+      emailEnabled: true,
+      templateKey: 'meeting-invite',
+      priority: 30,
+    },
+    {
+      eventKey: 'workspace.reminder',
+      title: 'یادآوری شخصی',
+      description: 'هنگام رسیدن زمان یادآوری کاربر',
+      moduleKey: 'workspace',
+      portalEnabled: true,
+      emailEnabled: false,
+      templateKey: 'general-message',
+      priority: 40,
+    },
+    {
+      eventKey: 'workspace.task',
+      title: 'یادآوری تسک',
+      description: 'هنگام رسیدن موعد تسک کاربر',
+      moduleKey: 'workspace',
+      portalEnabled: true,
+      emailEnabled: false,
+      templateKey: 'general-message',
+      priority: 40,
+    },
+    {
+      eventKey: 'backup.result',
+      title: 'نتیجه بکاپ',
+      description: 'هنگام موفق یا ناموفق شدن بکاپ دستی و خودکار',
+      moduleKey: 'backup-center',
+      portalEnabled: false,
+      emailEnabled: true,
+      templateKey: 'backup-success',
+      priority: 15,
+    },
+  ];
+
+  await Promise.all(
+    notificationRules.map((rule) =>
+      prisma.notificationRule.upsert({
+        where: {
+          eventKey: rule.eventKey,
+        },
+        update: {
+          title: rule.title,
+          description: rule.description,
+          moduleKey: rule.moduleKey,
+          portalEnabled: rule.portalEnabled,
+          emailEnabled: rule.emailEnabled,
+          emailTemplateId: templateByKey.get(rule.templateKey),
+          priority: rule.priority,
+          isActive: true,
+        },
+        create: {
+          eventKey: rule.eventKey,
+          title: rule.title,
+          description: rule.description,
+          moduleKey: rule.moduleKey,
+          portalEnabled: rule.portalEnabled,
+          emailEnabled: rule.emailEnabled,
+          emailTemplateId: templateByKey.get(rule.templateKey),
+          priority: rule.priority,
+          isActive: true,
+        },
+      }),
+    ),
+  );
 
   console.log('✅ Seed completed.');
 }

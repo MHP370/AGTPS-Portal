@@ -6,9 +6,12 @@ import {
   Put,
   Req,
   UseGuards,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { Request } from 'express';
+import { AuditAction } from '@prisma/client';
+import type { Request } from 'express';
 
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { AuthService } from './auth.service';
 import { ChangeOwnPasswordDto } from './dto/change-own-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -17,11 +20,46 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly auditLogsService: AuditLogsService,
+  ) {}
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.username, dto.password);
+  async login(
+    @Body() dto: LoginDto,
+    @Req() request: Request,
+  ) {
+    try {
+      const result = await this.authService.login(dto.username, dto.password);
+
+      await this.auditLogsService.record({
+        actor: result.user,
+        request: this.getRequestMeta(request),
+        action: AuditAction.LOGIN_SUCCESS,
+        entityType: 'auth',
+        entityId: result.user.id,
+        summary: `Login success for ${result.user.username}`,
+      });
+
+      return result;
+    } catch (error) {
+      await this.auditLogsService.record({
+        actor: {
+          username: dto.username,
+        },
+        request: this.getRequestMeta(request),
+        action: AuditAction.LOGIN_FAILED,
+        entityType: 'auth',
+        summary: `Login failed for ${dto.username}`,
+      });
+
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      throw error;
+    }
   }
 
   @Get('me')
@@ -46,5 +84,12 @@ export class AuthController {
     @Body() dto: ChangeOwnPasswordDto,
   ) {
     return this.authService.changeOwnPassword(request.user!.id, dto);
+  }
+
+  private getRequestMeta(request: Request) {
+    return {
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'],
+    };
   }
 }

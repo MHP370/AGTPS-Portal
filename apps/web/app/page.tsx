@@ -27,6 +27,8 @@ import {
   GraduationCap,
   ListTodo,
   LogOut,
+  Megaphone,
+  MessageSquareLock,
   Plus,
   PlayCircle,
   Settings,
@@ -140,6 +142,16 @@ const notificationTypeMeta: Record<
     icon: typeof Bell;
   }
 > = {
+  ANNOUNCEMENT: {
+    label: "اطلاعیه",
+    color: "text-sky-200 bg-sky-400/10 border-sky-300/20",
+    icon: Megaphone,
+  },
+  DIRECT_MESSAGE: {
+    label: "پیام مدیران",
+    color: "text-violet-200 bg-violet-400/10 border-violet-300/20",
+    icon: MessageSquareLock,
+  },
   MEETING_INVITE: {
     label: "دعوت جلسه",
     color: "text-cyan-200 bg-cyan-400/10 border-cyan-300/20",
@@ -162,7 +174,9 @@ const notificationTypeMeta: Record<
   },
 };
 
-const notificationModuleKeys: Record<string, string> = {
+const notificationModuleKeys: Record<string, string | null> = {
+  ANNOUNCEMENT: "announcements",
+  DIRECT_MESSAGE: null,
   MEETING_INVITE: "meetings",
   MEETING_UPDATE: "meetings",
   REMINDER: "workspace",
@@ -1358,6 +1372,11 @@ export default function Home() {
   const openNotification = useCallback((notification: PortalNotification) => {
     if (!notification.readAt) {
       markNotificationRead.mutate(notification.id);
+    }
+
+    if (notification.type === "DIRECT_MESSAGE") {
+      window.location.href = "/admin/direct-messages";
+      return;
     }
 
     const requiredModuleKey = notificationModuleKeys[notification.type];
@@ -3401,7 +3420,9 @@ export default function Home() {
                             disabled={!actionEnabled}
                             className="rounded-xl bg-cyan-500 px-4 py-2 text-xs font-black text-white hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            باز کردن مقصد
+                            {selectedNotification.type === "DIRECT_MESSAGE"
+                              ? "رفتن به داشبورد"
+                              : "باز کردن مقصد"}
                           </button>
                         </div>
                       </div>

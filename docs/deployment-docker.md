@@ -69,6 +69,20 @@ Then define this path in the portal admin:
 
 To make SMB mounts persistent, add them to `/etc/fstab` on the host.
 
+## Backups
+
+Backup files are stored in the Docker volume `portal-backups` and are not
+served directly by nginx. Download must go through the authenticated API.
+
+To inspect backup files on the host:
+
+```bash
+docker volume inspect agtps-portal_portal-backups
+```
+
+The API container includes `pg_dump` and `tar`, which are required for manual
+database/files backups.
+
 ## Useful Commands
 
 ```bash

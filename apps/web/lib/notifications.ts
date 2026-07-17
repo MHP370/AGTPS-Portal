@@ -44,6 +44,10 @@ export function getNotificationTargetDate(notification: PortalNotification) {
 }
 
 export function getNotificationTargetUrl(notification: PortalNotification) {
+  if (notification.type === "DIRECT_MESSAGE") {
+    return "/admin/direct-messages";
+  }
+
   if (notification.meetingId) {
     return `/?notification=${notification.meetingId}&type=meeting`;
   }

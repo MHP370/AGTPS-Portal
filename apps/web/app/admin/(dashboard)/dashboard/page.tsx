@@ -5,11 +5,11 @@ import {
   Activity,
   Bell,
   CalendarDays,
-  CloudDownload,
   Database,
   FileText,
   Globe2,
   LayoutDashboard,
+  MessageSquareLock,
   MonitorCog,
   Newspaper,
   ShieldCheck,
@@ -21,15 +21,19 @@ import {
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { useApplications } from "@/hooks/useApplications";
 import { useCategories } from "@/hooks/useCategories";
-import { useAdminDownloads } from "@/hooks/useDownloads";
+import {
+  useMyDirectConversations,
+  useMyDirectInbox,
+} from "@/hooks/useDirectCommunication";
+import { useReadinessReport } from "@/hooks/useHealth";
 import { useAdminMeetings } from "@/hooks/useMeetings";
 import { useNews } from "@/hooks/useNews";
 import { useAdminPollSurveys } from "@/hooks/usePollSurveys";
 import { useAdminPortalModules } from "@/hooks/usePortalModules";
 import { useSites } from "@/hooks/useSites";
-import { useSliders } from "@/hooks/useSliders";
 import { useAdminSystemStatuses } from "@/hooks/useSystemStatuses";
 import { useUsers } from "@/hooks/useUsers";
+import type { HealthState } from "@/lib/health";
 
 function formatDateTime(value?: string | null) {
   if (!value) return "ثبت نشده";
@@ -40,6 +44,26 @@ function formatDateTime(value?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+const healthStateLabels: Record<HealthState, string> = {
+  UP: "آماده",
+  DEGRADED: "نیازمند توجه",
+  DOWN: "بحرانی",
+};
+
+const healthStateClasses: Record<HealthState, string> = {
+  UP: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100",
+  DEGRADED: "border-amber-300/20 bg-amber-400/10 text-amber-100",
+  DOWN: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+};
+
+function formatBytes(value?: number) {
+  if (!value) return "-";
+  if (value < 1024 * 1024 * 1024) {
+    return `${Math.round(value / 1024 / 1024)} MB`;
+  }
+  return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
 function StatCard({
@@ -87,14 +111,16 @@ export default function DashboardPage() {
   const { data: news = [], isLoading: newsLoading } = useNews();
   const { data: announcements = [], isLoading: announcementsLoading } =
     useAnnouncements();
-  const { data: downloads = [] } = useAdminDownloads();
   const { data: meetings = [] } = useAdminMeetings();
   const { data: users = [] } = useUsers();
-  const { data: sliders = [] } = useSliders();
   const { data: modules = [] } = useAdminPortalModules();
   const { data: statuses = [], isLoading: statusesLoading } =
     useAdminSystemStatuses();
   const { data: polls = [] } = useAdminPollSurveys();
+  const { data: myDirectConversations = [] } = useMyDirectConversations();
+  const { data: myDirectInbox = [] } = useMyDirectInbox();
+  const { data: readiness, isLoading: readinessLoading } =
+    useReadinessReport();
 
   const activeModules = modules.filter(
     (module) => module.isInstalled && module.isEnabled,
@@ -108,6 +134,16 @@ export default function DashboardPage() {
     (item) => item.lastHealthState === "DEGRADED",
   );
   const runningPolls = polls.filter((item) => item.status === "RUNNING");
+  const directConversations = [
+    ...myDirectInbox,
+    ...myDirectConversations.filter(
+      (sent) => !myDirectInbox.some((inbox) => inbox.id === sent.id),
+    ),
+  ];
+  const openDirectConversations = myDirectInbox.filter(
+    (item) => item.status === "OPEN",
+  );
+  const recentDirectConversations = directConversations.slice(0, 4);
   const upcomingMeetings = meetings
     .filter((meeting) => new Date(meeting.startAt) >= new Date())
     .sort(
@@ -141,6 +177,7 @@ export default function DashboardPage() {
 
   const isLoading =
     applicationsLoading || newsLoading || announcementsLoading || statusesLoading;
+  const readinessStatus = readiness?.status ?? "DEGRADED";
 
   return (
     <div className="space-y-8">
@@ -230,14 +267,79 @@ export default function DashboardPage() {
           href="/admin/polls"
         />
         <StatCard
-          title="دانلودها و اسلایدر"
-          value={downloads.length + sliders.length}
-          hint={`${downloads.length} فایل دانلود و ${sliders.length} اسلاید`}
-          icon={CloudDownload}
-          color="#60a5fa"
-          href="/admin/downloads"
+          title="ارتباط مدیران"
+          value={openDirectConversations.length}
+          hint={`${myDirectConversations.length} ارسالی، ${myDirectInbox.length} دریافتی مدیر`}
+          icon={MessageSquareLock}
+          color="#c084fc"
+          href="/admin/direct-messages"
         />
       </div>
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-bold text-cyan-200">
+              Production Readiness
+            </p>
+            <h2 className="mt-2 text-xl font-black text-white">
+              آمادگی انتشار
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-400">
+              وضعیت API، دیتابیس، فضای ذخیره‌سازی، بکاپ و اعلان‌ها برای انتشار.
+            </p>
+          </div>
+          <span
+            className={`inline-flex w-fit rounded-full border px-4 py-2 text-sm font-black ${
+              healthStateClasses[readinessStatus]
+            }`}
+          >
+            {readinessLoading
+              ? "در حال بررسی..."
+              : healthStateLabels[readinessStatus]}
+          </span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {(readiness?.checks ?? []).slice(0, 9).map((check) => (
+            <div
+              key={check.key}
+              className={`rounded-2xl border p-4 ${
+                healthStateClasses[check.status]
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-black">{check.title}</div>
+                  <div className="mt-1 text-xs opacity-75" dir="ltr">
+                    {check.key}
+                  </div>
+                </div>
+                <span className="rounded-full bg-black/20 px-3 py-1 text-xs font-black">
+                  {healthStateLabels[check.status]}
+                </span>
+              </div>
+              <div className="mt-3 text-xs leading-6 opacity-85">
+                {check.message ||
+                  check.error ||
+                  (check.key === "disk"
+                    ? `فضای آزاد: ${formatBytes(check.availableBytes)} · مصرف: ${
+                        check.usedPercent ?? 0
+                      }%`
+                    : check.key === "external-systems"
+                      ? `${check.downCount ?? 0} قطع، ${
+                          check.degradedCount ?? 0
+                        } اختلال`
+                      : check.finishedAt
+                        ? `آخرین اجرا: ${formatDateTime(check.finishedAt)}`
+                        : check.responseTimeMs !== undefined
+                          ? `${check.responseTimeMs}ms`
+                          : "بدون جزئیات")}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
@@ -367,6 +469,7 @@ export default function DashboardPage() {
               { title: "افزودن سامانه", href: "/admin/applications", icon: Database },
               { title: "ثبت اطلاعیه", href: "/admin/announcements", icon: Bell },
               { title: "ثبت خبر", href: "/admin/news", icon: FileText },
+              { title: "پیام‌های من", href: "/admin/direct-messages", icon: MessageSquareLock },
               { title: "وضعیت سیستم‌ها", href: "/admin/system-statuses", icon: Activity },
             ].map((item) => {
               const Icon = item.icon;
@@ -385,6 +488,64 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MessageSquareLock className="text-violet-200" size={20} />
+            <h2 className="text-xl font-black text-white">
+              پیام‌های ارتباط مستقیم
+            </h2>
+          </div>
+          <Link
+            href="/admin/direct-messages"
+            className="text-xs font-bold text-violet-200 hover:text-violet-100"
+          >
+            مشاهده پیام‌ها
+          </Link>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {recentDirectConversations.map((conversation) => (
+            <Link
+              key={conversation.id}
+              href="/admin/direct-messages"
+              className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 transition hover:bg-slate-950/70"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-white">
+                    {conversation.subject}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {conversation.manager.title} ·{" "}
+                    {formatDateTime(conversation.lastMessageAt)}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-black ${
+                    conversation.status === "OPEN"
+                      ? "bg-cyan-400/10 text-cyan-100"
+                      : conversation.status === "RESOLVED"
+                        ? "bg-emerald-400/10 text-emerald-100"
+                        : "bg-slate-700 text-slate-200"
+                  }`}
+                >
+                  {conversation.status === "OPEN"
+                    ? "باز"
+                    : conversation.status === "RESOLVED"
+                      ? "حل‌شده"
+                      : conversation.status}
+                </span>
+              </div>
+            </Link>
+          ))}
+          {recentDirectConversations.length === 0 && (
+            <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400 md:col-span-2 xl:col-span-4">
+              هنوز مکالمه مستقیمی ثبت نشده است.
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

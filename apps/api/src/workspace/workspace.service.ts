@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { NotificationType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { CreateReminderDto } from './dto/create-reminder.dto';
@@ -16,7 +17,10 @@ type AuthenticatedUser = {
 
 @Injectable()
 export class WorkspaceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   findNotes(ownerId?: string) {
     if (!ownerId) return [];
@@ -206,7 +210,7 @@ export class WorkspaceService {
     return new Date(date.getTime() - notifyBeforeMinutes * 60 * 1000);
   }
 
-  private createNotification(data: {
+  private async createNotification(data: {
     type: NotificationType;
     title: string;
     body: string;
@@ -215,8 +219,57 @@ export class WorkspaceService {
     reminderId?: string;
     taskId?: string;
   }) {
-    return this.prisma.portalNotification.create({
-      data,
+    return this.notificationsService.dispatchEvent({
+      eventKey: data.reminderId ? 'workspace.reminder' : 'workspace.task',
+      portal: data,
+      email: data.recipientEmail
+        ? {
+            fallbackTemplateKey: 'general-message',
+            recipientEmail: data.recipientEmail,
+            recipientName: '',
+            scheduledAt: data.scheduledAt.toISOString(),
+            priority: 40,
+            variables: {
+              Title: data.title,
+              Message: data.body,
+              ButtonText: 'مشاهده در پرتال',
+              ButtonUrl: `${process.env.PORTAL_URL || ''}/?notification=${
+                data.reminderId || data.taskId || ''
+              }&type=${data.reminderId ? 'reminder' : 'task'}`,
+            },
+          }
+        : undefined,
+    });
+  }
+
+  private async upsertPortalNotification(where: {
+    reminderId?: string;
+    taskId?: string;
+  }, data: {
+    type: NotificationType;
+    title: string;
+    body: string;
+    recipientEmail?: string | null;
+    scheduledAt: Date;
+    reminderId?: string;
+    taskId?: string;
+    sentAt?: Date | null;
+    readAt?: Date | null;
+  }) {
+    return this.prisma.portalNotification.upsert({
+      where: {
+        id:
+          (
+            await this.prisma.portalNotification.findFirst({
+              where,
+              select: {
+                id: true,
+              },
+            })
+          )?.id ?? `__missing_${where.reminderId ? 'reminder' : 'task'}_notification__`,
+      },
+      update: data,
+      create: data,
     });
   }
 
@@ -239,37 +292,15 @@ export class WorkspaceService {
       },
     });
 
-    await this.prisma.portalNotification.upsert({
-      where: {
-        id:
-          (
-            await this.prisma.portalNotification.findFirst({
-              where: {
-                reminderId: reminder.id,
-              },
-              select: {
-                id: true,
-              },
-            })
-          )?.id ?? '__missing_reminder_notification__',
+    await this.upsertPortalNotification(
+      {
+        reminderId: reminder.id,
       },
-      update: {
-        title: 'یادآوری',
-        body: reminder.title,
-        recipientEmail: owner?.email,
-        scheduledAt: this.getScheduledNotificationTime(
-          reminder.remindAt,
-          reminder.notifyBeforeMinutes,
-        ),
-        sentAt: reminder.completed ? new Date() : null,
-        readAt: reminder.completed ? new Date() : null,
-      },
-      create: {
+      {
         type: NotificationType.REMINDER,
         title: 'یادآوری',
         body: reminder.title,
         recipientEmail: owner?.email,
-        reminderId: reminder.id,
         scheduledAt: this.getScheduledNotificationTime(
           reminder.remindAt,
           reminder.notifyBeforeMinutes,
@@ -277,7 +308,7 @@ export class WorkspaceService {
         sentAt: reminder.completed ? new Date() : null,
         readAt: reminder.completed ? new Date() : null,
       },
-    });
+    );
   }
 
   private async syncTaskNotification(
@@ -309,37 +340,15 @@ export class WorkspaceService {
     });
     const isDone = task.status === 'DONE';
 
-    await this.prisma.portalNotification.upsert({
-      where: {
-        id:
-          (
-            await this.prisma.portalNotification.findFirst({
-              where: {
-                taskId: task.id,
-              },
-              select: {
-                id: true,
-              },
-            })
-          )?.id ?? '__missing_task_notification__',
+    await this.upsertPortalNotification(
+      {
+        taskId: task.id,
       },
-      update: {
-        title: 'یادآوری کار',
-        body: task.title,
-        recipientEmail: owner?.email,
-        scheduledAt: this.getScheduledNotificationTime(
-          task.dueDate,
-          task.notifyBeforeMinutes,
-        ),
-        sentAt: isDone ? new Date() : null,
-        readAt: isDone ? new Date() : null,
-      },
-      create: {
+      {
         type: NotificationType.TASK,
         title: 'یادآوری کار',
         body: task.title,
         recipientEmail: owner?.email,
-        taskId: task.id,
         scheduledAt: this.getScheduledNotificationTime(
           task.dueDate,
           task.notifyBeforeMinutes,
@@ -347,6 +356,6 @@ export class WorkspaceService {
         sentAt: isDone ? new Date() : null,
         readAt: isDone ? new Date() : null,
       },
-    });
+    );
   }
 }

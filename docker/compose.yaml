@@ -7,6 +7,7 @@ networks:
 volumes:
   postgres-data:
   portal-uploads:
+  portal-backups:
 
 services:
   postgres:
@@ -40,11 +41,16 @@ services:
       PORT: 3002
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       JWT_SECRET: ${JWT_SECRET}
+      DIRECT_COMMUNICATION_ENCRYPTION_KEY: ${DIRECT_COMMUNICATION_ENCRYPTION_KEY}
+      DIRECT_COMMUNICATION_MESSAGING_ENABLED: ${DIRECT_COMMUNICATION_MESSAGING_ENABLED:-true}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
+      BACKUP_DIR: /var/lib/agtps/backups
+      PORTAL_URL: ${PORTAL_URL:-http://localhost}
     volumes:
       - portal-uploads:/app/apps/web/public/uploads
+      - portal-backups:/var/lib/agtps/backups
       - ${FILE_SHARES_ROOT:-./file-shares}:/mnt/file-shares
     networks:
       - agtps-network

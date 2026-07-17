@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { NotificationType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { UpdateMeetingDto } from './dto/update-meeting.dto';
@@ -12,7 +13,10 @@ type AuthenticatedUser = {
 
 @Injectable()
 export class MeetingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async findAll(includePrivate = false, currentUser?: AuthenticatedUser) {
     const where = includePrivate
@@ -226,18 +230,79 @@ export class MeetingsService {
 
     if (cleanParticipants.length === 0) return;
 
-    await this.prisma.portalNotification.createMany({
-      data: cleanParticipants.map((participant) => ({
-        type,
-        title:
-          type === NotificationType.MEETING_INVITE
-            ? 'دعوت به جلسه'
-            : 'به‌روزرسانی جلسه',
-        body: meetingTitle,
-        meetingId,
-        recipientDirectoryUserId: participant.directoryUserId,
-        recipientEmail: participant.email,
-      })),
+    const directoryUsers = await this.prisma.directoryUser.findMany({
+      where: {
+        id: {
+          in: cleanParticipants
+            .map((participant) => participant.directoryUserId)
+            .filter((id): id is string => Boolean(id)),
+        },
+      },
+      select: {
+        id: true,
+        displayName: true,
+        email: true,
+      },
     });
+    const directoryUserMap = new Map(
+      directoryUsers.map((user) => [user.id, user]),
+    );
+    const isInvite = type === NotificationType.MEETING_INVITE;
+    const title = isInvite ? 'دعوت به جلسه' : 'به‌روزرسانی جلسه';
+    const meeting = await this.prisma.meeting.findUnique({
+      where: {
+        id: meetingId,
+      },
+      select: {
+        startAt: true,
+        location: true,
+        description: true,
+      },
+    });
+    const meetingTime = meeting?.startAt
+      ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(meeting.startAt)
+      : '';
+
+    await Promise.all(
+      cleanParticipants.map(async (participant) => {
+        const directoryUser = participant.directoryUserId
+          ? directoryUserMap.get(participant.directoryUserId)
+          : null;
+        const recipientEmail = participant.email || directoryUser?.email || null;
+        const recipientName =
+          participant.displayName || directoryUser?.displayName || '';
+
+        await this.notificationsService.dispatchEvent({
+          eventKey: isInvite ? 'meeting.invite' : 'meeting.update',
+          portal: {
+            type,
+            title,
+            body: meetingTitle,
+            meetingId,
+            recipientDirectoryUserId: participant.directoryUserId,
+            recipientEmail,
+          },
+          email: recipientEmail
+            ? {
+                fallbackTemplateKey: 'meeting-invite',
+                recipientEmail,
+                recipientName,
+                priority: isInvite ? 20 : 30,
+                variables: {
+                  UserName: recipientName,
+                  Title: meetingTitle,
+                  MeetingTime: meetingTime,
+                  Location: meeting?.location || '-',
+                  Description: meeting?.description || '',
+                  ButtonUrl: `${process.env.PORTAL_URL || ''}/?notification=${meetingId}&type=meeting`,
+                },
+              }
+            : undefined,
+        });
+      }),
+    );
   }
 }

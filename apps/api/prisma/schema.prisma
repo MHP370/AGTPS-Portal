@@ -38,10 +38,69 @@ enum TaskStatus {
 }
 
 enum NotificationType {
+  ANNOUNCEMENT
+  DIRECT_MESSAGE
   MEETING_INVITE
   MEETING_UPDATE
   REMINDER
   TASK
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  USER_UPDATED
+  PASSWORD_CHANGED
+  BACKUP_CREATED
+  BACKUP_DELETED
+  BACKUP_RESTORED
+  NOTIFICATION_RULE_UPDATED
+  DIRECT_MANAGER_CREATED
+  DIRECT_MANAGER_UPDATED
+  DIRECT_MANAGER_DELETED
+  FORBIDDEN_WORD_CREATED
+  FORBIDDEN_WORD_UPDATED
+  FORBIDDEN_WORD_DELETED
+  DIRECT_CONVERSATION_CREATED
+  DIRECT_CONVERSATION_OPENED
+  DIRECT_CONVERSATION_REPLIED
+  DIRECT_CONVERSATION_STATUS_CHANGED
+}
+
+enum DirectCommunicationMode {
+  NORMAL
+  CONFIDENTIAL
+  ANONYMOUS
+}
+
+enum DirectCommunicationCategory {
+  SUGGESTION
+  COMPLAINT
+  VIOLATION_REPORT
+  IMPROVEMENT_IDEA
+  REQUEST
+  CONFIDENTIAL_REPORT
+  GENERAL_MESSAGE
+}
+
+enum DirectCommunicationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DirectCommunicationStatus {
+  OPEN
+  RESOLVED
+  ARCHIVED
+  CLOSED
+}
+
+enum DirectCommunicationSenderType {
+  EMPLOYEE
+  MANAGER
+  SYSTEM
 }
 
 enum DirectorySource {
@@ -130,28 +189,32 @@ model User {
   email    String @unique
   password String
 
-  firstName String?
-  lastName  String?
-  personnelCode String?
-  birthDate DateTime?
-  allowEmailChange    Boolean @default(false)
-  allowPasswordChange Boolean @default(true)
-  allowProfileEdit    Boolean @default(true)
+  firstName           String?
+  lastName            String?
+  personnelCode       String?
+  birthDate           DateTime?
+  allowEmailChange    Boolean   @default(false)
+  allowPasswordChange Boolean   @default(true)
+  allowProfileEdit    Boolean   @default(true)
 
   isActive Boolean @default(true)
 
-  roles                        UserRole[]
-  organizedMeetings            Meeting[]                     @relation("MeetingOrganizer")
-  meetingParticipants          MeetingParticipant[]
-  notes                        PortalNote[]
-  reminders                    PortalReminder[]
-  tasks                        PortalTask[]
-  downloads                    PortalDownload[]
-  trainingProgress             TrainingProgress[]
-  inPersonTrainingParticipants InPersonTrainingParticipant[]
-  createdPollSurveys           PollSurvey[]                  @relation("PollSurveyCreator")
-  pollSurveyResponses          PollSurveyResponse[]
-  smbAudits                    SmbFileAudit[]
+  roles                            UserRole[]
+  organizedMeetings                Meeting[]                         @relation("MeetingOrganizer")
+  meetingParticipants              MeetingParticipant[]
+  notes                            PortalNote[]
+  reminders                        PortalReminder[]
+  tasks                            PortalTask[]
+  downloads                        PortalDownload[]
+  trainingProgress                 TrainingProgress[]
+  inPersonTrainingParticipants     InPersonTrainingParticipant[]
+  createdPollSurveys               PollSurvey[]                      @relation("PollSurveyCreator")
+  pollSurveyResponses              PollSurveyResponse[]
+  smbAudits                        SmbFileAudit[]
+  auditLogs                        AuditLog[]
+  directCommunicationManagers      DirectCommunicationManager[]
+  directCommunicationConversations DirectCommunicationConversation[]
+  directCommunicationMessages      DirectCommunicationMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -177,6 +240,31 @@ model Permission {
   roles RolePermission[]
 }
 
+model AuditLog {
+  id String @id @default(cuid())
+
+  actorUserId   String?
+  actorUsername String?
+  actorEmail    String?
+
+  action     AuditAction
+  entityType String
+  entityId   String?
+  summary    String?
+  metadata   Json?
+
+  ipAddress String?
+  userAgent String? @db.Text
+
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
 model DirectoryUser {
   id          String          @id @default(cuid())
   username    String          @unique
@@ -187,18 +275,121 @@ model DirectoryUser {
   source      DirectorySource @default(INTERNAL)
   isActive    Boolean         @default(true)
 
-  groupMemberships             DirectoryGroupMember[]
-  organizedMeetings            Meeting[]                     @relation("DirectoryMeetingOrganizer")
-  meetingParticipants          MeetingParticipant[]
-  notifications                PortalNotification[]
-  pushSubscriptions            PushSubscription[]
-  trainingProgress             TrainingProgress[]
-  inPersonTrainingParticipants InPersonTrainingParticipant[]
-  pollSurveyResponses          PollSurveyResponse[]
-  smbShareAccesses             SmbShareUserAccess[]
+  groupMemberships                 DirectoryGroupMember[]
+  organizedMeetings                Meeting[]                         @relation("DirectoryMeetingOrganizer")
+  meetingParticipants              MeetingParticipant[]
+  notifications                    PortalNotification[]
+  pushSubscriptions                PushSubscription[]
+  trainingProgress                 TrainingProgress[]
+  inPersonTrainingParticipants     InPersonTrainingParticipant[]
+  pollSurveyResponses              PollSurveyResponse[]
+  smbShareAccesses                 SmbShareUserAccess[]
+  directCommunicationManagers      DirectCommunicationManager[]
+  directCommunicationConversations DirectCommunicationConversation[]
+  directCommunicationMessages      DirectCommunicationMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DirectCommunicationManager {
+  id String @id @default(cuid())
+
+  title       String
+  department  String?
+  description String? @db.Text
+  isCeo       Boolean @default(false)
+  isActive    Boolean @default(true)
+
+  portalUserId    String?
+  directoryUserId String?
+
+  portalUser    User?                             @relation(fields: [portalUserId], references: [id], onDelete: SetNull)
+  directoryUser DirectoryUser?                    @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+  conversations DirectCommunicationConversation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isCeo])
+  @@index([isActive])
+}
+
+model DirectCommunicationConversation {
+  id String @id @default(cuid())
+
+  managerId String
+  manager   DirectCommunicationManager @relation(fields: [managerId], references: [id], onDelete: Restrict)
+
+  mode     DirectCommunicationMode     @default(NORMAL)
+  category DirectCommunicationCategory @default(GENERAL_MESSAGE)
+  priority DirectCommunicationPriority @default(NORMAL)
+  status   DirectCommunicationStatus   @default(OPEN)
+
+  subject            String
+  tags               String[] @default([])
+  anonymousTokenHash String?  @unique
+
+  senderUserId          String?
+  senderDirectoryUserId String?
+  senderDisplayName     String?
+
+  senderUser          User?          @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
+  senderDirectoryUser DirectoryUser? @relation(fields: [senderDirectoryUserId], references: [id], onDelete: SetNull)
+
+  isReadByManager Boolean   @default(false)
+  lastMessageAt   DateTime?
+
+  messages DirectCommunicationMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([managerId])
+  @@index([mode])
+  @@index([category])
+  @@index([priority])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DirectCommunicationMessage {
+  id String @id @default(cuid())
+
+  conversationId String
+  conversation   DirectCommunicationConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderType            DirectCommunicationSenderType
+  senderUserId          String?
+  senderDirectoryUserId String?
+
+  senderUser          User?          @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
+  senderDirectoryUser DirectoryUser? @relation(fields: [senderDirectoryUserId], references: [id], onDelete: SetNull)
+
+  encryptedPayload  String @db.Text
+  encryptionVersion String @default("placeholder-v1")
+  attachments       Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([senderType])
+  @@index([createdAt])
+}
+
+model DirectCommunicationForbiddenWord {
+  id String @id @default(cuid())
+
+  word           String
+  normalizedWord String
+  description    String? @db.Text
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([normalizedWord])
+  @@index([isActive])
 }
 
 model DirectoryGroup {
@@ -209,8 +400,8 @@ model DirectoryGroup {
   source      DirectorySource @default(INTERNAL)
   isActive    Boolean         @default(true)
 
-  members DirectoryGroupMember[]
-  roles   DirectoryGroupRole[]
+  members          DirectoryGroupMember[]
+  roles            DirectoryGroupRole[]
   smbShareAccesses SmbShareGroupAccess[]
 
   createdAt DateTime @default(now())
@@ -637,7 +828,7 @@ model SmbFileAudit {
 
   action SmbFileAuditAction
   path   String
-  detail String? @db.Text
+  detail String?            @db.Text
 
   share SmbShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
   user  User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -1010,8 +1201,8 @@ model Setting {
   trainingMaxUploadSizeMb       Int    @default(2048)
   trainingAllowedFileExtensions String @default("mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z")
 
-  requireUserPersonnelCode Boolean @default(false)
-  requireUserBirthDate     Boolean @default(false)
+  requireUserPersonnelCode Boolean               @default(false)
+  requireUserBirthDate     Boolean               @default(false)
   topbarUserDisplayMode    TopbarUserDisplayMode @default(FULL_NAME)
 }
 
@@ -1064,4 +1255,252 @@ enum SystemHealthState {
   UP
   DEGRADED
   DOWN
+}
+
+model NotificationSmtpServer {
+  id String @id @default(cuid())
+
+  name String
+  host String
+  port Int
+
+  username String?
+  password String?
+
+  senderName  String?
+  senderEmail String
+  replyTo     String?
+
+  encryption NotificationSmtpEncryption @default(STARTTLS)
+  timeoutMs  Int                        @default(10000)
+  maxRetry   Int                        @default(3)
+  priority   Int                        @default(100)
+  isActive   Boolean                    @default(true)
+  isPrimary  Boolean                    @default(false)
+
+  lastTestStatus String?
+  lastTestError  String?   @db.Text
+  lastTestedAt   DateTime?
+
+  emails NotificationEmailQueue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationTemplate {
+  id String @id @default(cuid())
+
+  key      String                       @unique
+  title    String
+  category NotificationTemplateCategory
+  status   NotificationTemplateStatus   @default(DRAFT)
+
+  subject   String
+  htmlBody  String  @db.Text
+  textBody  String? @db.Text
+  variables Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  emails NotificationEmailQueue[]
+  rules  NotificationRule[]
+}
+
+model NotificationRule {
+  id String @id @default(cuid())
+
+  eventKey    String  @unique
+  title       String
+  description String? @db.Text
+  moduleKey   String?
+
+  portalEnabled Boolean @default(true)
+  emailEnabled  Boolean @default(false)
+  pushEnabled   Boolean @default(false)
+  smsEnabled    Boolean @default(false)
+  teamsEnabled  Boolean @default(false)
+
+  emailTemplateId String?
+  priority        Int     @default(100)
+  isActive        Boolean @default(true)
+
+  emailTemplate NotificationTemplate? @relation(fields: [emailTemplateId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationEmailQueue {
+  id String @id @default(cuid())
+
+  recipientEmail String
+  recipientName  String?
+  subject        String
+  htmlBody       String  @db.Text
+  textBody       String? @db.Text
+
+  templateId   String?
+  smtpServerId String?
+
+  status     NotificationQueueStatus @default(PENDING)
+  retryCount Int                     @default(0)
+  maxRetry   Int                     @default(3)
+  priority   Int                     @default(100)
+
+  scheduledAt DateTime?
+  sendingAt   DateTime?
+  sentAt      DateTime?
+  failedAt    DateTime?
+  cancelledAt DateTime?
+
+  messageId     String?
+  failureReason String? @db.Text
+  metadata      Json?
+
+  template   NotificationTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  smtpServer NotificationSmtpServer? @relation(fields: [smtpServerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BackupJob {
+  id String @id @default(cuid())
+
+  type   BackupType   @default(FULL)
+  status BackupStatus @default(PENDING)
+
+  fileName String?
+  filePath String?
+  fileSize BigInt?
+
+  includeDatabase Boolean @default(true)
+  includeUploads  Boolean @default(true)
+
+  requestedByUserId String?
+  notifyEmail       String?
+
+  startedAt  DateTime?
+  finishedAt DateTime?
+  error      String?   @db.Text
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restoreJobs BackupRestoreJob[]
+}
+
+model BackupRestoreJob {
+  id String @id @default(cuid())
+
+  backupId          String
+  emergencyBackupId String?
+  status            BackupRestoreStatus @default(PENDING)
+
+  restoreDatabase Boolean @default(true)
+  restoreUploads  Boolean @default(true)
+
+  startedAt  DateTime?
+  finishedAt DateTime?
+  error      String?   @db.Text
+  metadata   Json?
+
+  backup BackupJob @relation(fields: [backupId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BackupSetting {
+  id Int @id @default(1)
+
+  autoEnabled       Boolean                 @default(false)
+  frequency         BackupScheduleFrequency @default(DAILY)
+  scheduleTime      String                  @default("02:00")
+  weeklyDayOfWeek   Int                     @default(6)
+  monthlyDayOfMonth Int                     @default(1)
+  type              BackupType              @default(FULL)
+  includeDatabase   Boolean                 @default(true)
+  includeUploads    Boolean                 @default(true)
+  retentionCount    Int                     @default(10)
+  notifyEmails      String?
+
+  lastRunAt DateTime?
+  nextRunAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum NotificationSmtpEncryption {
+  NONE
+  SSL
+  TLS
+  STARTTLS
+}
+
+enum NotificationQueueStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  RETRY
+  CANCELLED
+}
+
+enum NotificationTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationTemplateCategory {
+  WELCOME
+  PASSWORD_RESET
+  ANNOUNCEMENTS
+  TRAINING
+  CALENDAR
+  MEETINGS
+  POLLS
+  SURVEYS
+  CEO_MESSAGES
+  ASSETS
+  MAINTENANCE
+  INVENTORY
+  LICENSES
+  WARRANTY
+  SYSTEM_ALERTS
+  BACKUPS
+  GENERAL
+}
+
+enum BackupType {
+  DATABASE
+  FILES
+  FULL
+}
+
+enum BackupStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  DELETED
+}
+
+enum BackupRestoreStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+enum BackupScheduleFrequency {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
 }

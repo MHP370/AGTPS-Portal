@@ -27,6 +27,9 @@ import { SystemStatusesModule } from './system-statuses/system-statuses.module';
 import { TrainingsModule } from './trainings/trainings.module';
 import { PollSurveysModule } from './poll-surveys/poll-surveys.module';
 import { FileSharesModule } from './file-shares/file-shares.module';
+import { BackupsModule } from './backups/backups.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { DirectCommunicationModule } from './direct-communication/direct-communication.module';
 
 @Module({
   imports: [
@@ -59,6 +62,9 @@ import { FileSharesModule } from './file-shares/file-shares.module';
     TrainingsModule,
     PollSurveysModule,
     FileSharesModule,
+    BackupsModule,
+    AuditLogsModule,
+    DirectCommunicationModule,
   ],
 
   controllers: [AppController],
