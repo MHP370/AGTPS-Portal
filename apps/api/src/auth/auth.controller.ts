@@ -25,13 +25,18 @@ export class AuthController {
     private readonly auditLogsService: AuditLogsService,
   ) {}
 
+  @Get('login-options')
+  loginOptions() {
+    return this.authService.getLoginOptions();
+  }
+
   @Post('login')
   async login(
     @Body() dto: LoginDto,
     @Req() request: Request,
   ) {
     try {
-      const result = await this.authService.login(dto.username, dto.password);
+      const result = await this.authService.login(dto.username, dto.password, dto.authSource);
 
       await this.auditLogsService.record({
         actor: result.user,

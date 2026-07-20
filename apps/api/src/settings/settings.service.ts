@@ -22,6 +22,8 @@ const defaultSettings = {
   activeDirectoryBindPassword: null,
   activeDirectoryUserSearchBase: null,
   activeDirectoryGroupSearchBase: null,
+  activeDirectoryTlsServerName: null,
+  activeDirectoryCaCertificate: null,
   activeDirectorySyncIntervalMinutes: 60,
   activeDirectoryLastSyncedAt: null,
   activeDirectoryLastSyncError: null,
@@ -117,6 +119,10 @@ export class SettingsService {
       url: settings.activeDirectoryUrl,
       timeout: 5000,
       connectTimeout: 5000,
+      tlsOptions: {
+        ca: settings.activeDirectoryCaCertificate || undefined,
+        servername: settings.activeDirectoryTlsServerName || undefined,
+      },
     });
 
     try {

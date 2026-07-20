@@ -199,6 +199,9 @@ model User {
 
   isActive Boolean @default(true)
 
+  directoryUserId String?        @unique
+  directoryUser   DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+
   roles                            UserRole[]
   organizedMeetings                Meeting[]                         @relation("MeetingOrganizer")
   meetingParticipants              MeetingParticipant[]
@@ -277,6 +280,7 @@ model DirectoryUser {
   externalId        String?  @unique
   distinguishedName String?
   lastSyncedAt      DateTime?
+  portalUser        User?
 
   groupMemberships                 DirectoryGroupMember[]
   organizedMeetings                Meeting[]                         @relation("DirectoryMeetingOrganizer")
@@ -1204,6 +1208,8 @@ model Setting {
   activeDirectoryBindPassword    String?
   activeDirectoryUserSearchBase  String?
   activeDirectoryGroupSearchBase String?
+  activeDirectoryTlsServerName String?
+  activeDirectoryCaCertificate String? @db.Text
   activeDirectorySyncIntervalMinutes Int       @default(60)
   activeDirectoryLastSyncedAt        DateTime?
   activeDirectoryLastSyncError       String?   @db.Text

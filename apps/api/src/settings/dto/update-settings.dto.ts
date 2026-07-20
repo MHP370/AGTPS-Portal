@@ -76,6 +76,14 @@ export class UpdateSettingsDto {
   activeDirectoryGroupSearchBase?: string;
 
   @IsOptional()
+  @IsString()
+  activeDirectoryTlsServerName?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryCaCertificate?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(5)
   @Max(10080)

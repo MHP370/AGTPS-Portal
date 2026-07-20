@@ -19,6 +19,8 @@ export interface PortalSettings {
   activeDirectoryBindPassword?: string | null;
   activeDirectoryUserSearchBase?: string;
   activeDirectoryGroupSearchBase?: string;
+  activeDirectoryTlsServerName?: string;
+  activeDirectoryCaCertificate?: string;
   activeDirectorySyncIntervalMinutes?: number;
   activeDirectoryLastSyncedAt?: string | null;
   activeDirectoryLastSyncError?: string | null;
@@ -49,6 +51,8 @@ export interface UpdatePortalSettingsDto {
   activeDirectoryBindPassword?: string;
   activeDirectoryUserSearchBase?: string;
   activeDirectoryGroupSearchBase?: string;
+  activeDirectoryTlsServerName?: string;
+  activeDirectoryCaCertificate?: string;
   activeDirectorySyncIntervalMinutes?: number;
   activeDirectoryLastSyncedAt?: string | null;
   activeDirectoryLastSyncError?: string | null;

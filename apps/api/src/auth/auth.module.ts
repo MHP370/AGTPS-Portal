@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { ActiveDirectoryAuthService } from './active-directory-auth.service';
 
 import { UsersModule } from '../users/users.module';
 
@@ -40,6 +41,7 @@ import { PermissionsGuard } from './guards/permissions.guard';
 
   providers: [
   AuthService,
+  ActiveDirectoryAuthService,
   JwtStrategy,
   JwtAuthGuard,
   OptionalJwtAuthGuard,

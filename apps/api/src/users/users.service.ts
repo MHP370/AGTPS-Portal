@@ -86,6 +86,7 @@ export class UsersService {
       await this.prisma.directoryUser.findFirst({
         where: {
           OR: [
+            { id: user.directoryUserId ?? "__NO_DIRECTORY_USER__" },
             {
               username: user.username,
             },
@@ -150,6 +151,7 @@ export class UsersService {
         await this.prisma.directoryUser.findFirst({
           where: {
             OR: [
+            { id: user.directoryUserId ?? "__NO_DIRECTORY_USER__" },
               {
                 username: user.username,
               },

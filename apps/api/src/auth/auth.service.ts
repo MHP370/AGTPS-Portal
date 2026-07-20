@@ -12,6 +12,7 @@ import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChangeOwnPasswordDto } from './dto/change-own-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ActiveDirectoryAuthService } from './active-directory-auth.service';
 
 @Injectable()
 export class AuthService {
@@ -19,19 +20,27 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly activeDirectoryAuth: ActiveDirectoryAuthService,
   ) {}
 
-  async login(username: string, password: string) {
-    const user = await this.usersService.findByUsername(username);
+  async login(
+    username: string,
+    password: string,
+    authSource: 'LOCAL' | 'ACTIVE_DIRECTORY' = 'LOCAL',
+  ) {
+    const user = authSource === 'ACTIVE_DIRECTORY'
+      ? await this.activeDirectoryAuth.authenticate(username, password)
+      : await this.usersService.findByUsername(username);
 
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
-    const valid = await bcrypt.compare(password, user.password);
-
-    if (!valid) {
-      throw new UnauthorizedException('Invalid username or password');
+    if (authSource === 'LOCAL') {
+      const valid = await bcrypt.compare(password, user.password);
+      if (!valid) {
+        throw new UnauthorizedException('Invalid username or password');
+      }
     }
 
     const payload = {
@@ -45,6 +54,21 @@ export class AuthService {
       access_token,
 
       user: await this.getProfile(user.id),
+    };
+  }
+
+  async getLoginOptions() {
+    const settings = await this.prisma.setting.findUnique({
+      where: { id: 1 },
+      select: { activeDirectoryEnabled: true, activeDirectoryDomain: true, activeDirectoryUrl: true },
+    });
+    return {
+      local: { enabled: true, label: "ورود محلی" },
+      activeDirectory: {
+        enabled: Boolean(settings?.activeDirectoryEnabled && settings.activeDirectoryDomain),
+        domain: settings?.activeDirectoryDomain ?? null,
+        secure: settings?.activeDirectoryUrl?.toLowerCase().startsWith("ldaps://") ?? false,
+      },
     };
   }
 
@@ -71,15 +95,8 @@ export class AuthService {
     });
     const directoryUser = await this.prisma.directoryUser.findFirst({
       where: {
+        id: user.directoryUserId ?? '__NO_DIRECTORY_USER__',
         isActive: true,
-        OR: [
-          {
-            username: user.username,
-          },
-          {
-            email: user.email,
-          },
-        ],
       },
       include: {
         groupMemberships: {
@@ -264,6 +281,7 @@ export class AuthService {
     const directoryUser = await this.prisma.directoryUser.findFirst({
       where: {
         OR: [
+          { id: user.directoryUserId ?? "__NO_DIRECTORY_USER__" },
           {
             username: user.username,
           },

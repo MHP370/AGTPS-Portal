@@ -192,6 +192,8 @@ export default function SettingsPage() {
   const [adBindPassword, setAdBindPassword] = useState("");
   const [adUserSearchBase, setAdUserSearchBase] = useState("");
   const [adGroupSearchBase, setAdGroupSearchBase] = useState("");
+  const [adTlsServerName, setAdTlsServerName] = useState("");
+  const [adCaCertificate, setAdCaCertificate] = useState("");
   const [adSyncIntervalMinutes, setAdSyncIntervalMinutes] = useState("60");
   const [trainingMaxUploadSizeMb, setTrainingMaxUploadSizeMb] =
     useState("2048");
@@ -233,6 +235,8 @@ export default function SettingsPage() {
       );
       setAdUserSearchBase(settings.activeDirectoryUserSearchBase ?? "");
       setAdGroupSearchBase(settings.activeDirectoryGroupSearchBase ?? "");
+      setAdTlsServerName(settings.activeDirectoryTlsServerName ?? "");
+      setAdCaCertificate(settings.activeDirectoryCaCertificate ?? "");
       setAdSyncIntervalMinutes(String(settings.activeDirectorySyncIntervalMinutes ?? 60));
       setTrainingMaxUploadSizeMb(
         String(settings.trainingMaxUploadSizeMb ?? 2048),
@@ -318,6 +322,8 @@ export default function SettingsPage() {
             : adBindPassword.trim() || undefined,
         activeDirectoryUserSearchBase: adUserSearchBase.trim() || undefined,
         activeDirectoryGroupSearchBase: adGroupSearchBase.trim() || undefined,
+        activeDirectoryTlsServerName: adTlsServerName.trim() || undefined,
+        activeDirectoryCaCertificate: adCaCertificate.trim() || undefined,
         activeDirectorySyncIntervalMinutes: parsedAdSyncIntervalMinutes,
         trainingMaxUploadSizeMb: parsedTrainingMaxUploadSizeMb,
         trainingAllowedFileExtensions:
@@ -874,6 +880,15 @@ export default function SettingsPage() {
             />
           </IconFormField>
 
+          <IconFormField label="نام سرور داخل گواهی TLS" icon={ShieldCheck}>
+            <Input
+              value={adTlsServerName}
+              onChange={(event) => setAdTlsServerName(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="DNS-Main.AGTPS.net"
+            />
+          </IconFormField>
+
           <IconFormField label="دامنه" icon={Network}>
             <Input
               value={adDomain}
@@ -933,6 +948,20 @@ export default function SettingsPage() {
               placeholder="OU=Groups,DC=company,DC=local"
             />
           </IconFormField>
+
+          <div className="md:col-span-2">
+            <IconFormField label="گواهی Root CA سازمان (PEM)" icon={ShieldCheck}>
+              <textarea
+                value={adCaCertificate}
+                onChange={(event) => setAdCaCertificate(event.target.value)}
+                disabled={updateSettings.isPending}
+                rows={6}
+                dir="ltr"
+                placeholder="-----BEGIN CERTIFICATE-----"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 font-mono text-xs text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+              />
+            </IconFormField>
+          </div>
 
           <IconFormField label="فاصله همگام‌سازی خودکار (دقیقه)" icon={RefreshCw}>
             <Input

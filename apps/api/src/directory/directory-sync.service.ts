@@ -65,6 +65,10 @@ export class DirectorySyncService implements OnModuleInit, OnModuleDestroy {
       url: settings.activeDirectoryUrl,
       timeout: 30000,
       connectTimeout: 10000,
+      tlsOptions: {
+        ca: settings.activeDirectoryCaCertificate || undefined,
+        servername: settings.activeDirectoryTlsServerName || undefined,
+      },
     });
 
     try {

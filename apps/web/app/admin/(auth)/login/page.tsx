@@ -26,6 +26,7 @@ function AdminLoginForm() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [authSource, setAuthSource] = useState<"LOCAL" | "ACTIVE_DIRECTORY">("LOCAL");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,6 +53,7 @@ function AdminLoginForm() {
       const result = await login({
         username,
         password,
+        authSource,
       });
 
       setAuthSession(result);
@@ -113,6 +115,18 @@ function AdminLoginForm() {
             onSubmit={handleSubmit}
             className="space-y-6"
           >
+            <FormField label="روش ورود" required>
+              <select
+                value={authSource}
+                onChange={(event) => setAuthSource(event.target.value as "LOCAL" | "ACTIVE_DIRECTORY")}
+                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+              >
+                <option value="LOCAL">ورود محلی سامانه</option>
+                {settings && settings.activeDirectoryEnabled && settings.activeDirectoryDomain && (
+                  <option value="ACTIVE_DIRECTORY">دامنه {settings.activeDirectoryDomain}</option>
+                )}
+              </select>
+            </FormField>
             <FormField
               label="نام کاربری"
               required
@@ -122,7 +136,7 @@ function AdminLoginForm() {
                 onChange={(e) =>
                   setUsername(e.target.value)
                 }
-                placeholder="نام کاربری"
+                placeholder={authSource === "ACTIVE_DIRECTORY" ? "نام کاربری دامنه" : "نام کاربری"}
                 autoComplete="username"
               />
             </FormField>

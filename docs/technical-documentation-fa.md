@@ -150,3 +150,16 @@ Database migration `20260720090000_add_active_directory_sync_identity` adds null
 - نقش‌ها و Permissionها local هستند. ایجاد Role یا DirectoryGroup به‌تنهایی هیچ RolePermission یا DirectoryGroupRole ایجاد نمی‌کند و اصل least privilege رعایت می‌شود.
 - کاربران و گروه‌های AD از طریق داشبورد قابل ایجاد، ویرایش یا حذف نیستند؛ فقط تخصیص نقش محلی به گروه AD مجاز است.
 - migration مربوط: 20260720094500_add_active_directory_sync_schedule.
+
+
+## احراز هویت دستی Active Directory با LDAPS
+
+- `POST /api/auth/login` فیلد `authSource` با مقادیر `LOCAL` یا `ACTIVE_DIRECTORY` می‌پذیرد. مقدار پیش‌فرض برای سازگاری عقب‌رو `LOCAL` است.
+- `GET /api/auth/login-options` فقط وضعیت روش‌ها و نام دامنه را برمی‌گرداند و اطلاعات Bind را افشا نمی‌کند.
+- ورود AD فقط با URL دارای `ldaps://` مجاز است. Root CA و TLS server name از تنظیمات AD خوانده می‌شوند و خاموش‌کردن اعتبارسنجی گواهی مجاز نیست.
+- رمز AD ذخیره یا log نمی‌شود. LDAP bind با UPN کاربر انجام و اتصال در finally بسته می‌شود.
+- فقط `DirectoryUser` فعال با source برابر `ACTIVE_DIRECTORY` اجازه تلاش برای ورود دارد.
+- `User.directoryUserId` لینک یکتا و صریح حساب سامانه به هویت AD است و از تصاحب نقش حساب محلی هم‌نام جلوگیری می‌کند.
+- حساب provision شده رمز تصادفی غیرقابل استفاده، `allowPasswordChange=false` و بدون UserRole مستقیم دارد. دسترسی فقط از DirectoryGroupRoleهای ادمین‌تخصیص‌یافته محاسبه می‌شود.
+- ورود محلی برای حساب اضطراری مدیر مستقل از دسترس‌پذیری AD باقی می‌ماند.
+- migrationها: `20260720103000_link_portal_users_to_directory` و `20260720104500_add_active_directory_tls_trust`.

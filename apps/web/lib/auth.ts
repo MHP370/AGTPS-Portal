@@ -8,6 +8,7 @@ const AUTH_COOKIE_MAX_AGE = 60 * 60 * 8;
 export interface LoginDto {
   username: string;
   password: string;
+  authSource?: "LOCAL" | "ACTIVE_DIRECTORY";
 }
 
 export interface AuthUser {
