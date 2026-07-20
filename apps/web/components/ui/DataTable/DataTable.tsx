@@ -19,7 +19,7 @@ export function DataTable<T>({
   emptyMessage = "اطلاعاتی یافت نشد.",
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+    <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900">
       <table className="w-full">
        <thead className="bg-slate-800/40">
   <tr>

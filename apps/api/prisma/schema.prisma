@@ -274,6 +274,9 @@ model DirectoryUser {
   title       String?
   source      DirectorySource @default(INTERNAL)
   isActive    Boolean         @default(true)
+  externalId        String?  @unique
+  distinguishedName String?
+  lastSyncedAt      DateTime?
 
   groupMemberships                 DirectoryGroupMember[]
   organizedMeetings                Meeting[]                         @relation("DirectoryMeetingOrganizer")
@@ -290,6 +293,8 @@ model DirectoryUser {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([source, isActive])
 }
 
 model DirectCommunicationManager {
@@ -399,6 +404,9 @@ model DirectoryGroup {
   description String?
   source      DirectorySource @default(INTERNAL)
   isActive    Boolean         @default(true)
+  externalId        String?  @unique
+  distinguishedName String?
+  lastSyncedAt      DateTime?
 
   members          DirectoryGroupMember[]
   roles            DirectoryGroupRole[]
@@ -406,6 +414,8 @@ model DirectoryGroup {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([source, isActive])
 }
 
 model DirectoryGroupMember {
@@ -1194,6 +1204,9 @@ model Setting {
   activeDirectoryBindPassword    String?
   activeDirectoryUserSearchBase  String?
   activeDirectoryGroupSearchBase String?
+  activeDirectorySyncIntervalMinutes Int       @default(60)
+  activeDirectoryLastSyncedAt        DateTime?
+  activeDirectoryLastSyncError       String?   @db.Text
   activeDirectoryLastStatus      String?
   activeDirectoryLastError       String?   @db.Text
   activeDirectoryLastCheckedAt   DateTime?

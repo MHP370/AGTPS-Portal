@@ -19,6 +19,9 @@ export interface PortalSettings {
   activeDirectoryBindPassword?: string | null;
   activeDirectoryUserSearchBase?: string;
   activeDirectoryGroupSearchBase?: string;
+  activeDirectorySyncIntervalMinutes?: number;
+  activeDirectoryLastSyncedAt?: string | null;
+  activeDirectoryLastSyncError?: string | null;
   activeDirectoryLastStatus?: string | null;
   activeDirectoryLastError?: string | null;
   activeDirectoryLastCheckedAt?: string | null;
@@ -46,6 +49,9 @@ export interface UpdatePortalSettingsDto {
   activeDirectoryBindPassword?: string;
   activeDirectoryUserSearchBase?: string;
   activeDirectoryGroupSearchBase?: string;
+  activeDirectorySyncIntervalMinutes?: number;
+  activeDirectoryLastSyncedAt?: string | null;
+  activeDirectoryLastSyncError?: string | null;
   trainingMaxUploadSizeMb?: number;
   trainingAllowedFileExtensions?: string;
   requireUserPersonnelCode?: boolean;

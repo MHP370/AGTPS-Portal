@@ -8,6 +8,7 @@ import {
 
 import {
   assignPermissionToRole,
+  createRole,
   getPermissions,
   getRoles,
   permissionsQueryKey,
@@ -26,6 +27,14 @@ export function usePermissions() {
   return useQuery({
     queryKey: permissionsQueryKey,
     queryFn: getPermissions,
+  });
+}
+
+export function useCreateRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createRole,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: rolesQueryKey }),
   });
 }
 

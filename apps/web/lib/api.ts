@@ -79,7 +79,7 @@ async function request<T>(
     ...rest,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && authToken) {
     clearBrowserAuthSession();
 
     if (typeof window !== "undefined") {
@@ -142,7 +142,7 @@ async function upload<T>(
     body: formData,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && authToken) {
     clearBrowserAuthSession();
 
     if (typeof window !== "undefined") {

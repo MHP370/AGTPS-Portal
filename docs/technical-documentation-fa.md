@@ -132,3 +132,21 @@
 - Recovery Key برای مدیرعامل.
 - پاسخ به مکالمه‌ها و نمایش زنجیره پیام.
 - تعیین رفتار دقیق حالت ناشناس برای ادامه مکالمه بدون افشای هویت.
+
+
+## Active Directory read-only synchronization
+
+Endpoint: `POST /api/directory/sync` (JWT + `directory.manage`). The service uses paged LDAP subtree searches, stable `objectGUID` identities, distinguished names, `sAMAccountName`, profile attributes and `userAccountControl`. Computer accounts are excluded. Group membership is reconstructed from AD member DNs. AD-origin directory records are protected against portal CRUD at the service layer; portal role mappings remain local. Missing records are deactivated rather than deleted to preserve foreign-key history.
+
+Database migration `20260720090000_add_active_directory_sync_identity` adds nullable unique external IDs, DNs, sync timestamps and source/status indexes. Bind credentials remain masked by the settings API. Production should prefer LDAPS and a least-privilege read-only service account. Monitor sync duration and failures; do not schedule automatic sync until operational limits and change windows are approved.
+
+
+## همگام‌سازی زمان‌بندی‌شده و دسترسی دایرکتوری
+
+- فیلتر LDAP کاربران، حساب‌های computer و حساب‌های disabled را حذف می‌کند. تشخیص disabled با matching rule استاندارد Active Directory برای بیت دوم userAccountControl انجام می‌شود.
+- سرویس DirectorySyncService هر دقیقه تنظیمات را بررسی می‌کند و فقط پس از سپری شدن activeDirectorySyncIntervalMinutes همگام‌سازی را اجرا می‌کند.
+- زمان آخرین همگام‌سازی موفق در activeDirectoryLastSyncedAt ذخیره می‌شود. مقدار بازه در دیتابیس بین ۵ و ۱۰۰۸۰ دقیقه محدود شده است.
+- endpointهای فهرست Directory فقط رکوردهای isActive=true را برمی‌گردانند. رکورد غیرفعال حذف فیزیکی نمی‌شود تا تاریخچه و ارتباطات سامانه حفظ شود.
+- نقش‌ها و Permissionها local هستند. ایجاد Role یا DirectoryGroup به‌تنهایی هیچ RolePermission یا DirectoryGroupRole ایجاد نمی‌کند و اصل least privilege رعایت می‌شود.
+- کاربران و گروه‌های AD از طریق داشبورد قابل ایجاد، ویرایش یا حذف نیستند؛ فقط تخصیص نقش محلی به گروه AD مجاز است.
+- migration مربوط: 20260720094500_add_active_directory_sync_schedule.

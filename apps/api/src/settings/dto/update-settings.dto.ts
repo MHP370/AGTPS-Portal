@@ -77,6 +77,12 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(5)
+  @Max(10080)
+  activeDirectorySyncIntervalMinutes?: number;
+
+  @IsOptional()
+  @IsNumber()
   @Min(1)
   @Max(2048)
   trainingMaxUploadSizeMb?: number;

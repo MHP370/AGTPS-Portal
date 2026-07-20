@@ -26,6 +26,11 @@ export function getPermissions() {
   return api.get<Permission[]>("/permissions");
 }
 
+export function createRole(dto: { name: string; title: string }) {
+  return api.post<Role>("/roles", dto);
+}
+
+
 export function assignPermissionToRole(
   roleId: string,
   permissionId: string,

@@ -15,6 +15,7 @@ import {
   LockKeyhole,
   Network,
   Palette,
+  RefreshCw,
   Search,
   Settings,
   ShieldCheck,
@@ -191,6 +192,7 @@ export default function SettingsPage() {
   const [adBindPassword, setAdBindPassword] = useState("");
   const [adUserSearchBase, setAdUserSearchBase] = useState("");
   const [adGroupSearchBase, setAdGroupSearchBase] = useState("");
+  const [adSyncIntervalMinutes, setAdSyncIntervalMinutes] = useState("60");
   const [trainingMaxUploadSizeMb, setTrainingMaxUploadSizeMb] =
     useState("2048");
   const [trainingAllowedFileExtensions, setTrainingAllowedFileExtensions] =
@@ -231,6 +233,7 @@ export default function SettingsPage() {
       );
       setAdUserSearchBase(settings.activeDirectoryUserSearchBase ?? "");
       setAdGroupSearchBase(settings.activeDirectoryGroupSearchBase ?? "");
+      setAdSyncIntervalMinutes(String(settings.activeDirectorySyncIntervalMinutes ?? 60));
       setTrainingMaxUploadSizeMb(
         String(settings.trainingMaxUploadSizeMb ?? 2048),
       );
@@ -250,6 +253,7 @@ export default function SettingsPage() {
     event.preventDefault();
 
     const parsedOverlayOpacity = Number(overlayOpacity);
+    const parsedAdSyncIntervalMinutes = Number(adSyncIntervalMinutes);
     const parsedTrainingMaxUploadSizeMb = Number(trainingMaxUploadSizeMb);
 
     if (!companyName.trim()) {
@@ -273,6 +277,11 @@ export default function SettingsPage() {
       parsedOverlayOpacity > 1
     ) {
       setFormError("شدت پوشش باید عددی بین ۰ و ۱ باشد.");
+      return;
+    }
+
+    if (!Number.isInteger(parsedAdSyncIntervalMinutes) || parsedAdSyncIntervalMinutes < 5 || parsedAdSyncIntervalMinutes > 10080) {
+      setFormError("فاصله همگام‌سازی باید بین ۵ دقیقه تا ۷ روز باشد.");
       return;
     }
 
@@ -309,6 +318,7 @@ export default function SettingsPage() {
             : adBindPassword.trim() || undefined,
         activeDirectoryUserSearchBase: adUserSearchBase.trim() || undefined,
         activeDirectoryGroupSearchBase: adGroupSearchBase.trim() || undefined,
+        activeDirectorySyncIntervalMinutes: parsedAdSyncIntervalMinutes,
         trainingMaxUploadSizeMb: parsedTrainingMaxUploadSizeMb,
         trainingAllowedFileExtensions:
           trainingAllowedFileExtensions.trim() || undefined,
@@ -816,6 +826,7 @@ export default function SettingsPage() {
       )}
 
       {activeTab === "activeDirectory" && (
+      <form id="active-directory-settings-form" onSubmit={submit}>
       <SettingsSection
         title="اتصال اکتیو دایرکتوری"
         description="تنظیمات اتصال LDAP/AD را وارد کنید و وضعیت اتصال را تست کنید."
@@ -922,6 +933,18 @@ export default function SettingsPage() {
               placeholder="OU=Groups,DC=company,DC=local"
             />
           </IconFormField>
+
+          <IconFormField label="فاصله همگام‌سازی خودکار (دقیقه)" icon={RefreshCw}>
+            <Input
+              type="number"
+              min="5"
+              max="10080"
+              value={adSyncIntervalMinutes}
+              onChange={(event) => setAdSyncIntervalMinutes(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="60"
+            />
+          </IconFormField>
         </div>
 
         {settings?.activeDirectoryLastCheckedAt && (
@@ -943,7 +966,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap justify-end gap-3">
           <Button
             type="submit"
-            form="portal-settings-form"
+            form="active-directory-settings-form"
             disabled={updateSettings.isPending}
           >
             {updateSettings.isPending ? "در حال ذخیره..." : "ذخیره تنظیمات AD"}
@@ -958,6 +981,7 @@ export default function SettingsPage() {
           </Button>
         </div>
       </SettingsSection>
+      </form>
       )}
     </div>
   );
