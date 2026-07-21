@@ -43,7 +43,7 @@ async function subscribeBrowserPushIfAvailable(isPushSupported: boolean) {
 
   await subscribeToPushNotifications(subscription.toJSON(), {
     recipientDirectoryUserId: currentUser?.directoryUser?.id,
-    recipientEmail: currentUser?.email,
+    recipientEmail: currentUser?.email ?? undefined,
   });
 
   return true;
@@ -66,6 +66,19 @@ export function useBrowserNotifications(notifications: PortalNotification[]) {
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+
+    const syncPermission = () => setPermission(Notification.permission);
+    window.addEventListener("focus", syncPermission);
+    document.addEventListener("visibilitychange", syncPermission);
+
+    return () => {
+      window.removeEventListener("focus", syncPermission);
+      document.removeEventListener("visibilitychange", syncPermission);
+    };
   }, []);
 
   const isSupported = useMemo(
@@ -96,6 +109,10 @@ export function useBrowserNotifications(notifications: PortalNotification[]) {
 
   async function requestPermission() {
     if (!isSupported) return "denied" as NotificationPermission;
+    if (Notification.permission === "denied") {
+      setPermission("denied");
+      return "denied" as NotificationPermission;
+    }
 
     const nextPermission = await Notification.requestPermission();
     setPermission(nextPermission);

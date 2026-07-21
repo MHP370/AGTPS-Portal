@@ -90,6 +90,14 @@ export class UpdateSettingsDto {
   activeDirectorySyncIntervalMinutes?: number;
 
   @IsOptional()
+  @IsBoolean()
+  windowsSsoEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requirePortalLogin?: boolean;
+
+  @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(2048)
@@ -106,6 +114,14 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   requireUserBirthDate?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requireUserEmail?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requireUserMobile?: boolean;
 
   @IsOptional()
   @IsIn(['FULL_NAME', 'PERSONNEL_CODE', 'USERNAME'])

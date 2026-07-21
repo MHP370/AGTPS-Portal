@@ -8,6 +8,7 @@ volumes:
   postgres-data:
   portal-uploads:
   portal-backups:
+  training-cache:
 
 services:
   postgres:
@@ -48,10 +49,41 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       BACKUP_DIR: /var/lib/agtps/backups
       PORTAL_URL: ${PORTAL_URL:-http://localhost}
+      KRB5_CONFIG: /etc/krb5.conf
+      KRB5_KTNAME: /etc/krb5.keytab
+      KERBEROS_SERVICE_PRINCIPAL: ${KERBEROS_SERVICE_PRINCIPAL:-HTTP/portal.agtps.net@AGTPS.NET}
+      KERBEROS_SYNC_USERNAME: ${KERBEROS_SYNC_USERNAME:-svc-agtps-portal}
+      SSO_SHARED_SECRET: ${SSO_SHARED_SECRET}
+      TRAINING_CACHE_DIR: /var/cache/agtps/training
+    dns:
+      - ${AD_DNS_SERVER:-172.16.16.5}
+    dns_search:
+      - ${AD_DNS_SEARCH_DOMAIN:-agtps.net}
     volumes:
       - portal-uploads:/app/apps/web/public/uploads
       - portal-backups:/var/lib/agtps/backups
       - ${FILE_SHARES_ROOT:-./file-shares}:/mnt/file-shares
+      - /etc/krb5.conf:/etc/krb5.conf:ro
+      - /etc/agtps/agtps-portal.keytab:/etc/krb5.keytab:ro
+      - training-cache:/var/cache/agtps/training
+    networks:
+      - agtps-network
+
+  sso:
+    build:
+      context: ..
+      dockerfile: docker/sso.Dockerfile
+    container_name: agtps-sso
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      AGTPS_SSO_SHARED_SECRET: ${SSO_SHARED_SECRET}
+      KRB5_CONFIG: /etc/krb5.conf
+      KRB5_KTNAME: /var/lib/agtps/portal.keytab
+    volumes:
+      - /etc/krb5.conf:/etc/krb5.conf:ro
+      - /etc/agtps/agtps-portal.keytab:/run/agtps/portal.keytab:ro
     networks:
       - agtps-network
 
@@ -67,6 +99,7 @@ services:
       - api
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      INTERNAL_API_URL: http://api:3002/api
     volumes:
       - portal-uploads:/app/apps/web/public/uploads
     networks:
@@ -79,6 +112,7 @@ services:
     depends_on:
       - web
       - api
+      - sso
     ports:
       - "${NGINX_PORT:-80}:80"
     volumes:

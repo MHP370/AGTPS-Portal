@@ -10,8 +10,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly prisma: PrismaService,
   ) {
     super({
-      jwtFromRequest:
+      jwtFromRequest: ExtractJwt.fromExtractors([
         ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (request) => {
+          const cookie = request?.headers?.cookie as string | undefined;
+          const value = cookie
+            ?.split(';')
+            .map((part) => part.trim())
+            .find((part) => part.startsWith('access_token='))
+            ?.slice('access_token='.length);
+          return value ? decodeURIComponent(value) : null;
+        },
+      ]),
 
       ignoreExpiration: false,
 

@@ -53,6 +53,12 @@ export class FileSharesController {
     return this.fileSharesService.update(id, dto);
   }
 
+  @Post(':id/test')
+  @Permissions('file-shares.manage')
+  testConnection(@Param('id') id: string) {
+    return this.fileSharesService.testConnection(id);
+  }
+
   @Delete(':id')
   @Permissions('file-shares.manage')
   remove(@Param('id') id: string) {

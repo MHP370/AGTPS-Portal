@@ -2,6 +2,8 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
+  IsInt,
+  Min,
 } from 'class-validator';
 
 export class CreateTrainingSourceDto {
@@ -17,6 +19,14 @@ export class CreateTrainingSourceDto {
 
   @IsOptional()
   @IsString()
+  authMode?: string;
+
+  @IsOptional()
+  @IsString()
+  realm?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
@@ -26,6 +36,15 @@ export class CreateTrainingSourceDto {
   @IsOptional()
   @IsString()
   password?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  syncIntervalMinutes?: number;
+
+  @IsOptional()
+  @IsString()
+  uploadDirectory?: string;
 
   @IsOptional()
   @IsBoolean()

@@ -14,6 +14,7 @@ import {
   useCreateFileShare,
   useDeleteFileShare,
   useFileShareAudit,
+  useTestFileShare,
   useUpdateFileShare,
 } from "@/hooks/useFileShares";
 import type { FileShare, ShareAccess } from "@/lib/file-shares";
@@ -46,6 +47,7 @@ export default function AdminFileSharesPage() {
   const createShare = useCreateFileShare();
   const updateShare = useUpdateFileShare();
   const deleteShare = useDeleteFileShare();
+  const testShare = useTestFileShare();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminFileShareTab>("shares");
@@ -54,6 +56,11 @@ export default function AdminFileSharesPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [rootPath, setRootPath] = useState("");
+  const [uncPath, setUncPath] = useState("");
+  const [authMode, setAuthMode] = useState("KERBEROS");
+  const [realm, setRealm] = useState("AGTPS.NET");
+  const [sharedUsername, setSharedUsername] = useState("");
+  const [sharedPassword, setSharedPassword] = useState("");
   const [icon, setIcon] = useState("FolderOpen");
   const [color, setColor] = useState("#38bdf8");
   const [allowDownload, setAllowDownload] = useState(true);
@@ -71,6 +78,11 @@ export default function AdminFileSharesPage() {
     setTitle("");
     setDescription("");
     setRootPath("");
+    setUncPath("");
+    setAuthMode("KERBEROS");
+    setRealm("AGTPS.NET");
+    setSharedUsername("");
+    setSharedPassword("");
     setIcon("FolderOpen");
     setColor("#38bdf8");
     setAllowDownload(true);
@@ -94,6 +106,11 @@ export default function AdminFileSharesPage() {
     setTitle(share.title);
     setDescription(share.description ?? "");
     setRootPath(share.rootPath ?? "");
+    setUncPath(share.uncPath ?? (share.rootPath?.startsWith("\\") ? share.rootPath : ""));
+    setAuthMode(share.authMode ?? "KERBEROS");
+    setRealm(share.realm ?? "AGTPS.NET");
+    setSharedUsername(share.sharedUsername ?? "");
+    setSharedPassword(share.sharedPassword ?? "");
     setIcon(share.icon ?? "FolderOpen");
     setColor(share.color ?? "#38bdf8");
     setAllowDownload(share.allowDownload);
@@ -169,7 +186,7 @@ export default function AdminFileSharesPage() {
     event.preventDefault();
     setError("");
 
-    if (!key.trim() || !title.trim() || !rootPath.trim()) {
+    if (!key.trim() || !title.trim() || !uncPath.trim()) {
       setError("کلید، عنوان و مسیر ریشه الزامی هستند.");
       return;
     }
@@ -178,16 +195,23 @@ export default function AdminFileSharesPage() {
       key: key.trim(),
       title: title.trim(),
       description: description.trim() || undefined,
-      rootPath: rootPath.trim(),
+      rootPath: rootPath.trim() || "/mnt/file-shares/" + key.trim(),
+      uncPath: uncPath.trim(),
+      authMode,
+      realm: realm.trim() || undefined,
+      sharedUsername:
+        authMode === "SHARED_ACCOUNT" ? sharedUsername.trim() : undefined,
+      sharedPassword:
+        authMode === "SHARED_ACCOUNT" ? sharedPassword : undefined,
       icon,
       color,
-      allowDownload,
-      allowUpload,
-      allowDelete,
+      allowDownload: authMode === "KERBEROS" ? true : allowDownload,
+      allowUpload: authMode === "KERBEROS" ? true : allowUpload,
+      allowDelete: authMode === "KERBEROS" ? true : allowDelete,
       isActive,
       sortOrder: Number(sortOrder || 0),
-      userAccesses,
-      groupAccesses,
+      userAccesses: ["KERBEROS", "SHARED_ACCOUNT"].includes(authMode) ? [] : userAccesses,
+      groupAccesses: ["KERBEROS", "SHARED_ACCOUNT"].includes(authMode) ? [] : groupAccesses,
     };
 
     try {
@@ -218,8 +242,8 @@ export default function AdminFileSharesPage() {
         <div>
           <h1 className="text-3xl font-bold">مدیریت فایل شیر SMB</h1>
           <p className="mt-2 text-sm leading-7 text-slate-400">
-            مسیر SMB را روی سرور mount کنید، سپس مسیر mount شده را اینجا به
-            عنوان Share تعریف کنید و دسترسی کاربران یا گروه‌ها را مشخص کنید.
+            مسیر SMB را تعریف کنید؛ در حالت Kerberos، مجوزها مستقیماً از ACL
+            ویندوز و هویت کاربر دامنه گرفته می‌شوند.
           </p>
         </div>
         <Button onClick={openCreate} className="gap-2">
@@ -239,7 +263,7 @@ export default function AdminFileSharesPage() {
           {
             id: "shares" as const,
             label: "Shareها",
-            description: "تعریف مسیرها و سطح دسترسی کاربران و گروه‌ها",
+            description: "تعریف مسیرها با ACL ویندوز یا دسترسی مدیریت‌شده",
           },
           {
             id: "history" as const,
@@ -292,7 +316,7 @@ export default function AdminFileSharesPage() {
             title: "مسیر",
             render: (share) => (
               <span dir="ltr" className="text-xs text-slate-300">
-                {share.rootPath}
+                {share.uncPath || share.rootPath}
               </span>
             ),
           },
@@ -300,20 +324,25 @@ export default function AdminFileSharesPage() {
             key: "access",
             title: "دسترسی",
             render: (share) =>
-              `${share.userAccesses?.length ?? 0} کاربر · ${
-                share.groupAccesses?.length ?? 0
-              } گروه`,
+              share.authMode === "KERBEROS"
+                ? "ACL ویندوز"
+                : share.authMode === "SHARED_ACCOUNT"
+                  ? "حساب مشترک"
+                : `${share.userAccesses?.length ?? 0} کاربر · ${
+                    share.groupAccesses?.length ?? 0
+                  } گروه`,
           },
           {
             key: "isActive",
             title: "وضعیت",
-            render: (share) => (share.isActive ? "فعال" : "غیرفعال"),
+            render: (share) => share.lastConnectionStatus ? share.lastConnectionStatus + (share.lastConnectionError ? " - " + share.lastConnectionError : "") : (share.isActive ? "فعال؛ تست نشده" : "غیرفعال"),
           },
           {
             key: "actions",
             title: "عملیات",
             render: (share) => (
               <div className="flex gap-2">
+                <Button size="sm" variant="secondary" disabled={testShare.isPending} onClick={() => testShare.mutate(share.id)}>تست اتصال</Button>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -408,10 +437,24 @@ export default function AdminFileSharesPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <Input value={key} onChange={(event) => setKey(event.target.value)} placeholder="کلید یکتا مثل public-files" />
             <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="عنوان" />
-            <Input value={rootPath} onChange={(event) => setRootPath(event.target.value)} placeholder="/mnt/shares/public" />
+            <Input value={uncPath} onChange={(event) => setUncPath(event.target.value)} placeholder="\\fileserver.agtps.net\department" dir="ltr" />
+            <select value={authMode} onChange={(event) => setAuthMode(event.target.value)} className="h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white"><option value="KERBEROS">Kerberos - ACL واقعی کاربر</option><option value="SHARED_ACCOUNT">حساب مشترک برای همه کاربران</option><option value="SERVICE_ACCOUNT">دسترسی مدیریت‌شده پورتال</option></select>
+            <Input value={realm} onChange={(event) => setRealm(event.target.value)} placeholder="AGTPS.NET" dir="ltr" />
             <Input type="number" min={0} value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} placeholder="ترتیب نمایش" />
             <Input type="color" value={color} onChange={(event) => setColor(event.target.value)} />
           </div>
+
+          {authMode === "SHARED_ACCOUNT" && (
+            <div className="space-y-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+              <p className="text-sm leading-7 text-amber-100">
+                در این حالت همه کاربران واردشده، فایل‌ها را با مجوز همین حساب سرویس می‌بینند؛ ACL شخصی کاربر اعمال نمی‌شود.
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Input value={sharedUsername} onChange={(event) => setSharedUsername(event.target.value)} placeholder="AGTPS\\svc-fileshare" dir="ltr" />
+                <Input type="password" value={sharedPassword} onChange={(event) => setSharedPassword(event.target.value)} placeholder={editing ? "برای حفظ رمز تغییر ندهید" : "رمز حساب سرویس"} dir="ltr" />
+              </div>
+            </div>
+          )}
 
           <IconPicker value={icon} onChange={setIcon} folder="icons" />
 
@@ -423,6 +466,12 @@ export default function AdminFileSharesPage() {
             placeholder="توضیحات"
           />
 
+          {authMode === "KERBEROS" ? (
+            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm leading-7 text-cyan-100">
+              کاربران، گروه‌ها و سطح عملیات در این حالت از Active Directory و
+              ACL خود فایل‌سرور خوانده می‌شوند و در پورتال قابل تغییر نیستند.
+            </div>
+          ) : (
           <div className="grid gap-3 md:grid-cols-4">
             {[
               ["فعال باشد", isActive, setIsActive],
@@ -447,7 +496,9 @@ export default function AdminFileSharesPage() {
               </label>
             ))}
           </div>
+          )}
 
+          {authMode !== "KERBEROS" && (
           <div className="grid gap-4 md:grid-cols-2">
             <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
               <h3 className="font-black">دسترسی کاربران</h3>
@@ -577,6 +628,7 @@ export default function AdminFileSharesPage() {
               </div>
             </section>
           </div>
+          )}
 
           <div className="flex justify-end gap-3">
             <Button

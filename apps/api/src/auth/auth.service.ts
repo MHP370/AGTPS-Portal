@@ -43,24 +43,38 @@ export class AuthService {
       }
     }
 
-    const payload = {
-      sub: user.id,
-      username: user.username,
-    };
+    return this.createSession(user.id, user.username);
+  }
 
-    const access_token = await this.jwtService.signAsync(payload);
-
+  async getWindowsIdentity(identity: string) {
+    const result = await this.activeDirectoryAuth.authenticateTrustedWindowsIdentity(identity);
     return {
-      access_token,
-
-      user: await this.getProfile(user.id),
+      username: result.directoryUser.username,
+      displayName: result.directoryUser.displayName,
+      domain: result.domain,
     };
+  }
+
+  async loginWithWindowsIdentity(identity: string) {
+    const result = await this.activeDirectoryAuth.authenticateTrustedWindowsIdentity(identity);
+    return this.createSession(result.user.id, result.user.username);
+  }
+
+  private async createSession(userId: string, username: string) {
+    const access_token = await this.jwtService.signAsync({ sub: userId, username });
+    return { access_token, user: await this.getProfile(userId) };
   }
 
   async getLoginOptions() {
     const settings = await this.prisma.setting.findUnique({
       where: { id: 1 },
-      select: { activeDirectoryEnabled: true, activeDirectoryDomain: true, activeDirectoryUrl: true },
+      select: {
+        activeDirectoryEnabled: true,
+        activeDirectoryDomain: true,
+        activeDirectoryUrl: true,
+        windowsSsoEnabled: true,
+        requirePortalLogin: true,
+      },
     });
     return {
       local: { enabled: true, label: "ورود محلی" },
@@ -69,6 +83,14 @@ export class AuthService {
         domain: settings?.activeDirectoryDomain ?? null,
         secure: settings?.activeDirectoryUrl?.toLowerCase().startsWith("ldaps://") ?? false,
       },
+      windowsSso: {
+        enabled: Boolean(
+          settings?.activeDirectoryEnabled &&
+          settings.activeDirectoryDomain &&
+          settings.windowsSsoEnabled
+        ),
+      },
+      requirePortalLogin: Boolean(settings?.requirePortalLogin),
     };
   }
 
@@ -142,16 +164,17 @@ export class AuthService {
       },
     });
     const missingProfileFields = [
-      settings?.requireUserPersonnelCode && !user.personnelCode
-        ? 'personnelCode'
-        : null,
+      settings?.requireUserPersonnelCode && !user.personnelCode ? 'personnelCode' : null,
       settings?.requireUserBirthDate && !user.birthDate ? 'birthDate' : null,
-    ].filter(Boolean) as Array<'personnelCode' | 'birthDate'>;
+      settings?.requireUserEmail && !(directoryUser ? directoryUser.email : user.email) ? 'email' : null,
+      settings?.requireUserMobile && !(directoryUser ? directoryUser.mobile : user.mobile) ? 'mobile' : null,
+    ].filter(Boolean) as Array<'personnelCode' | 'birthDate' | 'email' | 'mobile'>;
 
     return {
       id: user.id,
       username: user.username,
-      email: user.email,
+      email: directoryUser?.email ?? (directoryUser ? null : user.email),
+      mobile: directoryUser?.mobile ?? user.mobile,
       firstName: user.firstName,
       lastName: user.lastName,
       personnelCode: user.personnelCode,
@@ -187,16 +210,31 @@ export class AuthService {
       profileRequirements: {
         personnelCode: Boolean(settings?.requireUserPersonnelCode),
         birthDate: Boolean(settings?.requireUserBirthDate),
+        email: Boolean(settings?.requireUserEmail),
+        mobile: Boolean(settings?.requireUserMobile),
       },
-      directoryUser,
+      directoryUser: directoryUser
+        ? {
+            id: directoryUser.id,
+            username: directoryUser.username,
+            displayName: directoryUser.displayName,
+            email: directoryUser.email,
+            mobile: directoryUser.mobile,
+            department: directoryUser.department,
+            title: directoryUser.title,
+            isActive: directoryUser.isActive,
+          }
+        : null,
       directoryGroups:
-        directoryUser?.groupMemberships.map((membership) => ({
+        Array.from(new Set([...userPermissions, ...groupPermissions])).includes("directory.manage")
+          ? directoryUser?.groupMemberships.map((membership) => ({
           id: membership.group.id,
           name: membership.group.name,
           title: membership.group.title,
           source: membership.group.source,
           isActive: membership.group.isActive,
-        })) ?? [],
+        })) ?? []
+          : [],
     };
   }
 
@@ -206,6 +244,9 @@ export class AuthService {
         id: userId,
       },
     });
+    const directoryUser = user.directoryUserId
+      ? await this.prisma.directoryUser.findUnique({ where: { id: user.directoryUserId } })
+      : null;
     const birthDate = dto.birthDate ? new Date(dto.birthDate) : null;
 
     if (dto.birthDate && Number.isNaN(birthDate?.getTime())) {
@@ -218,10 +259,10 @@ export class AuthService {
       },
     });
     const missingProfileFields = [
-      settings?.requireUserPersonnelCode && !user.personnelCode
-        ? 'personnelCode'
-        : null,
+      settings?.requireUserPersonnelCode && !user.personnelCode ? 'personnelCode' : null,
       settings?.requireUserBirthDate && !user.birthDate ? 'birthDate' : null,
+      settings?.requireUserEmail && !(directoryUser ? directoryUser.email : user.email) ? 'email' : null,
+      settings?.requireUserMobile && !(directoryUser ? directoryUser.mobile : user.mobile) ? 'mobile' : null,
     ].filter(Boolean);
     const canEditProfile =
       user.allowProfileEdit || missingProfileFields.length > 0;
@@ -231,19 +272,24 @@ export class AuthService {
       (dto.firstName !== undefined ||
         dto.lastName !== undefined ||
         dto.personnelCode !== undefined ||
-        dto.birthDate !== undefined)
+        dto.birthDate !== undefined ||
+        dto.mobile !== undefined)
     ) {
       throw new BadRequestException('Profile editing is disabled for this user.');
     }
 
-    if (dto.email !== undefined && !user.allowEmailChange) {
+    const isDirectoryUser = directoryUser?.source === "ACTIVE_DIRECTORY";
+    if (dto.email !== undefined && !user.allowEmailChange && !isDirectoryUser) {
       throw new BadRequestException('Email editing is disabled for this user.');
     }
 
-    if (dto.email) {
+    const normalizedEmail = dto.email?.trim().toLowerCase();
+    const normalizedMobile = dto.mobile?.trim();
+
+    if (normalizedEmail) {
       const existingEmailUser = await this.prisma.user.findFirst({
         where: {
-          email: dto.email.trim(),
+          email: normalizedEmail,
           NOT: {
             id: userId,
           },
@@ -255,18 +301,42 @@ export class AuthService {
       }
     }
 
+    if (settings?.requireUserEmail && dto.email !== undefined && !normalizedEmail) {
+      throw new BadRequestException("Email is required.");
+    }
+    if (settings?.requireUserMobile && dto.mobile !== undefined && !normalizedMobile) {
+      throw new BadRequestException("Mobile is required.");
+    }
+    if (isDirectoryUser && (dto.email !== undefined || dto.mobile !== undefined)) {
+      await this.activeDirectoryAuth.updateContact(directoryUser.distinguishedName, {
+        email: dto.email !== undefined ? normalizedEmail : undefined,
+        mobile: dto.mobile !== undefined ? normalizedMobile : undefined,
+      });
+    }
+
     await this.prisma.user.update({
       where: {
         id: userId,
       },
       data: {
-        email: dto.email?.trim(),
-        firstName: dto.firstName?.trim() || null,
-        lastName: dto.lastName?.trim() || null,
-        personnelCode: dto.personnelCode?.trim() || null,
-        birthDate,
+        ...(normalizedEmail && { email: normalizedEmail }),
+        ...(dto.mobile !== undefined && { mobile: normalizedMobile || null }),
+        ...(dto.firstName !== undefined && { firstName: dto.firstName.trim() || null }),
+        ...(dto.lastName !== undefined && { lastName: dto.lastName.trim() || null }),
+        ...(dto.personnelCode !== undefined && { personnelCode: dto.personnelCode.trim() || null }),
+        ...(dto.birthDate !== undefined && { birthDate }),
       },
     });
+
+    if (isDirectoryUser) {
+      await this.prisma.directoryUser.update({
+        where: { id: directoryUser.id },
+        data: {
+          ...(dto.email !== undefined && { email: normalizedEmail || null }),
+          ...(dto.mobile !== undefined && { mobile: normalizedMobile || null }),
+        },
+      });
+    }
 
     return this.getProfile(userId);
   }

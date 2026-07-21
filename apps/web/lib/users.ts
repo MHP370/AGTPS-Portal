@@ -9,6 +9,7 @@ export interface AdminUser {
   lastName?: string | null;
   personnelCode?: string | null;
   birthDate?: string | null;
+  mobile?: string | null;
   allowEmailChange: boolean;
   allowPasswordChange: boolean;
   allowProfileEdit: boolean;
@@ -32,6 +33,7 @@ export interface UpdateAdminUserProfileDto {
   lastName?: string;
   personnelCode?: string;
   birthDate?: string;
+  mobile?: string;
   isActive?: boolean;
   allowEmailChange?: boolean;
   allowPasswordChange?: boolean;

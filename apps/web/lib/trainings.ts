@@ -45,6 +45,7 @@ export interface TrainingItem {
   contentType: TrainingContentType;
   sourceType: string;
   sourcePath?: string | null;
+  standaloneSubfolders: string[];
   fileUrl?: string | null;
   externalUrl?: string | null;
   thumbnail?: string | null;
@@ -67,6 +68,7 @@ export interface TrainingFile {
   id?: string;
   title: string;
   fileUrl: string;
+  sourcePath?: string | null;
   fileType?: string | null;
   fileSize?: number | null;
   sortOrder: number;
@@ -78,9 +80,13 @@ export interface TrainingSource {
   name: string;
   type: string;
   basePath: string;
+  authMode?: string;
+  realm?: string;
   description?: string | null;
   username?: string | null;
   password?: string | null;
+  syncIntervalMinutes: number;
+  uploadDirectory: string;
   isActive: boolean;
   lastSyncAt?: string | null;
   lastSyncStatus?: string | null;
@@ -156,6 +162,8 @@ export interface CreateTrainingItemDto {
   description?: string;
   contentType?: TrainingContentType;
   sourceType?: string;
+  sourcePath?: string;
+  standaloneSubfolders?: string[];
   fileUrl?: string;
   externalUrl?: string;
   thumbnail?: string;
@@ -178,6 +186,8 @@ export interface CreateTrainingSourceDto {
   description?: string;
   username?: string;
   password?: string;
+  syncIntervalMinutes?: number;
+  uploadDirectory?: string;
   isActive?: boolean;
 }
 
@@ -224,6 +234,20 @@ export const inPersonTrainingsQueryKey = ["trainings", "in-person"];
 
 export function getPublishedTrainings() {
   return api.get<TrainingItem[]>("/trainings");
+}
+
+export function uploadTrainingSourceFile(
+  sourceId: string,
+  trainingSlug: string,
+  file: File,
+) {
+  const form = new FormData();
+  form.append("trainingSlug", trainingSlug);
+  form.append("file", file);
+  return api.upload<{ path: string; size: number }>(
+    `/trainings/sources/${sourceId}/upload`,
+    form,
+  );
 }
 
 export function getTrainingProgress(
@@ -343,6 +367,14 @@ export function updateTrainingSource(
   dto: Partial<CreateTrainingSourceDto>,
 ) {
   return api.put<TrainingSource>(`/trainings/sources/${id}`, dto);
+}
+
+export function testTrainingSource(id: string) {
+  return api.post<{ reachable: boolean; kerberosReady: boolean; message: string; checkedAt: string }>("/trainings/sources/" + id + "/test");
+}
+
+export function syncTrainingSource(id: string) {
+  return api.post<{ created: number; updated: number; discovered: number; scannedFolders: number; checkedAt: string }>(`/trainings/sources/${id}/sync`);
 }
 
 export function deleteTrainingSource(id: string) {

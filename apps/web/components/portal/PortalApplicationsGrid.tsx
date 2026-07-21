@@ -123,14 +123,16 @@ function FallbackApplicationCard({
 interface PortalApplicationsGridProps {
   selectedSiteId?: string | null;
   onSiteSelect?: (siteId: string | null) => void;
+  showSiteFilter?: boolean;
 }
 
 export default function PortalApplicationsGrid({
   selectedSiteId,
   onSiteSelect,
+  showSiteFilter = false,
 }: PortalApplicationsGridProps) {
   const { data: applications = [], isLoading, isError } = usePortalApplications();
-  const { data: sites = [] } = useSites();
+  const { data: sites = [] } = useSites(showSiteFilter);
   const activeSites = sites.filter((site) => site.isActive);
   const selectedSite = activeSites.find((site) => site.id === selectedSiteId);
   const visibleApplications = applications.filter((application) => {
@@ -154,9 +156,12 @@ export default function PortalApplicationsGrid({
           <p className="mt-1 text-xs text-slate-400">
             {selectedSite
               ? `نمایش لینک‌های سایت ${selectedSite.name}`
-              : "نمایش همه سایت‌ها؛ بعداً این انتخاب می‌تواند از AD انجام شود."}
+              : showSiteFilter
+                ? "نمایش همه سامانه‌ها؛ برای محدودکردن، یک سایت را انتخاب کنید."
+                : "سامانه‌های عمومی و قابل استفاده در پورتال"}
           </p>
         </div>
+        {showSiteFilter && (
         <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             type="button"
@@ -191,6 +196,7 @@ export default function PortalApplicationsGrid({
                 : `${visibleApplications.length} سامانه فعال`}
           </span>
         </div>
+        )}
       </div>
 
       {shouldUseFallback && selectedSiteId && !isLoading && !isError ? (
@@ -210,7 +216,7 @@ export default function PortalApplicationsGrid({
                   index={index}
                   selectedSiteId={selectedSiteId}
                 />
-              ))}
+          ))}
         </div>
       )}
     </>

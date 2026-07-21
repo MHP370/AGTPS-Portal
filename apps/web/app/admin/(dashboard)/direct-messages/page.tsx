@@ -12,6 +12,7 @@ import {
   useDirectMessagingConfig,
   useMyDirectConversationDetail,
   useMyDirectConversations,
+  useMyDirectContext,
   useMyDirectInbox,
   useReplyToMyDirectConversation,
   useUpdateMyDirectInboxStatus,
@@ -72,7 +73,8 @@ export default function DirectMessagesPage() {
   const { data: messagingConfig } = useDirectMessagingConfig();
   const { data: managers = [] } = useAvailableDirectManagers();
   const { data: sentConversations = [] } = useMyDirectConversations();
-  const { data: inboxConversations = [] } = useMyDirectInbox();
+  const { data: directContext } = useMyDirectContext();
+  const { data: inboxConversations = [] } = useMyDirectInbox(Boolean(directContext?.isManager));
   const createConversation = useCreateMyDirectConversation();
   const replyToConversation = useReplyToMyDirectConversation();
   const updateInboxStatus = useUpdateMyDirectInboxStatus();
@@ -93,12 +95,24 @@ export default function DirectMessagesPage() {
   });
   const [notice, setNotice] = useState("");
   const messagingEnabled = Boolean(messagingConfig?.enabled);
+  const isManager = Boolean(directContext?.isManager);
   const defaultManagerId = managers[0]?.id ?? "";
 
   const inboxOpenCount = useMemo(
     () => inboxConversations.filter((item) => item.status === "OPEN").length,
     [inboxConversations],
   );
+  const messageTabs: Array<{ id: Tab; label: string; icon: typeof Inbox }> = [
+    { id: "send", label: "ارسال پیام", icon: SendHorizontal },
+    { id: "sent", label: "پیام‌های من", icon: MessageSquareLock },
+    ...(isManager
+      ? [{
+          id: "inbox" as const,
+          label: "دریافتی مدیر" + (inboxOpenCount ? " (" + inboxOpenCount + ")" : ""),
+          icon: Inbox,
+        }]
+      : []),
+  ];
 
   async function submitMessage(event: React.FormEvent) {
     event.preventDefault();
@@ -197,15 +211,7 @@ export default function DirectMessagesPage() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        {[
-          { id: "send" as const, label: "ارسال پیام", icon: SendHorizontal },
-          { id: "sent" as const, label: "پیام‌های من", icon: MessageSquareLock },
-          {
-            id: "inbox" as const,
-            label: `دریافتی مدیر${inboxOpenCount ? ` (${inboxOpenCount})` : ""}`,
-            icon: Inbox,
-          },
-        ].map((item) => {
+        {messageTabs.map((item) => {
           const Icon = item.icon;
           return (
             <button

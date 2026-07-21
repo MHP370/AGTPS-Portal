@@ -193,6 +193,7 @@ model User {
   lastName            String?
   personnelCode       String?
   birthDate           DateTime?
+  mobile              String?
   allowEmailChange    Boolean   @default(false)
   allowPasswordChange Boolean   @default(true)
   allowProfileEdit    Boolean   @default(true)
@@ -273,6 +274,7 @@ model DirectoryUser {
   username    String          @unique
   displayName String
   email       String?
+  mobile      String?
   department  String?
   title       String?
   source      DirectorySource @default(INTERNAL)
@@ -786,6 +788,14 @@ model SmbShare {
   title       String
   description String? @db.Text
   rootPath    String
+  uncPath     String?
+  authMode   String  @default("KERBEROS")
+  realm      String?
+  sharedUsername String?
+  sharedPassword String?
+  lastConnectionAt DateTime?
+  lastConnectionStatus String?
+  lastConnectionError String? @db.Text
   icon        String?
   color       String?
 
@@ -886,6 +896,7 @@ model TrainingItem {
   contentType TrainingContentType @default(VIDEO)
   sourceType  String              @default("PORTAL_UPLOAD")
   sourcePath  String?
+  standaloneSubfolders String[] @default([])
   fileUrl     String?
   externalUrl String?
   thumbnail   String?
@@ -915,6 +926,7 @@ model TrainingFile {
   trainingId String
   title      String
   fileUrl    String
+  sourcePath String?
   fileType   String?
   fileSize   Int?
   sortOrder  Int     @default(0)
@@ -932,9 +944,13 @@ model TrainingSource {
   name           String
   type           String    @default("SMB")
   basePath       String
+  authMode      String    @default("KERBEROS")
+  realm         String?
   description    String?   @db.Text
   username       String?
   password       String?
+  syncIntervalMinutes Int       @default(5)
+  uploadDirectory    String     @default("_PortalUploads")
   isActive       Boolean   @default(true)
   lastSyncAt     DateTime?
   lastSyncStatus String?
@@ -1217,11 +1233,16 @@ model Setting {
   activeDirectoryLastError       String?   @db.Text
   activeDirectoryLastCheckedAt   DateTime?
 
+  windowsSsoEnabled Boolean @default(false)
+  requirePortalLogin Boolean @default(false)
+
   trainingMaxUploadSizeMb       Int    @default(2048)
   trainingAllowedFileExtensions String @default("mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z")
 
   requireUserPersonnelCode Boolean               @default(false)
   requireUserBirthDate     Boolean               @default(false)
+  requireUserEmail         Boolean               @default(false)
+  requireUserMobile        Boolean               @default(false)
   topbarUserDisplayMode    TopbarUserDisplayMode @default(FULL_NAME)
 }
 

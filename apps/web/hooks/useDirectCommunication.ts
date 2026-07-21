@@ -21,6 +21,7 @@ import {
   getForbiddenWords,
   getMyDirectConversationDetail,
   getMyDirectConversations,
+  getMyDirectContext,
   getMyDirectInbox,
   replyToMyDirectConversation,
   updateDirectConversationStatus,
@@ -78,10 +79,18 @@ export function useMyDirectConversations() {
   });
 }
 
-export function useMyDirectInbox() {
+export function useMyDirectContext() {
+  return useQuery({
+    queryKey: [...directCommunicationQueryKey, "my-context"],
+    queryFn: getMyDirectContext,
+  });
+}
+
+export function useMyDirectInbox(enabled = true) {
   return useQuery({
     queryKey: [...directCommunicationQueryKey, "my-inbox"],
     queryFn: getMyDirectInbox,
+    enabled,
   });
 }
 

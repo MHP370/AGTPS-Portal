@@ -15,10 +15,11 @@ import {
   type CreateSiteDto,
 } from "@/lib/sites";
 
-export function useSites() {
+export function useSites(enabled = true) {
   return useQuery({
     queryKey: siteQueryKey,
     queryFn: getSites,
+    enabled,
   });
 }
 

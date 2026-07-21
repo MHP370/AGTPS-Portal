@@ -57,6 +57,7 @@ const adminNavItems: AdminNavItem[] = [
     href: "/admin/dashboard",
     label: "داشبورد",
     icon: House,
+    permission: "dashboard.view",
     moduleKey: "dashboard",
   },
   {
@@ -325,7 +326,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
             <div className="flex items-center gap-4">
               <Link
-                href="/admin/dashboard"
+                href="/admin/profile"
                 className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-300/30 hover:text-cyan-100"
               >
                 {getUserDisplayName(user, settings?.topbarUserDisplayMode)}

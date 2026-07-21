@@ -1,8 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { DirectorySource } from '@prisma/client';
-import { Client } from 'ldapts';
+import { Attribute, Change, Client } from 'ldapts';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -63,18 +63,81 @@ export class ActiveDirectoryAuthService {
     return this.provisionPortalUser(directoryUser, settings.activeDirectoryDomain);
   }
 
-  private normalizeUsername(value: string, domain: string) {
+  async authenticateTrustedWindowsIdentity(rawIdentity: string) {
+    const settings = await this.prisma.setting.findUnique({ where: { id: 1 } });
+    if (
+      !settings?.activeDirectoryEnabled ||
+      !settings.windowsSsoEnabled ||
+      !settings.activeDirectoryDomain
+    ) {
+      throw new UnauthorizedException('Windows automatic login is unavailable.');
+    }
+
+    const identity = rawIdentity.trim();
+    const suppliedDomain = identity.includes('\\')
+      ? identity.slice(0, identity.lastIndexOf('\\'))
+      : identity.includes('@')
+        ? identity.slice(identity.lastIndexOf('@') + 1)
+        : null;
+    if (
+      suppliedDomain &&
+      suppliedDomain.toLowerCase() !== settings.activeDirectoryDomain.toLowerCase()
+    ) {
+      throw new UnauthorizedException('The authenticated Windows domain is not allowed.');
+    }
+
+    const username = this.normalizeUsername(identity, settings.activeDirectoryDomain);
+    const directoryUser = await this.prisma.directoryUser.findFirst({
+      where: {
+        username: { equals: username, mode: 'insensitive' },
+        source: DirectorySource.ACTIVE_DIRECTORY,
+        isActive: true,
+      },
+    });
+    if (!directoryUser) {
+      throw new UnauthorizedException(
+        'حساب ویندوز در فهرست کاربران فعال اکتیو دایرکتوری پورتال موجود نیست.',
+      );
+    }
+
+    const user = await this.provisionPortalUser(
+      directoryUser,
+      settings.activeDirectoryDomain,
+    );
+    return { user, directoryUser, domain: settings.activeDirectoryDomain };
+  }
+
+  async updateContact(distinguishedName: string | null, values: { email?: string; mobile?: string }) {
+    const settings = await this.prisma.setting.findUnique({ where: { id: 1 } });
+    if (!distinguishedName || !settings?.activeDirectoryUrl || !settings.activeDirectoryBindDn || !settings.activeDirectoryBindPassword) {
+      throw new BadRequestException("تنظیمات نوشتن اطلاعات در اکتیو دایرکتوری کامل نیست.");
+    }
+    if (!settings.activeDirectoryUrl.toLowerCase().startsWith("ldaps://")) {
+      throw new BadRequestException("ویرایش اطلاعات اکتیو دایرکتوری فقط از طریق LDAPS مجاز است.");
+    }
+    const client = new Client({
+      url: settings.activeDirectoryUrl, timeout: 15_000, connectTimeout: 10_000,
+      tlsOptions: { ca: settings.activeDirectoryCaCertificate || undefined, servername: settings.activeDirectoryTlsServerName || undefined },
+    });
+    try {
+      await client.bind(settings.activeDirectoryBindDn, settings.activeDirectoryBindPassword);
+      const changes: Change[] = [];
+      if (values.email !== undefined) changes.push(new Change({ operation: "replace", modification: new Attribute({ type: "mail", values: values.email ? [values.email] : [] }) }));
+      if (values.mobile !== undefined) changes.push(new Change({ operation: "replace", modification: new Attribute({ type: "mobile", values: values.mobile ? [values.mobile] : [] }) }));
+      if (changes.length) await client.modify(distinguishedName, changes);
+    } catch {
+      throw new BadRequestException("ویرایش اطلاعات در اکتیو دایرکتوری انجام نشد؛ مجوز سرویس‌اکانت را بررسی کنید.");
+    } finally {
+      await client.unbind().catch(() => undefined);
+    }
+  }
+
+  private normalizeUsername(value: string, _domain: string) {
     const trimmed = value.trim();
     const withoutDomainPrefix = trimmed.includes('\\')
       ? trimmed.slice(trimmed.lastIndexOf('\\') + 1)
       : trimmed;
-    const [username, suppliedDomain] = withoutDomainPrefix.split('@');
-    if (
-      suppliedDomain &&
-      suppliedDomain.toLowerCase() !== domain.toLowerCase()
-    ) {
-      throw new UnauthorizedException('Invalid username or password');
-    }
+    const username = withoutDomainPrefix.split('@', 1)[0]?.trim();
     if (!username) {
       throw new UnauthorizedException('Invalid username or password');
     }
@@ -87,6 +150,7 @@ export class ActiveDirectoryAuthService {
       username: string;
       displayName: string;
       email: string | null;
+      mobile: string | null;
       isActive: boolean;
       externalId: string | null;
     },
@@ -128,6 +192,7 @@ export class ActiveDirectoryAuthService {
       data: {
         username: portalUsername,
         email: portalEmail,
+        mobile: directoryUser.mobile,
         password: await bcrypt.hash(randomBytes(48).toString('base64url'), 12),
         firstName: firstName || null,
         lastName: lastNameParts.join(' ') || null,

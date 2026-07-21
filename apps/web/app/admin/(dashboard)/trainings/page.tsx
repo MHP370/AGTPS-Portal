@@ -34,11 +34,14 @@ import {
   useDeleteTrainingCategory,
   useDeleteTrainingItem,
   useDeleteTrainingSource,
+  useTestTrainingSource,
+  useSyncTrainingSource,
   useUpdateInPersonParticipant,
   useUpdateInPersonTraining,
   useUpdateTrainingCategory,
   useUpdateTrainingItem,
   useUpdateTrainingSource,
+  useUploadTrainingSourceFile,
 } from "@/hooks/useTrainings";
 import type {
   InPersonAttendanceStatus,
@@ -55,7 +58,7 @@ import type {
 } from "@/lib/trainings";
 
 type TrainingTab =
-  "create" | "list" | "settings" | "users" | "courses" | "reports";
+  "create" | "review" | "published" | "settings" | "users" | "courses" | "reports";
 
 const contentTypeOptions = [
   { value: "VIDEO", label: "ویدیو" },
@@ -108,7 +111,8 @@ const trainingTabs: Array<{
   icon: typeof Plus;
 }> = [
   { id: "create", label: "افزودن آموزش", icon: Plus },
-  { id: "list", label: "لیست آموزش‌ها", icon: ListChecks },
+  { id: "review", label: "صف بررسی", icon: ListChecks },
+  { id: "published", label: "منتشرشده‌ها", icon: GraduationCap },
   { id: "settings", label: "تنظیمات", icon: Settings2 },
   { id: "users", label: "کاربران", icon: Users },
   { id: "courses", label: "دوره‌ها", icon: CalendarRange },
@@ -165,7 +169,10 @@ export default function TrainingsPage() {
   const createSource = useCreateTrainingSource();
   const updateSource = useUpdateTrainingSource();
   const deleteSource = useDeleteTrainingSource();
-  const [activeTab, setActiveTab] = useState<TrainingTab>("list");
+  const testSource = useTestTrainingSource();
+  const syncSource = useSyncTrainingSource();
+  const uploadSourceFile = useUploadTrainingSourceFile();
+  const [activeTab, setActiveTab] = useState<TrainingTab>("review");
 
   const [editingTraining, setEditingTraining] = useState<TrainingItem | null>(
     null,
@@ -189,6 +196,7 @@ export default function TrainingsPage() {
   const [isRequired, setIsRequired] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [status, setStatus] = useState<TrainingPublishStatus>("DRAFT");
+  const [standaloneSubfolders, setStandaloneSubfolders] = useState("");
 
   const [editingCategory, setEditingCategory] =
     useState<TrainingCategory | null>(null);
@@ -205,10 +213,15 @@ export default function TrainingsPage() {
   );
   const [sourceName, setSourceName] = useState("");
   const [sourceType, setSourceType] = useState("SMB");
+  const [sourceAuthMode, setSourceAuthMode] = useState("KERBEROS");
+  const [sourceRealm, setSourceRealm] = useState("AGTPS.NET");
   const [sourceBasePath, setSourceBasePath] = useState("");
   const [sourceDescription, setSourceDescription] = useState("");
   const [sourceUsername, setSourceUsername] = useState("");
   const [sourcePassword, setSourcePassword] = useState("");
+  const [sourceSyncInterval, setSourceSyncInterval] = useState("5");
+  const [sourceUploadDirectory, setSourceUploadDirectory] = useState("_PortalUploads");
+  const [sourceUploadSlug, setSourceUploadSlug] = useState("");
   const [sourceIsActive, setSourceIsActive] = useState(false);
 
   const [editingCourse, setEditingCourse] = useState<InPersonTraining | null>(
@@ -264,6 +277,7 @@ export default function TrainingsPage() {
     setIsRequired(false);
     setIsActive(true);
     setStatus("DRAFT");
+    setStandaloneSubfolders("");
   }
 
   function startEditTraining(item: TrainingItem) {
@@ -309,6 +323,7 @@ export default function TrainingsPage() {
     setIsRequired(item.isRequired);
     setIsActive(item.isActive);
     setStatus(item.status);
+    setStandaloneSubfolders(item.standaloneSubfolders?.join(", ") ?? "");
   }
 
   async function submitTraining(event: React.FormEvent) {
@@ -320,7 +335,8 @@ export default function TrainingsPage() {
       slug: slug.trim(),
       description: description.trim() || undefined,
       contentType,
-      sourceType: "PORTAL_UPLOAD",
+      sourceType: editingTraining?.sourceType || "PORTAL_UPLOAD",
+      sourcePath: editingTraining?.sourcePath || undefined,
       fileUrl:
         files.find((file) => file.isPrimary)?.fileUrl || files[0]?.fileUrl,
       externalUrl: externalUrl.trim() || undefined,
@@ -333,6 +349,7 @@ export default function TrainingsPage() {
       isRequired,
       isActive,
       status,
+      standaloneSubfolders: tagsToArray(standaloneSubfolders),
       categoryId: categoryId === "__none__" ? null : categoryId,
       files: files.map((file, index) => ({
         ...file,
@@ -351,7 +368,7 @@ export default function TrainingsPage() {
     }
 
     resetTrainingForm();
-    setActiveTab("list");
+    setActiveTab(status === "PUBLISHED" ? "published" : "review");
   }
 
   function addTrainingFile() {
@@ -446,10 +463,15 @@ export default function TrainingsPage() {
     setEditingSource(null);
     setSourceName("");
     setSourceType("SMB");
+    setSourceAuthMode("KERBEROS");
+    setSourceRealm("AGTPS.NET");
     setSourceBasePath("");
     setSourceDescription("");
     setSourceUsername("");
     setSourcePassword("");
+    setSourceSyncInterval("5");
+    setSourceUploadDirectory("_PortalUploads");
+    setSourceUploadSlug("");
     setSourceIsActive(false);
   }
 
@@ -458,10 +480,14 @@ export default function TrainingsPage() {
     setEditingSource(source);
     setSourceName(source.name);
     setSourceType(source.type);
+    setSourceAuthMode(source.authMode ?? "KERBEROS");
+    setSourceRealm(source.realm ?? "AGTPS.NET");
     setSourceBasePath(source.basePath);
     setSourceDescription(source.description ?? "");
     setSourceUsername(source.username ?? "");
     setSourcePassword("");
+    setSourceSyncInterval(String(source.syncIntervalMinutes ?? 5));
+    setSourceUploadDirectory(source.uploadDirectory ?? "_PortalUploads");
     setSourceIsActive(source.isActive);
   }
 
@@ -472,10 +498,16 @@ export default function TrainingsPage() {
     const dto = {
       name: sourceName.trim(),
       type: sourceType.trim() || "SMB",
+      authMode: sourceAuthMode,
+      realm: sourceRealm.trim() || undefined,
       basePath: sourceBasePath.trim(),
       description: sourceDescription.trim() || undefined,
       username: sourceUsername.trim() || undefined,
-      password: sourcePassword.trim() || undefined,
+      password:
+        sourcePassword.trim() ||
+        (editingSource?.password ? "__KEEP_EXISTING__" : undefined),
+      syncIntervalMinutes: Math.max(Number(sourceSyncInterval) || 5, 1),
+      uploadDirectory: sourceUploadDirectory.trim() || "_PortalUploads",
       isActive: sourceIsActive,
     };
 
@@ -848,6 +880,45 @@ export default function TrainingsPage() {
                 className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder:text-slate-500"
               />
             </FormField>
+            {editingSource && sourceAuthMode === "SERVICE_ACCOUNT" && (
+              <div className="space-y-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
+                <p className="text-sm leading-7 text-cyan-100">
+                  فایل در مسیر {sourceUploadDirectory || "_PortalUploads"}/نام‌آموزش ذخیره و بلافاصله سینک می‌شود.
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input value={sourceUploadSlug} onChange={(event) => setSourceUploadSlug(event.target.value)} placeholder="نام یا slug آموزش" dir="ltr" />
+                  <input
+                    type="file"
+                    disabled={!sourceUploadSlug.trim() || uploadSourceFile.isPending}
+                    className="rounded-lg border border-slate-700 bg-slate-900 p-2 text-sm"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) {
+                        uploadSourceFile.mutate({
+                          sourceId: editingSource.id,
+                          trainingSlug: sourceUploadSlug,
+                          file,
+                        });
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            {editingTraining?.sourceType === "SMB" && (
+              <FormField label="زیرپوشه‌های مستقل">
+                <Input
+                  value={standaloneSubfolders}
+                  onChange={(event) => setStandaloneSubfolders(event.target.value)}
+                  placeholder="مثال: فصل دوم, ویدیوهای تکمیلی"
+                  dir="ltr"
+                />
+                <p className="mt-2 text-xs leading-6 text-slate-400">
+                  مسیر زیرپوشه‌ها را با ویرگول جدا کنید. پس از ذخیره و سینک بعدی، هر مسیر به آموزش مستقلی تبدیل می‌شود.
+                </p>
+              </FormField>
+            )}
 
             <div className="flex flex-wrap gap-5 text-sm text-slate-200">
               <label className="flex items-center gap-2">
@@ -980,8 +1051,7 @@ export default function TrainingsPage() {
               {editingSource ? "ویرایش سرور آموزش" : "افزودن سرور آموزش"}
             </h2>
             <p className="text-sm leading-7 text-slate-400">
-              این بخش برای ثبت مسیر فایل‌های آموزشی قبلی است. sync خودکار بعدا
-              با مسیر و دسترسی واقعی شرکت فعال می‌شود.
+              مسیر UNC یا DFS را وارد کنید، سپس تست اتصال را اجرا کنید. ایندکس فقط پس از آماده بودن Kerberos فعال می‌شود.
             </p>
             <FormField label="نام منبع" required>
               <Input
@@ -997,6 +1067,12 @@ export default function TrainingsPage() {
                   onChange={(event) => setSourceType(event.target.value)}
                   placeholder="SMB"
                 />
+              </FormField>
+              <FormField label="روش احراز هویت">
+                <select value={sourceAuthMode} onChange={(event) => setSourceAuthMode(event.target.value)} className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm text-white"><option value="KERBEROS">Kerberos - دسترسی واقعی کاربر</option><option value="SERVICE_ACCOUNT">Service Account</option></select>
+              </FormField>
+              <FormField label="دامنه Kerberos">
+                <Input value={sourceRealm} onChange={(event) => setSourceRealm(event.target.value)} placeholder="AGTPS.NET" dir="ltr" />
               </FormField>
               <FormField label="مسیر منبع" required>
                 <Input
@@ -1020,6 +1096,12 @@ export default function TrainingsPage() {
                   onChange={(event) => setSourcePassword(event.target.value)}
                   placeholder={editingSource ? "برای حفظ رمز خالی بگذارید" : ""}
                 />
+              </FormField>
+              <FormField label="فاصله سینک خودکار (دقیقه)">
+                <Input type="number" min={1} value={sourceSyncInterval} onChange={(event) => setSourceSyncInterval(event.target.value)} />
+              </FormField>
+              <FormField label="پوشه آپلود پورتال">
+                <Input value={sourceUploadDirectory} onChange={(event) => setSourceUploadDirectory(event.target.value)} placeholder="_PortalUploads" dir="ltr" />
               </FormField>
             </div>
             <FormField label="توضیحات">
@@ -1059,9 +1141,13 @@ export default function TrainingsPage() {
         </div>
       )}
 
-      {activeTab === "list" && (
+      {(activeTab === "review" || activeTab === "published") && (
         <DataTable
-          data={trainings}
+          data={trainings.filter((item) =>
+            activeTab === "published"
+              ? item.status === "PUBLISHED"
+              : item.status !== "PUBLISHED" && item.status !== "ARCHIVED",
+          )}
           columns={[
             {
               key: "title",
@@ -1072,6 +1158,17 @@ export default function TrainingsPage() {
                   <div className="mt-1 text-xs text-slate-400">
                     {item.category?.name || "بدون دسته"} · {item.contentType}
                   </div>
+                </div>
+              ),
+            },
+            {
+              key: "sourcePath",
+              title: "مسیر فایل",
+              render: (item) => (
+                <div className="max-w-md break-all text-xs leading-6 text-slate-300" dir="ltr">
+                  {item.sourcePath?.includes(":")
+                    ? item.sourcePath.slice(item.sourcePath.indexOf(":") + 1)
+                    : item.sourcePath || "فایل بارگذاری‌شده در پورتال"}
                 </div>
               ),
             },
@@ -1114,6 +1211,30 @@ export default function TrainingsPage() {
               title: "عملیات",
               render: (item) => (
                 <div className="flex flex-wrap gap-2">
+                  {item.fileUrl && (
+                    <a
+                      href={item.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-700 px-3 text-sm font-bold text-slate-100 transition hover:border-cyan-500 hover:text-cyan-300"
+                    >
+                      پیش‌نمایش فایل
+                    </a>
+                  )}
+                  {item.status !== "PUBLISHED" && (
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        updateTraining.mutate({
+                          id: item.id,
+                          dto: { status: "PUBLISHED", isActive: true },
+                        })
+                      }
+                      disabled={updateTraining.isPending}
+                    >
+                      تأیید و انتشار
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="secondary"
@@ -1200,13 +1321,15 @@ export default function TrainingsPage() {
                 key: "lastSyncStatus",
                 title: "Sync",
                 render: (source) =>
-                  source.lastSyncStatus || "هنوز sync اجرا نشده است",
+                  source.lastSyncStatus ? source.lastSyncStatus + (source.lastSyncError ? " - " + source.lastSyncError : "") : "هنوز تست اتصال اجرا نشده است",
               },
               {
                 key: "actions",
                 title: "عملیات",
                 render: (source) => (
                   <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" disabled={testSource.isPending} onClick={() => testSource.mutate(source.id)}>تست اتصال</Button>
+                    <Button size="sm" disabled={syncSource.isPending} onClick={() => syncSource.mutate(source.id)}>{syncSource.isPending ? "در حال Sync..." : "همگام‌سازی"}</Button>
                     <Button
                       size="sm"
                       variant="secondary"

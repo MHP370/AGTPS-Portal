@@ -216,6 +216,11 @@ export class DirectCommunicationService {
     return this.mapConversationDetail(conversation);
   }
 
+  async getMyContext(currentUser?: CurrentUser) {
+    const managerIds = await this.findManagerIdsForUser(currentUser);
+    return { isManager: managerIds.length > 0 };
+  }
+
   async findInboxConversations(currentUser?: CurrentUser) {
     if (!currentUser?.id) {
       return [];

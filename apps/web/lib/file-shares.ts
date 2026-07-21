@@ -18,6 +18,14 @@ export interface FileShare {
   title: string;
   description?: string | null;
   rootPath?: string;
+  uncPath?: string | null;
+  authMode?: string;
+  realm?: string | null;
+  sharedUsername?: string | null;
+  sharedPassword?: string | null;
+  lastConnectionAt?: string | null;
+  lastConnectionStatus?: string | null;
+  lastConnectionError?: string | null;
   icon?: string | null;
   color?: string | null;
   allowDownload: boolean;
@@ -75,6 +83,11 @@ export interface CreateFileShareDto {
   title: string;
   description?: string;
   rootPath: string;
+  uncPath?: string;
+  authMode?: string;
+  realm?: string;
+  sharedUsername?: string;
+  sharedPassword?: string;
   icon?: string;
   color?: string;
   allowDownload?: boolean;
@@ -85,6 +98,8 @@ export interface CreateFileShareDto {
   userAccesses?: ShareAccess[];
   groupAccesses?: ShareAccess[];
 }
+
+export interface SmbConnectionResult { path: string; host: string | null; share: string | null; reachable: boolean; kerberosReady: boolean; checkedAt: string; message: string; }
 
 export const fileSharesQueryKey = ["file-shares"];
 
@@ -111,6 +126,10 @@ export function createFileShare(dto: CreateFileShareDto) {
 
 export function updateFileShare(id: string, dto: Partial<CreateFileShareDto>) {
   return api.put<FileShare>(`/file-shares/${id}`, dto);
+}
+
+export function testFileShare(id: string) {
+  return api.post<SmbConnectionResult>("/file-shares/" + id + "/test");
 }
 
 export function deleteFileShare(id: string) {

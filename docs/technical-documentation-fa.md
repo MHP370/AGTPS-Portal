@@ -158,8 +158,57 @@ Database migration `20260720090000_add_active_directory_sync_identity` adds null
 - `GET /api/auth/login-options` فقط وضعیت روش‌ها و نام دامنه را برمی‌گرداند و اطلاعات Bind را افشا نمی‌کند.
 - ورود AD فقط با URL دارای `ldaps://` مجاز است. Root CA و TLS server name از تنظیمات AD خوانده می‌شوند و خاموش‌کردن اعتبارسنجی گواهی مجاز نیست.
 - رمز AD ذخیره یا log نمی‌شود. LDAP bind با UPN کاربر انجام و اتصال در finally بسته می‌شود.
+
+## Windows Integrated Authentication (Kerberos/SPNEGO)
+
+- مسیر عمومی مرورگر `/sso/identity` و `/sso/login` توسط سرویس محدود `agtps-sso` با Apache `mod_auth_gssapi` محافظت می‌شود.
+- سرویس SSO با keytab حساب `HTTP/portal.agtps.net@AGTPS.NET` هویت Kerberos را اعتبارسنجی و درخواست را مستقیماً به API داخلی ارسال می‌کند.
+- API فقط Header هویت همراه با `SSO_SHARED_SECRET` مشترک را قبول می‌کند. nginx ورودی این Headerها را در مسیر عمومی `/api/` حذف می‌کند تا جعل هویت از مرورگر ممکن نباشد.
+- keytab میزبان read-only mount می‌شود و entrypoint یک کپی داخلی با مجوز `0640` و مالکیت `root:www-data` می‌سازد؛ keytab نباید داخل image یا repository ذخیره شود.
+- `windowsSsoEnabled` فعال‌بودن SSO و `requirePortalLogin` اجبار احراز هویت صفحات کاربری را کنترل می‌کنند. middleware تنظیم را از `INTERNAL_API_URL` می‌خواند و در صورت عدم دسترسی به تنظیمات، دسترسی مهمان را fail-closed به صفحه ورود هدایت می‌کند.
+- endpoint ورود فقط کاربران فعال و sync‌شده با منبع `ACTIVE_DIRECTORY` را می‌پذیرد و JWT استاندارد سامانه را صادر می‌کند.
+- Chrome/Edge باید `AuthServerAllowlist=portal.agtps.net` داشته باشند. Firefox از `network.negotiate-auth.trusted-uris=https://portal.agtps.net` یا Enterprise Policy معادل `Authentication.SPNEGO` استفاده می‌کند. Delegation برای Login لازم نیست.
+- حساب سرویس باید `msDS-SupportedEncryptionTypes=24` داشته باشد تا Ticket با AES128/AES256 و سازگار با keytab AES صادر شود؛ RC4 نباید به‌عنوان راه‌حل دائمی به keytab اضافه شود.
+
+## Portal layout, permission-aware admin dashboard and browser notifications
+
+- صفحه `/` همه ماژول‌ها و ویجت‌های فعال سراسری را برای کاربران احرازشده نمایش می‌دهد؛ Permission نقش یا گروه AD برای حذف محتوای عمومی پورتال استفاده نمی‌شود. کنترل Permission همچنان در مسیرها، عملیات و داشبورد مدیریت اعمال می‌شود و لینک admin dashboard فقط با `dashboard.view` ساخته می‌شود.
+- مقدار `column` هر ویجت هنگام normalize حفظ می‌شود و ترتیب در هر ستون مستقل محاسبه می‌گردد. `hero`، `map` و `systems` همیشه در مرکز قفل هستند؛ سایر ویجت‌ها از تنظیمات بین سه ستون قابل انتقال‌اند.
+- hook اعلان وضعیت `Notification.permission` را در mount، focus و visibility change همگام می‌کند. درخواست مجوز فقط در وضعیت `default` و در پاسخ به کلیک کاربر اجرا می‌شود؛ وضعیت `denied` با راهنمای پایدار مدیریت می‌شود، چون Web Notification API اجازه prompt مجدد برنامه‌ای نمی‌دهد.
 - فقط `DirectoryUser` فعال با source برابر `ACTIVE_DIRECTORY` اجازه تلاش برای ورود دارد.
 - `User.directoryUserId` لینک یکتا و صریح حساب سامانه به هویت AD است و از تصاحب نقش حساب محلی هم‌نام جلوگیری می‌کند.
 - حساب provision شده رمز تصادفی غیرقابل استفاده، `allowPasswordChange=false` و بدون UserRole مستقیم دارد. دسترسی فقط از DirectoryGroupRoleهای ادمین‌تخصیص‌یافته محاسبه می‌شود.
 - ورود محلی برای حساب اضطراری مدیر مستقل از دسترس‌پذیری AD باقی می‌ماند.
 - migrationها: `20260720103000_link_portal_users_to_directory` و `20260720104500_add_active_directory_tls_trust`.
+
+## سیاست دسترسی داشبورد و Context پیام‌ها
+
+- Permission جدید `dashboard.view` مرز صریح دسترسی به داشبورد مدیریتی است. migration فقط آن را به نقش `admin` موجود تخصیص می‌دهد و نقش‌های سفارشی باید صریحاً توسط ادمین مجوز بگیرند.
+- Admin layout قبل از render کردن child page، Permission و وضعیت module را بررسی می‌کند؛ بنابراین برای کاربر فاقد `dashboard.view` کامپوننت داشبورد mount نشده و queryهای آمار و سلامت نیز اجرا نمی‌شوند.
+- redirect پس از login برای کاربر بدون Permission به `/` است. حساب دارای `dashboard.view` به `/admin/dashboard` هدایت می‌شود.
+- endpoint جدید `GET /api/direct-communication/my/context` مقدار `isManager` را بر اساس اتصال واقعی DirectCommunicationManager به حساب پورتال یا DirectoryUser محاسبه می‌کند.
+- query صندوق مدیر در frontend با `enabled=isManager` کنترل می‌شود؛ کاربران عادی نه تب را می‌بینند و نه درخواست inbox را ارسال می‌کنند.
+- migration مربوط: `20260720113000_add_dashboard_view_permission`.
+
+
+## Active Directory contact attributes
+
+User contact fields use AD attributes mail and mobile. Profile writes require LDAPS and a least-privilege bind account with write access only to those attributes. The API writes AD first and updates portal data only after LDAP success. Directory group membership is omitted from ordinary profile responses and is returned only with directory.manage permission. Settings requireUserEmail and requireUserMobile control profile completion enforcement.
+
+
+## تنظیم عمومی SMB و DFS
+
+در مدیریت فایل‌شیر و منابع آموزش، مسیر UNC یا DFS، روش احراز هویت و Realm قابل ویرایش است. دکمه تست اتصال DNS و پورت 445 را بررسی می‌کند و آمادگی Kerberos را جداگانه گزارش می‌دهد. وضعیت NETWORK_REACHABLE به معنی دسترسی شبکه است و به معنی آماده بودن ACL کاربر نیست؛ برای ACL واقعی وضعیت READY و DNS/SPN معتبر لازم است.
+# معماری دسترسی SMB آموزش و فایل‌شیر
+
+- فایل‌شیر عمومی سازمان از Kerberos Constrained Delegation استفاده می‌کند تا عملیات SMB با هویت واقعی کاربر دامنه انجام شود. کاربران فعال AD بدون تعریف ACL تکراری در پورتال Share را می‌بینند، اما نتیجه مرور پوشه تابع ACL ویندوز است.
+- حساب‌های دارای `AccountNotDelegated=True` عمداً توسط KDC برای S4U2Proxy رد می‌شوند. استفاده از هویت سرویس به‌عنوان fallback در فایل‌شیر ممنوع است، چون باعث دور زدن ACL کاربر می‌شود.
+- منبع آموزش SMB با حساب سرویس فقط برای ایندکس و دریافت محتوای آموزشی سازمانی خوانده می‌شود. endpoint محتوای آموزش JWT می‌خواهد و فایل منتشرنشده را فقط به دارنده `training.manage` می‌دهد.
+- محتوای آموزش در volume نام‌دار `training-cache` و مسیر `/var/cache/agtps/training` کش می‌شود. پاسخ HTTP از Range پشتیبانی می‌کند تا ویدیو و PDF در مرورگر قابل پیش‌نمایش باشند.
+- رکوردهای جدید SMB با وضعیت `NEEDS_REVIEW` ساخته می‌شوند و sync بعدی وضعیت انتخاب‌شده مدیر را بازنویسی نمی‌کند.
+- migrationهای `20260721080000_move_smb_trainings_to_review` و `20260721080500_rewrite_smb_training_content_urls` داده‌های قبلی را به جریان جدید منتقل می‌کنند.
+- حالت `SHARED_ACCOUNT` فایل‌شیر با اعتبار رمزنگاری‌شده AES-256-GCM کار می‌کند و برای تمام کاربران authenticated دسترسی یکسان می‌سازد. رمز از API ماسک می‌شود و از متغیر `DIRECT_COMMUNICATION_ENCRYPTION_KEY` یا `JWT_SECRET` مشتق می‌شود.
+- scheduler آموزش هر ۶۰ ثانیه منابع فعال را بررسی می‌کند و بر اساس `syncIntervalMinutes` تصمیم به اجرا می‌گیرد. اجرای هم‌زمان یک منبع با قفل درون‌پردازه‌ای جلوگیری می‌شود.
+- سینک پوشه‌ای، `TrainingItem.sourcePath` را به ریشه پوشه و `TrainingFile.sourcePath` را به مسیر واقعی هر فایل متصل می‌کند. رکوردهای قدیمی خارج از ساختار فعال آرشیو می‌شوند و حذف فیزیکی نمی‌شوند.
+- آپلود SMB ابتدا روی دیسک موقت کانتینر نوشته می‌شود، سپس با حساب Service Account به `uploadDirectory/trainingSlug` انتقال می‌یابد و فایل موقت در بلوک finally حذف می‌شود.
+- migration `20260721090000_add_shared_smb_and_training_folder_sync` فیلدهای حالت مشترک، زمان‌بندی، مسیر آپلود و ساختار پوشه‌ای را اضافه می‌کند.

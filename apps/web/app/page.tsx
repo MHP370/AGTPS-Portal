@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { createPortal } from "react-dom";
 import {
-  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -453,6 +453,9 @@ function GlassPanel({
 export default function Home() {
   const reduceMotion = useReducedMotion();
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [portalColumnElements, setPortalColumnElements] = useState<
+    Partial<Record<"right" | "center" | "left", HTMLElement>>
+  >({});
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
     startOfLocalDay(new Date()),
@@ -568,6 +571,10 @@ export default function Home() {
     () => new Map(portalWidgetSettings.map((widget) => [widget.id, widget.order])),
     [portalWidgetSettings],
   );
+  const portalWidgetColumns = useMemo(
+    () => new Map(portalWidgetSettings.map((widget) => [widget.id, widget.column])),
+    [portalWidgetSettings],
+  );
   const enabledPortalWidgets = useMemo(
     () =>
       new Set(
@@ -589,6 +596,10 @@ export default function Home() {
       !enabledModuleKeys || !moduleKey || enabledModuleKeys.has(moduleKey),
     [enabledModuleKeys],
   );
+  const userPermissions = useMemo(
+    () => new Set(authUser?.permissions ?? []),
+    [authUser?.permissions],
+  );
   const sortPortalWidgets = (widgets: PortalWidgetEntry[]) =>
     widgets
       .filter(
@@ -601,19 +612,34 @@ export default function Home() {
           (portalWidgetOrder.get(first.id) ?? 0) -
           (portalWidgetOrder.get(second.id) ?? 0),
       );
-  const getFixedCenterWidgets = (widgets: PortalWidgetEntry[]) =>
-    fixedCenterWidgetOrder
-      .map((id) => widgets.find((widget) => widget.id === id))
-      .filter((widget): widget is PortalWidgetEntry => Boolean(widget))
-      .filter(
-        (widget) =>
-          enabledPortalWidgets.has(widget.id) &&
-          moduleIsEnabled(portalWidgetModuleKeys[widget.id]) &&
-          (widget.id !== "hero" || !heroDismissed),
-      );
+  const getPortalWidgetPlacement = (id: PortalWidgetId) => {
+    const configuredColumn = portalWidgetColumns.get(id) ?? "right";
+    const column = fixedCenterWidgetOrder.includes(id)
+      ? "center"
+      : configuredColumn;
+    return { column, order: portalWidgetOrder.get(id) ?? 0 };
+  };
+  const renderPortalWidget = (widget: PortalWidgetEntry) => {
+    const placement = getPortalWidgetPlacement(widget.id);
+    const target = portalColumnElements[placement.column];
+    if (!target) return null;
+    return createPortal(
+      <motion.div
+        key={widget.id}
+        layout="position"
+        transition={portalLayoutTransition}
+        style={{ order: placement.order }}
+      >
+        {widget.node}
+      </motion.div>,
+      target,
+      widget.id,
+    );
+  };
   const visiblePortalNavItems = portalNavItems.filter((item) =>
     moduleIsEnabled(item.moduleKey),
   );
+  const canOpenAdminDashboard = userPermissions.has("dashboard.view");
   const activeAnnouncements = announcements.filter(isAnnouncementVisible);
   const activeSliders = useMemo(
     () =>
@@ -1530,12 +1556,20 @@ export default function Home() {
             {authUser ? (
               <div className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 md:flex">
                 <Link
-                  href="/admin/dashboard"
+                  href={canOpenAdminDashboard ? "/admin/dashboard" : "/admin/profile"}
                   className="flex items-center gap-2 text-xs font-black text-slate-100 hover:text-cyan-100"
                 >
                   <UserRound size={17} />
                   <span className="max-w-32 truncate">{authUserName}</span>
                 </Link>
+                {canOpenAdminDashboard && (
+                  <Link
+                    href="/admin/dashboard"
+                    className="rounded-lg bg-cyan-400/10 px-2 py-1 text-[10px] font-black text-cyan-100 hover:bg-cyan-400/20"
+                  >
+                    مدیریت
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={logoutFromPortal}
@@ -1567,23 +1601,68 @@ export default function Home() {
                 </span>
               )}
             </button>
-            {browserNotifications.isSupported &&
-              browserNotifications.permission !== "granted" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void browserNotifications.requestPermission();
-                  }}
-                  className="hidden rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-black text-slate-200 hover:bg-white/[0.08] md:inline-flex"
-                >
-                  فعال‌سازی اعلان
-                </button>
-              )}
           </div>
         </header>
 
+        {authUser &&
+          browserNotifications.isSupported &&
+          browserNotifications.permission !== "granted" && (
+            <section className="mb-5 flex flex-col gap-4 rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-amber-50 shadow-xl shadow-black/10 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-amber-300/15 text-amber-100 ring-1 ring-amber-200/20">
+                  <Bell size={21} />
+                </span>
+                <div>
+                  <h2 className="font-black">
+                    {browserNotifications.permission === "denied"
+                      ? "اعلان‌های مرورگر مسدود شده است"
+                      : "اعلان‌های پورتال را فعال کنید"}
+                  </h2>
+                  <p className="mt-1 text-xs leading-6 text-amber-50/80">
+                    {browserNotifications.permission === "denied"
+                      ? "از آیکون تنظیمات کنار آدرس سایت، Notifications را روی Allow قرار دهید؛ این راهنما تا فعال‌شدن اعلان‌ها نمایش داده می‌شود."
+                      : "برای دریافت پیام‌ها، یادآوری‌ها و دعوت جلسات، اجازه اعلان مرورگر را تأیید کنید."}
+                  </p>
+                </div>
+              </div>
+              {browserNotifications.permission === "default" && (
+                <button
+                  type="button"
+                  onClick={() => void browserNotifications.requestPermission()}
+                  className="shrink-0 rounded-xl bg-amber-300 px-4 py-3 text-xs font-black text-slate-950 transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                >
+                  فعال‌سازی اعلان‌ها
+                </button>
+              )}
+            </section>
+          )}
+
         <div className="grid flex-1 gap-5 xl:grid-cols-[460px_1fr_500px]">
-          <aside className="space-y-5">
+          <aside
+            ref={(element) => {
+              if (element && portalColumnElements.right !== element) {
+                setPortalColumnElements((current) => ({ ...current, right: element }));
+              }
+            }}
+            className="flex min-w-0 flex-col gap-5"
+          />
+          <section
+            ref={(element) => {
+              if (element && portalColumnElements.center !== element) {
+                setPortalColumnElements((current) => ({ ...current, center: element }));
+              }
+            }}
+            className="relative flex min-w-0 flex-col gap-5"
+          />
+          <aside
+            ref={(element) => {
+              if (element && portalColumnElements.left !== element) {
+                setPortalColumnElements((current) => ({ ...current, left: element }));
+              }
+            }}
+            className="flex min-w-0 flex-col gap-5"
+          />
+          <aside className="contents">
             {sortPortalWidgets([
               {
                 id: "announcements",
@@ -1753,14 +1832,11 @@ export default function Home() {
                   </GlassPanel>
                 ),
               },
-            ]).map((widget) => (
-              <Fragment key={widget.id}>{widget.node}</Fragment>
-            ))}
+            ]).map(renderPortalWidget)}
           </aside>
 
-          <section className="relative flex flex-col gap-5">
-            <AnimatePresence initial={false} mode="popLayout">
-              {getFixedCenterWidgets([
+          <section className="contents">
+            {sortPortalWidgets([
                 {
                   id: "hero",
                   node: (
@@ -1929,6 +2005,7 @@ export default function Home() {
                       <PortalApplicationsGrid
                         selectedSiteId={selectedSiteId}
                         onSiteSelect={setSelectedSiteId}
+                        showSiteFilter
                       />
                     </GlassPanel>
                   ),
@@ -2017,19 +2094,12 @@ export default function Home() {
                     </GlassPanel>
                   ),
                 },
-              ]).map((widget) => (
-                <motion.div
-                  key={widget.id}
-                  layout="position"
-                  transition={portalLayoutTransition}
-                >
-                  {widget.node}
-                </motion.div>
-              ))}
-            </AnimatePresence>
+              ])
+                .filter((widget) => widget.id !== "hero" || !heroDismissed)
+                .map(renderPortalWidget)}
           </section>
 
-          <aside className="space-y-5">
+          <aside className="contents">
             {sortPortalWidgets([
               {
                 id: "file-shares",
@@ -2697,9 +2767,7 @@ export default function Home() {
                   </GlassPanel>
                 ),
               },
-            ]).map((widget) => (
-              <Fragment key={widget.id}>{widget.node}</Fragment>
-            ))}
+            ]).map(renderPortalWidget)}
           </aside>
         </div>
 

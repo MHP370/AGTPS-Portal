@@ -3,8 +3,10 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 
-import { hasAuthSession, login, setAuthSession } from "@/lib/auth";
+import { getStoredAuthUser, hasAuthSession, login, setAuthSession } from "@/lib/auth";
 
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
@@ -22,7 +24,7 @@ function AdminLoginForm() {
     requestedNextPath?.startsWith("/admin/") &&
     !requestedNextPath.startsWith("/admin/login")
       ? requestedNextPath
-      : "/admin/dashboard";
+      : "/";
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -37,7 +39,12 @@ function AdminLoginForm() {
 
   useEffect(() => {
     if (hasAuthSession()) {
-      router.replace(nextPath);
+      const storedUser = getStoredAuthUser();
+      router.replace(
+        storedUser?.permissions.includes("dashboard.view")
+          ? nextPath
+          : "/",
+      );
     }
   }, [nextPath, router]);
 
@@ -58,7 +65,8 @@ function AdminLoginForm() {
 
       setAuthSession(result);
 
-      router.push(nextPath);
+      const destination = requestedNextPath ? nextPath : "/";
+      router.push(destination);
       router.refresh();
     } catch (err: unknown) {
       setError(
@@ -178,6 +186,12 @@ function AdminLoginForm() {
             >
               {loading ? "در حال ورود..." : "ورود"}
             </Button>
+            <Link
+              href={`/login?next=${encodeURIComponent(nextPath)}`}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 text-sm font-bold text-slate-100 transition hover:border-cyan-300/40 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
+            >
+              <ShieldCheck size={18} /> رفتن به ورود خودکار ویندوز
+            </Link>
           </form>
       </motion.section>
     </main>

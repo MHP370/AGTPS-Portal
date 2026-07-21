@@ -38,6 +38,11 @@ export class CreateTrainingItemDto {
   sourcePath?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  standaloneSubfolders?: string[];
+
+  @IsOptional()
   @IsString()
   fileUrl?: string;
 

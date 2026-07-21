@@ -127,17 +127,28 @@ export function normalizePortalWidgets(value: unknown): PortalWidgetSetting[] {
         enabled:
           typeof saved?.enabled === "boolean" ? saved.enabled : widget.enabled,
         order: typeof saved?.order === "number" ? saved.order : widget.order,
+        column:
+          saved?.column === "left" ||
+          saved?.column === "center" ||
+          saved?.column === "right"
+            ? saved.column
+            : widget.column,
       };
     })
     .sort((first, second) => first.order - second.order);
 }
 
 export function normalizePortalWidgetsForSave(widgets: PortalWidgetSetting[]) {
-  return widgets.map((widget, index) => ({
-    id: widget.id,
-    title: widget.title,
-    enabled: widget.enabled,
-    order: (index + 1) * 10,
-    column: widget.column,
-  }));
+  const columnIndexes = { left: 0, center: 0, right: 0 };
+
+  return widgets.map((widget) => {
+    columnIndexes[widget.column] += 1;
+    return {
+      id: widget.id,
+      title: widget.title,
+      enabled: widget.enabled,
+      order: columnIndexes[widget.column] * 10,
+      column: widget.column,
+    };
+  });
 }

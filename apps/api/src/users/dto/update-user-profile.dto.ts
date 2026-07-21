@@ -34,6 +34,11 @@ export class UpdateUserProfileDto {
   birthDate?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  mobile?: string;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
