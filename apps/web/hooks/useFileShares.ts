@@ -15,13 +15,15 @@ import {
   getFileShareItems,
   getFileShares,
   updateFileShare,
+  testFileShare,
   type CreateFileShareDto,
 } from "@/lib/file-shares";
 
-export function useFileShares() {
+export function useFileShares(enabled = true) {
   return useQuery({
     queryKey: fileSharesQueryKey,
     queryFn: getFileShares,
+    enabled,
   });
 }
 
@@ -72,6 +74,14 @@ export function useUpdateFileShare() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fileSharesQueryKey });
     },
+  });
+}
+
+export function useTestFileShare() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: testFileShare,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: fileSharesQueryKey }),
   });
 }
 

@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Pagination } from "@/components/ui/Pagination";
 import {
+  useCreateRole,
   usePermissions,
   useRoles,
   useToggleRolePermission,
@@ -14,12 +17,19 @@ import {
 } from "@/hooks/useDirectory";
 import type { DirectoryGroup } from "@/lib/directory";
 
+const GROUP_PAGE_SIZE = 15;
+
 export default function AccessPage() {
   const { data: roles = [] } = useRoles();
   const { data: permissions = [] } = usePermissions();
   const { data: groups = [] } = useDirectoryGroups();
   const toggleRolePermission = useToggleRolePermission();
   const updateGroupRoles = useUpdateDirectoryGroupRoles();
+  const createRole = useCreateRole();
+  const [roleName, setRoleName] = useState("");
+  const [roleTitle, setRoleTitle] = useState("");
+  const [groupSearch, setGroupSearch] = useState("");
+  const [groupPage, setGroupPage] = useState(1);
   const [selectedGroup, setSelectedGroup] =
     useState<DirectoryGroup | null>(null);
   const selectedGroupRoleIds = useMemo(
@@ -29,6 +39,19 @@ export default function AccessPage() {
       ),
     [selectedGroup],
   );
+  const filteredGroups = useMemo(() => {
+    const search = groupSearch.trim().toLowerCase();
+    return groups.filter((group) => !search || [group.title, group.name].some((value) => value.toLowerCase().includes(search)));
+  }, [groupSearch, groups]);
+  const pagedGroups = filteredGroups.slice((groupPage - 1) * GROUP_PAGE_SIZE, groupPage * GROUP_PAGE_SIZE);
+
+  async function submitRole(event: React.FormEvent) {
+    event.preventDefault();
+    if (!roleName.trim() || !roleTitle.trim()) return;
+    await createRole.mutateAsync({ name: roleName.trim(), title: roleTitle.trim() });
+    setRoleName("");
+    setRoleTitle("");
+  }
 
   async function toggleGroupRole(roleId: string) {
     if (!selectedGroup) return;
@@ -52,6 +75,20 @@ export default function AccessPage() {
           نقش‌ها شامل permission هستند و هر گروه کاربری می‌تواند چند نقش داشته باشد.
         </p>
       </div>
+
+      <form onSubmit={submitRole} className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <label className="space-y-2 text-sm text-slate-300">
+          <span>کلید نقش</span>
+          <Input value={roleName} onChange={(event) => setRoleName(event.target.value)} placeholder="مثلاً reports-viewer" />
+        </label>
+        <label className="space-y-2 text-sm text-slate-300">
+          <span>عنوان نقش</span>
+          <Input value={roleTitle} onChange={(event) => setRoleTitle(event.target.value)} placeholder="مثلاً مشاهده‌گر گزارش‌ها" />
+        </label>
+        <Button type="submit" disabled={createRole.isPending}>
+          {createRole.isPending ? "در حال ساخت..." : "ساخت نقش"}
+        </Button>
+      </form>
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_1fr]">
         <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -111,8 +148,9 @@ export default function AccessPage() {
 
         <section className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <h2 className="text-xl font-bold">نقش‌های گروه‌ها</h2>
+          <Input value={groupSearch} onChange={(event) => { setGroupSearch(event.target.value); setGroupPage(1); }} placeholder="جستجو بر اساس نام یا عنوان گروه" />
           <div className="space-y-3">
-            {groups.map((group) => (
+            {pagedGroups.map((group) => (
               <button
                 key={group.id}
                 type="button"
@@ -133,6 +171,7 @@ export default function AccessPage() {
               </button>
             ))}
           </div>
+          <Pagination page={groupPage} pageSize={GROUP_PAGE_SIZE} totalItems={filteredGroups.length} onPageChange={setGroupPage} />
 
           {selectedGroup && (
             <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">

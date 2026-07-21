@@ -76,6 +76,28 @@ export class UpdateSettingsDto {
   activeDirectoryGroupSearchBase?: string;
 
   @IsOptional()
+  @IsString()
+  activeDirectoryTlsServerName?: string;
+
+  @IsOptional()
+  @IsString()
+  activeDirectoryCaCertificate?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(10080)
+  activeDirectorySyncIntervalMinutes?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  windowsSsoEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requirePortalLogin?: boolean;
+
+  @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(2048)
@@ -92,6 +114,14 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   requireUserBirthDate?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requireUserEmail?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requireUserMobile?: boolean;
 
   @IsOptional()
   @IsIn(['FULL_NAME', 'PERSONNEL_CODE', 'USERNAME'])

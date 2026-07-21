@@ -7,6 +7,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { PersianDateInput } from "@/components/ui/PersianDateInput";
+import { Pagination } from "@/components/ui/Pagination";
 import {
   useCreateDirectoryGroup,
   useCreateDirectoryUser,
@@ -14,6 +15,7 @@ import {
   useDeleteDirectoryUser,
   useDirectoryGroups,
   useDirectoryUsers,
+  useSyncActiveDirectory,
   useUpdateDirectoryGroupMembers,
 } from "@/hooks/useDirectory";
 import {
@@ -24,6 +26,7 @@ import {
 import type {
   DirectoryGroup,
   DirectorySource,
+  DirectorySyncResult,
 } from "@/lib/directory";
 import type { AdminUser } from "@/lib/users";
 
@@ -31,6 +34,8 @@ const sourceLabels: Record<DirectorySource, string> = {
   INTERNAL: "داخلی",
   ACTIVE_DIRECTORY: "اکتیو دایرکتوری",
 };
+
+const PAGE_SIZE = 20;
 
 type DirectoryTab =
   | "directoryUsers"
@@ -56,14 +61,9 @@ const directoryTabs: Array<{
     description: "گروه‌ها و عضویت کاربران",
   },
   {
-    id: "createUser",
-    label: "افزودن کاربر",
-    description: "ساخت کاربر داخلی یا AD دستی",
-  },
-  {
     id: "createGroup",
-    label: "افزودن گروه",
-    description: "ساخت گروه داخلی یا AD دستی",
+    label: "ساخت گروه محلی",
+    description: "ایجاد گروه فقط در داخل سامانه",
   },
   {
     id: "systemUsers",
@@ -98,6 +98,14 @@ export default function DirectoryPage() {
   const deleteGroup = useDeleteDirectoryGroup();
   const changePassword = useChangeUserPassword();
   const updateUserProfile = useUpdateAdminUserProfile();
+  const syncDirectory = useSyncActiveDirectory();
+  const [syncResult, setSyncResult] = useState<DirectorySyncResult | null>(null);
+  const [syncError, setSyncError] = useState("");
+  const [directorySearch, setDirectorySearch] = useState("");
+  const [userPage, setUserPage] = useState(1);
+  const [groupPage, setGroupPage] = useState(1);
+  const [memberPage, setMemberPage] = useState(1);
+  const [memberSearch, setMemberSearch] = useState("");
 
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -109,8 +117,6 @@ export default function DirectoryPage() {
   const [initialGroupIds, setInitialGroupIds] = useState<string[]>([]);
   const [groupName, setGroupName] = useState("");
   const [groupTitle, setGroupTitle] = useState("");
-  const [groupSource, setGroupSource] =
-    useState<DirectorySource>("INTERNAL");
   const [passwordUserId, setPasswordUserId] = useState("");
   const [passwordUserSearch, setPasswordUserSearch] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -136,6 +142,32 @@ export default function DirectoryPage() {
       ),
     [selectedGroup],
   );
+  const filteredDirectoryUsers = useMemo(() => {
+    const search = directorySearch.trim().toLowerCase();
+    if (!search) return users;
+    return users.filter((user) =>
+      [user.displayName, user.username, user.email, user.department, user.title]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(search)),
+    );
+  }, [directorySearch, users]);
+  const filteredDirectoryGroups = useMemo(() => {
+    const search = directorySearch.trim().toLowerCase();
+    if (!search) return groups;
+    return groups.filter((group) =>
+      [group.title, group.name, group.description]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(search)),
+    );
+  }, [directorySearch, groups]);
+  const pagedDirectoryUsers = filteredDirectoryUsers.slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE);
+  const pagedDirectoryGroups = filteredDirectoryGroups.slice((groupPage - 1) * PAGE_SIZE, groupPage * PAGE_SIZE);
+  const filteredMemberUsers = users.filter((user) => {
+    const search = memberSearch.trim().toLowerCase();
+    return !search || [user.displayName, user.username, user.email].filter(Boolean).some((value) => value!.toLowerCase().includes(search));
+  });
+  const pagedMemberUsers = filteredMemberUsers.slice((memberPage - 1) * PAGE_SIZE, memberPage * PAGE_SIZE);
+
   const filteredPasswordUsers = useMemo(() => {
     const search = passwordUserSearch.trim().toLowerCase();
 
@@ -154,6 +186,17 @@ export default function DirectoryPage() {
         .some((value) => value!.toLowerCase().includes(search));
     });
   }, [passwordUserSearch, systemUsers]);
+
+  async function runDirectorySync() {
+    setSyncError("");
+    try {
+      const result = await syncDirectory.mutateAsync();
+      setSyncResult(result);
+      setSelectedGroup(null);
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "همگام‌سازی انجام نشد.");
+    }
+  }
 
   async function addUser(event: React.FormEvent) {
     event.preventDefault();
@@ -186,13 +229,11 @@ export default function DirectoryPage() {
     await createGroup.mutateAsync({
       name: groupName.trim(),
       title: groupTitle.trim(),
-      source: groupSource,
       isActive: true,
     });
 
     setGroupName("");
     setGroupTitle("");
-    setGroupSource("INTERNAL");
   }
 
   async function toggleGroupMember(userId: string) {
@@ -274,9 +315,40 @@ export default function DirectoryPage() {
       <div>
         <h1 className="text-3xl font-bold">مدیریت کاربران و گروه‌ها</h1>
         <p className="mt-2 text-sm text-slate-400">
-          کاربران و گروه‌ها می‌توانند از اکتیو دایرکتوری یا به‌صورت داخلی مدیریت شوند؛ هر کاربر می‌تواند عضو چند گروه باشد.
+          اطلاعات اکتیو دایرکتوری در این صفحه فقط‌خواندنی است و فقط از سرور سازمان همگام می‌شود.
         </p>
       </div>
+
+      <section className="rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.06] p-4 sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="font-black text-cyan-50">همگام‌سازی اکتیو دایرکتوری</h2>
+            <p className="mt-2 text-sm leading-7 text-slate-300">
+              کاربران، گروه‌ها و عضویت‌ها از AD دریافت می‌شوند. هیچ کاربر یا گروهی در AD ساخته، ویرایش یا حذف نمی‌شود.
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => void runDirectorySync()}
+            disabled={syncDirectory.isPending}
+          >
+            {syncDirectory.isPending ? "در حال همگام‌سازی..." : "دریافت کاربران و گروه‌ها"}
+          </Button>
+        </div>
+        {syncError && (
+          <p className="mt-4 rounded-xl border border-rose-400/20 bg-rose-500/10 p-3 text-sm text-rose-100">
+            {syncError}
+          </p>
+        )}
+        {syncResult && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm">کاربران: {syncResult.users.found}</div>
+            <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm">گروه‌ها: {syncResult.groups.found}</div>
+            <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm">عضویت‌ها: {syncResult.memberships}</div>
+            <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm">جدید: {syncResult.users.created + syncResult.groups.created}</div>
+          </div>
+        )}
+      </section>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {directoryTabs.map((tab) => (
@@ -350,7 +422,7 @@ export default function DirectoryPage() {
               عضویت اولیه در گروه‌ها
             </div>
             <div className="grid gap-2 md:grid-cols-2">
-              {groups.map((group) => (
+              {filteredDirectoryGroups.map((group) => (
                 <label
                   key={group.id}
                   className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-white/[0.03] p-3 text-sm"
@@ -393,19 +465,6 @@ export default function DirectoryPage() {
               onChange={(event) => setGroupTitle(event.target.value)}
               placeholder="عنوان گروه"
             />
-            <label className="space-y-2 text-sm text-slate-300">
-              <span>نوع گروه</span>
-              <select
-                value={groupSource}
-                onChange={(event) =>
-                  setGroupSource(event.target.value as DirectorySource)
-                }
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-white"
-              >
-                <option value="INTERNAL">داخلی</option>
-                <option value="ACTIVE_DIRECTORY">اکتیو دایرکتوری</option>
-              </select>
-            </label>
           </div>
           <Button type="submit" disabled={createGroup.isPending}>
             افزودن گروه
@@ -415,9 +474,12 @@ export default function DirectoryPage() {
 
       {activeTab === "directoryUsers" && (
         <section className="space-y-4">
-          <h2 className="text-xl font-bold">کاربران</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-bold">کاربران</h2>
+            <Input value={directorySearch} onChange={(event) => { setDirectorySearch(event.target.value); setUserPage(1); }} placeholder="جستجو در کاربران فعال" className="sm:max-w-sm" />
+          </div>
           <DataTable
-            data={users}
+            data={pagedDirectoryUsers}
             columns={[
               {
                 key: "displayName",
@@ -444,27 +506,34 @@ export default function DirectoryPage() {
               {
                 key: "actions",
                 title: "عملیات",
-                render: (user) => (
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => deleteUser.mutate(user.id)}
-                    disabled={deleteUser.isPending}
-                  >
-                    حذف
-                  </Button>
-                ),
+                render: (user) =>
+                  user.source === "INTERNAL" ? (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => deleteUser.mutate(user.id)}
+                      disabled={deleteUser.isPending}
+                    >
+                      حذف
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-slate-400">فقط‌خواندنی</span>
+                  ),
               },
             ]}
           />
+          <Pagination page={userPage} pageSize={PAGE_SIZE} totalItems={filteredDirectoryUsers.length} onPageChange={setUserPage} />
         </section>
       )}
 
       {activeTab === "directoryGroups" && (
         <section className="space-y-4">
-          <h2 className="text-xl font-bold">گروه‌ها</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-xl font-bold">گروه‌ها</h2>
+            <Input value={directorySearch} onChange={(event) => { setDirectorySearch(event.target.value); setGroupPage(1); }} placeholder="جستجو در گروه‌ها" className="sm:max-w-sm" />
+          </div>
           <div className="space-y-3">
-            {groups.map((group) => (
+            {pagedDirectoryGroups.map((group) => (
               <button
                 key={group.id}
                 type="button"
@@ -488,24 +557,32 @@ export default function DirectoryPage() {
               </button>
             ))}
           </div>
+          <Pagination page={groupPage} pageSize={PAGE_SIZE} totalItems={filteredDirectoryGroups.length} onPageChange={setGroupPage} />
 
           {selectedGroup && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-bold">اعضای {selectedGroup.title}</h3>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => {
-                    deleteGroup.mutate(selectedGroup.id);
-                    setSelectedGroup(null);
-                  }}
-                >
-                  حذف گروه
-                </Button>
+                {selectedGroup.source === "INTERNAL" ? (
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => {
+                      deleteGroup.mutate(selectedGroup.id);
+                      setSelectedGroup(null);
+                    }}
+                  >
+                    حذف گروه
+                  </Button>
+                ) : (
+                  <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+                    عضویت فقط از AD
+                  </span>
+                )}
               </div>
+              <Input value={memberSearch} onChange={(event) => { setMemberSearch(event.target.value); setMemberPage(1); }} placeholder="جستجو در اعضا" className="mb-3" />
               <div className="space-y-2">
-                {users.map((user) => (
+                {pagedMemberUsers.map((user) => (
                   <label
                     key={user.id}
                     className="flex items-center gap-2 rounded-xl bg-white/[0.04] p-3 text-sm"
@@ -514,6 +591,7 @@ export default function DirectoryPage() {
                       type="checkbox"
                       checked={selectedGroupUserIds.has(user.id)}
                       onChange={() => void toggleGroupMember(user.id)}
+                      disabled={selectedGroup.source === "ACTIVE_DIRECTORY"}
                     />
                     <span className="flex-1">
                       {user.displayName}
@@ -523,6 +601,9 @@ export default function DirectoryPage() {
                     </span>
                   </label>
                 ))}
+              </div>
+              <div className="mt-3">
+                <Pagination page={memberPage} pageSize={PAGE_SIZE} totalItems={filteredMemberUsers.length} onPageChange={setMemberPage} />
               </div>
             </div>
           )}

@@ -8,12 +8,14 @@ const AUTH_COOKIE_MAX_AGE = 60 * 60 * 8;
 export interface LoginDto {
   username: string;
   password: string;
+  authSource?: "LOCAL" | "ACTIVE_DIRECTORY";
 }
 
 export interface AuthUser {
   id: string;
   username: string;
-  email: string;
+  email: string | null;
+  mobile?: string | null;
 
   firstName: string | null;
   lastName: string | null;
@@ -34,16 +36,19 @@ export interface AuthUser {
   }>;
   permissions: string[];
   profileCompletionRequired?: boolean;
-  missingProfileFields?: Array<"personnelCode" | "birthDate">;
+  missingProfileFields?: Array<"personnelCode" | "birthDate" | "email" | "mobile">;
   profileRequirements?: {
     personnelCode: boolean;
     birthDate: boolean;
+    email: boolean;
+    mobile: boolean;
   };
   directoryUser?: {
     id: string;
     username: string;
     displayName: string;
     email?: string | null;
+    mobile?: string | null;
     department?: string | null;
     title?: string | null;
     isActive: boolean;
@@ -60,6 +65,19 @@ export interface AuthUser {
 export interface LoginResponse {
   access_token: string;
   user: AuthUser;
+}
+
+export interface WindowsIdentity {
+  username: string;
+  displayName: string;
+  domain: string;
+}
+
+export interface LoginOptions {
+  local: { enabled: boolean; label: string };
+  activeDirectory: { enabled: boolean; domain: string | null; secure: boolean };
+  windowsSso: { enabled: boolean };
+  requirePortalLogin: boolean;
 }
 
 function getCookie(name: string) {
@@ -137,6 +155,37 @@ export async function login(dto: LoginDto): Promise<LoginResponse> {
   return api.post<LoginResponse>("/auth/login", dto);
 }
 
+async function ssoRequest<T>(path: string, method: 'GET' | 'POST'): Promise<T> {
+  const response = await fetch(`/sso/${path}`, {
+    method,
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    let message = 'ورود خودکار ویندوز در دسترس نیست.';
+    try {
+      const payload = await response.json();
+      message = payload?.message || message;
+    } catch {}
+    throw new Error(message);
+  }
+  return response.json() as Promise<T>;
+}
+
+export function detectWindowsIdentity() {
+  return ssoRequest<WindowsIdentity>('identity', 'GET');
+}
+
+export function loginWithWindowsIdentity() {
+  return ssoRequest<LoginResponse>('login', 'POST');
+}
+
+export async function getLoginOptions(): Promise<LoginOptions> {
+  const response = await fetch('/api/auth/login-options', { cache: 'no-store' });
+  if (!response.ok) throw new Error('دریافت تنظیمات ورود انجام نشد.');
+  return response.json() as Promise<LoginOptions>;
+}
+
 export function getMe() {
   return api.get<AuthUser>("/auth/me");
 }
@@ -147,6 +196,7 @@ export interface UpdateProfileDto {
   lastName?: string;
   personnelCode?: string;
   birthDate?: string;
+  mobile?: string;
 }
 
 export function updateProfile(dto: UpdateProfileDto) {

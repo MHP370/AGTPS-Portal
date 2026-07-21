@@ -41,7 +41,11 @@ function fileKind(item?: FileShareItem | null) {
 }
 
 export default function FileSharesPage() {
-  const { data: shares = [], isLoading: sharesLoading } = useFileShares();
+  const {
+    data: shares = [],
+    isLoading: sharesLoading,
+    error: sharesError,
+  } = useFileShares();
   const [selectedShareId, setSelectedShareId] = useState<string>("");
   const [currentPath, setCurrentPath] = useState("");
   const [selectedFile, setSelectedFile] = useState<FileShareItem | null>(null);
@@ -49,7 +53,7 @@ export default function FileSharesPage() {
   const [previewError, setPreviewError] = useState("");
   const [search, setSearch] = useState("");
   const selectedShare = shares.find((share) => share.id === selectedShareId);
-  const { data, isLoading: itemsLoading } = useFileShareItems(
+  const { data, isLoading: itemsLoading, error: itemsError } = useFileShareItems(
     selectedShareId,
     currentPath,
   );
@@ -177,9 +181,13 @@ export default function FileSharesPage() {
             <h2 className="mb-4 text-lg font-black">Shareها</h2>
             {sharesLoading ? (
               <p className="text-sm text-slate-400">در حال بارگذاری...</p>
+            ) : sharesError ? (
+              <p className="rounded-xl border border-red-800 bg-red-950/40 p-3 text-sm leading-7 text-red-200">
+                {sharesError.message}
+              </p>
             ) : shares.length === 0 ? (
               <p className="text-sm leading-7 text-slate-400">
-                فایل شیری برای حساب شما تعریف نشده است.
+                برای دسترسی به فایل‌شیر باید با حساب Active Directory وارد شوید.
               </p>
             ) : (
               <div className="space-y-2">
@@ -257,6 +265,10 @@ export default function FileSharesPage() {
 
             {itemsLoading ? (
               <p className="text-sm text-slate-400">در حال خواندن فولدر...</p>
+            ) : itemsError ? (
+              <p className="rounded-xl border border-red-800 bg-red-950/40 p-4 text-sm leading-7 text-red-200">
+                {itemsError.message}
+              </p>
             ) : (
               <div className="grid gap-2">
                 {visibleItems.map((item) => (

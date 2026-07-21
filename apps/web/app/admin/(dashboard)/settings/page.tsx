@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import {
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   ArrowUp,
   Building2,
   Database,
@@ -15,6 +17,7 @@ import {
   LockKeyhole,
   Network,
   Palette,
+  RefreshCw,
   Search,
   Settings,
   ShieldCheck,
@@ -191,6 +194,11 @@ export default function SettingsPage() {
   const [adBindPassword, setAdBindPassword] = useState("");
   const [adUserSearchBase, setAdUserSearchBase] = useState("");
   const [adGroupSearchBase, setAdGroupSearchBase] = useState("");
+  const [adTlsServerName, setAdTlsServerName] = useState("");
+  const [adCaCertificate, setAdCaCertificate] = useState("");
+  const [adSyncIntervalMinutes, setAdSyncIntervalMinutes] = useState("60");
+  const [windowsSsoEnabled, setWindowsSsoEnabled] = useState(false);
+  const [requirePortalLogin, setRequirePortalLogin] = useState(false);
   const [trainingMaxUploadSizeMb, setTrainingMaxUploadSizeMb] =
     useState("2048");
   const [trainingAllowedFileExtensions, setTrainingAllowedFileExtensions] =
@@ -200,6 +208,8 @@ export default function SettingsPage() {
   const [requireUserPersonnelCode, setRequireUserPersonnelCode] =
     useState(false);
   const [requireUserBirthDate, setRequireUserBirthDate] = useState(false);
+  const [requireUserEmail, setRequireUserEmail] = useState(false);
+  const [requireUserMobile, setRequireUserMobile] = useState(false);
   const [topbarUserDisplayMode, setTopbarUserDisplayMode] = useState<
     "FULL_NAME" | "PERSONNEL_CODE" | "USERNAME"
   >("FULL_NAME");
@@ -231,6 +241,11 @@ export default function SettingsPage() {
       );
       setAdUserSearchBase(settings.activeDirectoryUserSearchBase ?? "");
       setAdGroupSearchBase(settings.activeDirectoryGroupSearchBase ?? "");
+      setAdTlsServerName(settings.activeDirectoryTlsServerName ?? "");
+      setAdCaCertificate(settings.activeDirectoryCaCertificate ?? "");
+      setAdSyncIntervalMinutes(String(settings.activeDirectorySyncIntervalMinutes ?? 60));
+      setWindowsSsoEnabled(Boolean(settings.windowsSsoEnabled));
+      setRequirePortalLogin(Boolean(settings.requirePortalLogin));
       setTrainingMaxUploadSizeMb(
         String(settings.trainingMaxUploadSizeMb ?? 2048),
       );
@@ -240,6 +255,8 @@ export default function SettingsPage() {
       );
       setRequireUserPersonnelCode(Boolean(settings.requireUserPersonnelCode));
       setRequireUserBirthDate(Boolean(settings.requireUserBirthDate));
+      setRequireUserEmail(Boolean(settings.requireUserEmail));
+      setRequireUserMobile(Boolean(settings.requireUserMobile));
       setTopbarUserDisplayMode(settings.topbarUserDisplayMode || "FULL_NAME");
     }, 0);
 
@@ -250,6 +267,7 @@ export default function SettingsPage() {
     event.preventDefault();
 
     const parsedOverlayOpacity = Number(overlayOpacity);
+    const parsedAdSyncIntervalMinutes = Number(adSyncIntervalMinutes);
     const parsedTrainingMaxUploadSizeMb = Number(trainingMaxUploadSizeMb);
 
     if (!companyName.trim()) {
@@ -273,6 +291,11 @@ export default function SettingsPage() {
       parsedOverlayOpacity > 1
     ) {
       setFormError("شدت پوشش باید عددی بین ۰ و ۱ باشد.");
+      return;
+    }
+
+    if (!Number.isInteger(parsedAdSyncIntervalMinutes) || parsedAdSyncIntervalMinutes < 5 || parsedAdSyncIntervalMinutes > 10080) {
+      setFormError("فاصله همگام‌سازی باید بین ۵ دقیقه تا ۷ روز باشد.");
       return;
     }
 
@@ -309,11 +332,18 @@ export default function SettingsPage() {
             : adBindPassword.trim() || undefined,
         activeDirectoryUserSearchBase: adUserSearchBase.trim() || undefined,
         activeDirectoryGroupSearchBase: adGroupSearchBase.trim() || undefined,
+        activeDirectoryTlsServerName: adTlsServerName.trim() || undefined,
+        activeDirectoryCaCertificate: adCaCertificate.trim() || undefined,
+        activeDirectorySyncIntervalMinutes: parsedAdSyncIntervalMinutes,
+        windowsSsoEnabled,
+        requirePortalLogin,
         trainingMaxUploadSizeMb: parsedTrainingMaxUploadSizeMb,
         trainingAllowedFileExtensions:
           trainingAllowedFileExtensions.trim() || undefined,
         requireUserPersonnelCode,
         requireUserBirthDate,
+        requireUserEmail,
+        requireUserMobile,
         topbarUserDisplayMode,
       });
       setSuccess("تنظیمات ذخیره شد.");
@@ -355,18 +385,37 @@ export default function SettingsPage() {
 
   function moveWidget(id: string, direction: "up" | "down") {
     setPortalWidgets((widgets) => {
-      const index = widgets.findIndex((widget) => widget.id === id);
+      const widget = widgets.find((item) => item.id === id);
+      if (!widget || fixedCenterWidgetIds.has(id)) return widgets;
+      const columnWidgets = widgets
+        .filter((item) => item.column === widget.column)
+        .sort((first, second) => first.order - second.order);
+      const index = columnWidgets.findIndex((item) => item.id === id);
       const targetIndex = direction === "up" ? index - 1 : index + 1;
 
-      if (index < 0 || targetIndex < 0 || targetIndex >= widgets.length) {
+      if (index < 0 || targetIndex < 0 || targetIndex >= columnWidgets.length) {
         return widgets;
       }
 
-      const next = [...widgets];
-      const [item] = next.splice(index, 1);
-      next.splice(targetIndex, 0, item);
+      const target = columnWidgets[targetIndex];
+      const next = widgets.map((item) => {
+        if (item.id === widget.id) return { ...item, order: target.order };
+        if (item.id === target.id) return { ...item, order: widget.order };
+        return item;
+      });
 
       return normalizePortalWidgetsForSave(next);
+    });
+  }
+
+  function moveWidgetToColumn(id: string, column: PortalWidgetSetting["column"]) {
+    setPortalWidgets((widgets) => {
+      const widget = widgets.find((item) => item.id === id);
+      if (!widget || fixedCenterWidgetIds.has(id) || widget.column === column) return widgets;
+      const lastOrder = Math.max(0, ...widgets.filter((item) => item.column === column).map((item) => item.order));
+      return normalizePortalWidgetsForSave(
+        widgets.map((item) => item.id === id ? { ...item, column, order: lastOrder + 10 } : item),
+      );
     });
   }
 
@@ -602,21 +651,45 @@ export default function SettingsPage() {
           icon={LayoutDashboard}
           className="xl:col-span-2"
         >
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {portalWidgets.map((widget, index) => {
+          <div className="grid items-start gap-5 xl:grid-cols-3">
+            {(["right", "center", "left"] as const).map((column) => (
+              <section
+                key={column}
+                className="space-y-3 rounded-2xl border border-slate-800 bg-slate-950/30 p-3"
+              >
+                <div className="flex items-center justify-between border-b border-slate-800 px-1 pb-3">
+                  <h3 className="font-black text-white">
+                    {column === "right"
+                      ? "ستون راست"
+                      : column === "center"
+                        ? "ستون وسط"
+                        : "ستون چپ"}
+                  </h3>
+                  <span className="text-xs text-slate-500">
+                    {portalWidgets.filter((item) => item.column === column).length} ویجت
+                  </span>
+                </div>
+            {portalWidgets
+              .filter((widget) => widget.column === column)
+              .sort((first, second) => first.order - second.order)
+              .map((widget) => {
               const columnLabel =
                 widget.column === "left"
-                  ? "ستون راست محتوای پورتال"
+                  ? "ستون چپ محتوای پورتال"
                   : widget.column === "center"
                     ? "ستون مرکزی"
-                    : "ستون چپ محتوای پورتال";
+                    : "ستون راست محتوای پورتال";
               const isFixedCenterWidget = fixedCenterWidgetIds.has(widget.id);
+              const widgetsInColumn = portalWidgets
+                .filter((item) => item.column === widget.column)
+                .sort((first, second) => first.order - second.order);
+              const columnIndex = widgetsInColumn.findIndex((item) => item.id === widget.id);
               const widgetDescription =
                 widget.id === "systems"
                   ? "با غیرفعال کردن این گزینه، سامانه‌های زیر نقشه از صفحه اصلی مخفی می‌شوند."
                   : isFixedCenterWidget
                     ? "جای این ویجت در ستون وسط ثابت است."
-                    : "ترتیب این ویجت از همین بخش قابل تغییر است.";
+                    : "این ویجت را می‌توانید در همین ستون یا بین ستون‌ها جابه‌جا کنید.";
 
               return (
                 <div
@@ -655,12 +728,12 @@ export default function SettingsPage() {
                     </button>
                   </div>
 
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       type="button"
                       size="sm"
                       variant="secondary"
-                      disabled={index === 0 || isFixedCenterWidget}
+                      disabled={columnIndex === 0 || isFixedCenterWidget}
                       onClick={() => moveWidget(widget.id, "up")}
                       className="gap-2"
                     >
@@ -672,7 +745,7 @@ export default function SettingsPage() {
                       size="sm"
                       variant="secondary"
                       disabled={
-                        index === portalWidgets.length - 1 ||
+                        columnIndex === widgetsInColumn.length - 1 ||
                         isFixedCenterWidget
                       }
                       onClick={() => moveWidget(widget.id, "down")}
@@ -681,10 +754,32 @@ export default function SettingsPage() {
                       <ArrowDown size={15} />
                       پایین
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={widget.column === "right" || isFixedCenterWidget}
+                      onClick={() => moveWidgetToColumn(widget.id, widget.column === "left" ? "center" : "right")}
+                      className="gap-2"
+                    >
+                      <ArrowRight size={15} /> ستون راست
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={widget.column === "left" || isFixedCenterWidget}
+                      onClick={() => moveWidgetToColumn(widget.id, widget.column === "right" ? "center" : "left")}
+                      className="gap-2"
+                    >
+                      <ArrowLeft size={15} /> ستون چپ
+                    </Button>
                   </div>
                 </div>
               );
             })}
+              </section>
+            ))}
           </div>
 
           <div className="flex justify-end">
@@ -777,6 +872,16 @@ export default function SettingsPage() {
               تاریخ تولد اجباری باشد
             </label>
 
+            <label className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-sm font-black text-white">
+              <input type="checkbox" checked={requireUserEmail} onChange={(event) => setRequireUserEmail(event.target.checked)} disabled={updateSettings.isPending} />
+              ایمیل اجباری باشد
+            </label>
+
+            <label className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-sm font-black text-white">
+              <input type="checkbox" checked={requireUserMobile} onChange={(event) => setRequireUserMobile(event.target.checked)} disabled={updateSettings.isPending} />
+              شماره موبایل اجباری باشد
+            </label>
+
             <IconFormField label="نمایش کاربر در topbar" icon={Users}>
               <select
                 value={topbarUserDisplayMode}
@@ -816,6 +921,7 @@ export default function SettingsPage() {
       )}
 
       {activeTab === "activeDirectory" && (
+      <form id="active-directory-settings-form" onSubmit={submit}>
       <SettingsSection
         title="اتصال اکتیو دایرکتوری"
         description="تنظیمات اتصال LDAP/AD را وارد کنید و وضعیت اتصال را تست کنید."
@@ -841,6 +947,40 @@ export default function SettingsPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-sm text-white">
+            <input
+              type="checkbox"
+              checked={windowsSsoEnabled}
+              onChange={(event) => setWindowsSsoEnabled(event.target.checked)}
+              disabled={updateSettings.isPending || !adEnabled}
+              className="mt-1"
+            />
+            <span>
+              <strong className="block">ورود خودکار ویندوز فعال باشد</strong>
+              <span className="mt-1 block leading-6 text-slate-400">
+                کاربران عضو دامنه می‌توانند با حساب فعلی ویندوز و Kerberos وارد شوند.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-sm text-white">
+            <input
+              type="checkbox"
+              checked={requirePortalLogin}
+              onChange={(event) => setRequirePortalLogin(event.target.checked)}
+              disabled={updateSettings.isPending}
+              className="mt-1"
+            />
+            <span>
+              <strong className="block">ورود به پورتال اجباری باشد</strong>
+              <span className="mt-1 block leading-6 text-slate-400">
+                کاربر مهمان ابتدا صفحه انتخاب ورود خودکار یا دستی را مشاهده می‌کند.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
           <label className="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950/45 p-4 text-base font-black text-white shadow-lg shadow-black/10">
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-cyan-200/35 bg-cyan-400/20 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.22)]">
               <ShieldCheck size={24} strokeWidth={2.4} />
@@ -860,6 +1000,15 @@ export default function SettingsPage() {
               onChange={(event) => setAdUrl(event.target.value)}
               disabled={updateSettings.isPending}
               placeholder="ldap://ad.company.local:389"
+            />
+          </IconFormField>
+
+          <IconFormField label="نام سرور داخل گواهی TLS" icon={ShieldCheck}>
+            <Input
+              value={adTlsServerName}
+              onChange={(event) => setAdTlsServerName(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="DNS-Main.AGTPS.net"
             />
           </IconFormField>
 
@@ -922,6 +1071,32 @@ export default function SettingsPage() {
               placeholder="OU=Groups,DC=company,DC=local"
             />
           </IconFormField>
+
+          <div className="md:col-span-2">
+            <IconFormField label="گواهی Root CA سازمان (PEM)" icon={ShieldCheck}>
+              <textarea
+                value={adCaCertificate}
+                onChange={(event) => setAdCaCertificate(event.target.value)}
+                disabled={updateSettings.isPending}
+                rows={6}
+                dir="ltr"
+                placeholder="-----BEGIN CERTIFICATE-----"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 font-mono text-xs text-white outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+              />
+            </IconFormField>
+          </div>
+
+          <IconFormField label="فاصله همگام‌سازی خودکار (دقیقه)" icon={RefreshCw}>
+            <Input
+              type="number"
+              min="5"
+              max="10080"
+              value={adSyncIntervalMinutes}
+              onChange={(event) => setAdSyncIntervalMinutes(event.target.value)}
+              disabled={updateSettings.isPending}
+              placeholder="60"
+            />
+          </IconFormField>
         </div>
 
         {settings?.activeDirectoryLastCheckedAt && (
@@ -943,7 +1118,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap justify-end gap-3">
           <Button
             type="submit"
-            form="portal-settings-form"
+            form="active-directory-settings-form"
             disabled={updateSettings.isPending}
           >
             {updateSettings.isPending ? "در حال ذخیره..." : "ذخیره تنظیمات AD"}
@@ -958,6 +1133,7 @@ export default function SettingsPage() {
           </Button>
         </div>
       </SettingsSection>
+      </form>
       )}
     </div>
   );

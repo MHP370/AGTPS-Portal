@@ -14,6 +14,8 @@ export function ProfileCompletionDialog() {
   const updateProfile = useUpdateProfile();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
   const [personnelCode, setPersonnelCode] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [error, setError] = useState("");
@@ -26,6 +28,8 @@ export function ProfileCompletionDialog() {
     const timer = window.setTimeout(() => {
       setFirstName(user.firstName ?? "");
       setLastName(user.lastName ?? "");
+      setEmail(user.email ?? "");
+      setMobile(user.mobile ?? "");
       setPersonnelCode(user.personnelCode ?? "");
       setBirthDate(user.birthDate ?? "");
       setError("");
@@ -47,12 +51,23 @@ export function ProfileCompletionDialog() {
       return;
     }
 
+    if (missingFields.includes("email") && !email.trim()) {
+      setError("Email is required.");
+      return;
+    }
+    if (missingFields.includes("mobile") && !mobile.trim()) {
+      setError("Mobile is required.");
+      return;
+    }
+
     setError("");
 
     try {
       await updateProfile.mutateAsync({
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
+        email: email.trim() || undefined,
+        mobile: mobile.trim() || undefined,
         personnelCode: personnelCode.trim() || undefined,
         birthDate: birthDate || undefined,
       });
@@ -96,6 +111,16 @@ export function ProfileCompletionDialog() {
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-slate-200">{"\u0627\u06cc\u0645\u06cc\u0644"}{missingFields.includes("email") && <span className="mr-1 text-red-400">*</span>}</span>
+            <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} disabled={updateProfile.isPending} />
+          </label>
+
+          <label className="space-y-2">
+            <span className="text-sm font-bold text-slate-200">{"\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06cc\u0644"}{missingFields.includes("mobile") && <span className="mr-1 text-red-400">*</span>}</span>
+            <Input value={mobile} onChange={(event) => setMobile(event.target.value)} dir="ltr" inputMode="tel" disabled={updateProfile.isPending} />
+          </label>
+
           <label className="space-y-2">
             <span className="text-sm font-bold text-slate-200">نام</span>
             <Input

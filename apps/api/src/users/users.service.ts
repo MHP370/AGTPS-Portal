@@ -62,6 +62,7 @@ export class UsersService {
         lastName: user.lastName,
         personnelCode: user.personnelCode,
         birthDate: user.birthDate?.toISOString().slice(0, 10) ?? null,
+        mobile: user.mobile,
         allowEmailChange: user.allowEmailChange,
         allowPasswordChange: user.allowPasswordChange,
         allowProfileEdit: user.allowProfileEdit,
@@ -86,6 +87,7 @@ export class UsersService {
       await this.prisma.directoryUser.findFirst({
         where: {
           OR: [
+            { id: user.directoryUserId ?? "__NO_DIRECTORY_USER__" },
             {
               username: user.username,
             },
@@ -150,6 +152,7 @@ export class UsersService {
         await this.prisma.directoryUser.findFirst({
           where: {
             OR: [
+            { id: user.directoryUserId ?? "__NO_DIRECTORY_USER__" },
               {
                 username: user.username,
               },
@@ -181,6 +184,7 @@ export class UsersService {
         lastName: dto.lastName?.trim() || null,
         personnelCode: dto.personnelCode?.trim() || null,
         birthDate,
+        mobile: dto.mobile?.trim() || null,
         isActive: dto.isActive,
         allowEmailChange: dto.allowEmailChange,
         allowPasswordChange: dto.allowPasswordChange,

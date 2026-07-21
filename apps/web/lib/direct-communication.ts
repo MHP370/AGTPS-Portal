@@ -167,6 +167,10 @@ export function getMyDirectConversations() {
   );
 }
 
+export function getMyDirectContext() {
+  return api.get<{ isManager: boolean }>("/direct-communication/my/context");
+}
+
 export function getMyDirectInbox() {
   return api.get<DirectConversation[]>("/direct-communication/my/inbox");
 }

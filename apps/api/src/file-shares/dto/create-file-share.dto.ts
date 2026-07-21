@@ -45,6 +45,26 @@ export class CreateFileShareDto {
 
   @IsOptional()
   @IsString()
+  uncPath?: string;
+
+  @IsOptional()
+  @IsString()
+  authMode?: string;
+
+  @IsOptional()
+  @IsString()
+  realm?: string;
+
+  @IsOptional()
+  @IsString()
+  sharedUsername?: string;
+
+  @IsOptional()
+  @IsString()
+  sharedPassword?: string;
+
+  @IsOptional()
+  @IsString()
   icon?: string;
 
   @IsOptional()

@@ -204,7 +204,7 @@ function TrainingFileViewer({
           </p>
         </div>
         <a
-          href={file.fileUrl}
+          href={`${file.fileUrl}${file.fileUrl.includes("?") ? "&" : "?"}download=1`}
           download
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-black text-white hover:bg-cyan-400"
         >

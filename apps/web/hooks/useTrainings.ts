@@ -30,6 +30,9 @@ import {
   updateTrainingCategory,
   updateTrainingItem,
   updateTrainingSource,
+  testTrainingSource,
+  syncTrainingSource,
+  uploadTrainingSourceFile,
   type CreateInPersonParticipantDto,
   type CreateInPersonTrainingDto,
   type CreateTrainingCategoryDto,
@@ -54,10 +57,11 @@ export function getTrainingVisitorKey() {
   return next;
 }
 
-export function useTrainings() {
+export function useTrainings(enabled = true) {
   return useQuery({
     queryKey: trainingsQueryKey,
     queryFn: getPublishedTrainings,
+    enabled,
   });
 }
 
@@ -112,6 +116,25 @@ export function useAdminTrainingSources() {
   return useQuery({
     queryKey: trainingSourcesQueryKey,
     queryFn: getAdminTrainingSources,
+  });
+}
+
+export function useUploadTrainingSourceFile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      sourceId,
+      trainingSlug,
+      file,
+    }: {
+      sourceId: string;
+      trainingSlug: string;
+      file: File;
+    }) => uploadTrainingSourceFile(sourceId, trainingSlug, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trainingsQueryKey });
+      queryClient.invalidateQueries({ queryKey: trainingSourcesQueryKey });
+    },
   });
 }
 
@@ -318,6 +341,25 @@ export function useUpdateTrainingSource() {
       queryClient.invalidateQueries({
         queryKey: trainingSourcesQueryKey,
       });
+    },
+  });
+}
+
+export function useTestTrainingSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: testTrainingSource,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: trainingSourcesQueryKey }),
+  });
+}
+
+export function useSyncTrainingSource() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: syncTrainingSource,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: trainingSourcesQueryKey });
+      queryClient.invalidateQueries({ queryKey: trainingsQueryKey });
     },
   });
 }

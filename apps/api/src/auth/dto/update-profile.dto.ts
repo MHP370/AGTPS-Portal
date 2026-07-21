@@ -30,4 +30,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsISO8601()
   birthDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  mobile?: string;
 }

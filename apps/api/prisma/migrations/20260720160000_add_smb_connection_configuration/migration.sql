@@ -1,0 +1,8 @@
+ALTER TABLE "SmbShare" ADD COLUMN "uncPath" TEXT;
+ALTER TABLE "SmbShare" ADD COLUMN "authMode" TEXT NOT NULL DEFAULT 'KERBEROS';
+ALTER TABLE "SmbShare" ADD COLUMN "realm" TEXT;
+ALTER TABLE "SmbShare" ADD COLUMN "lastConnectionAt" TIMESTAMP(3);
+ALTER TABLE "SmbShare" ADD COLUMN "lastConnectionStatus" TEXT;
+ALTER TABLE "SmbShare" ADD COLUMN "lastConnectionError" TEXT;
+ALTER TABLE "TrainingSource" ADD COLUMN "authMode" TEXT NOT NULL DEFAULT 'KERBEROS';
+ALTER TABLE "TrainingSource" ADD COLUMN "realm" TEXT;

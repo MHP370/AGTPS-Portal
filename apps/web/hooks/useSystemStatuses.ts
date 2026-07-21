@@ -17,10 +17,11 @@ import {
   type CreateSystemStatusDto,
 } from "@/lib/system-statuses";
 
-export function useSystemStatuses() {
+export function useSystemStatuses(enabled = true) {
   return useQuery({
     queryKey: systemStatusesQueryKey,
     queryFn: getSystemStatuses,
+    enabled,
   });
 }
 

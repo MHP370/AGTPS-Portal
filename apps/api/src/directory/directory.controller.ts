@@ -17,6 +17,7 @@ import { UpdateDirectoryGroupDto } from './dto/update-directory-group.dto';
 import { UpdateDirectoryUserDto } from './dto/update-directory-user.dto';
 import { UpdateGroupMembersDto } from './dto/update-group-members.dto';
 import { UpdateGroupRolesDto } from './dto/update-group-roles.dto';
+import { DirectorySyncService } from './directory-sync.service';
 import { DirectoryService } from './directory.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -25,11 +26,17 @@ import { DirectoryService } from './directory.service';
 export class DirectoryController {
   constructor(
     private readonly directoryService: DirectoryService,
+    private readonly directorySyncService: DirectorySyncService,
   ) {}
 
   @Get('users')
   findUsers() {
     return this.directoryService.findUsers();
+  }
+
+  @Post('sync')
+  sync() {
+    return this.directorySyncService.sync();
   }
 
   @Post('users')

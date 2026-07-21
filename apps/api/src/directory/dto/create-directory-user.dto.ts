@@ -2,11 +2,9 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
-  IsEnum,
   IsOptional,
   IsString,
 } from 'class-validator';
-import { DirectorySource } from '@prisma/client';
 
 export class CreateDirectoryUserDto {
   @IsString()
@@ -26,10 +24,6 @@ export class CreateDirectoryUserDto {
   @IsOptional()
   @IsString()
   title?: string;
-
-  @IsOptional()
-  @IsEnum(DirectorySource)
-  source?: DirectorySource;
 
   @IsOptional()
   @IsBoolean()

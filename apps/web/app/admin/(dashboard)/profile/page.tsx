@@ -30,6 +30,7 @@ export default function AdminProfilePage() {
   const updateProfile = useUpdateProfile();
   const changePassword = useChangeOwnPassword();
   const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [personnelCode, setPersonnelCode] = useState("");
@@ -52,6 +53,7 @@ export default function AdminProfilePage() {
       setFirstName(user.firstName ?? "");
       setLastName(user.lastName ?? "");
       setEmail(user.email ?? "");
+      setMobile(user.mobile ?? "");
       setPersonnelCode(user.personnelCode ?? "");
       setBirthDate(user.birthDate ?? "");
     }, 0);
@@ -66,7 +68,8 @@ export default function AdminProfilePage() {
 
     try {
       await updateProfile.mutateAsync({
-        email: user?.allowEmailChange ? email.trim() || undefined : undefined,
+        email: user?.allowEmailChange || user?.authSource === "ACTIVE_DIRECTORY" ? email.trim() || undefined : undefined,
+        mobile: mobile.trim() || undefined,
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
         personnelCode: personnelCode.trim() || undefined,
@@ -111,7 +114,7 @@ export default function AdminProfilePage() {
         <div>
           <h1 className="text-3xl font-black text-white">پروفایل کاربری</h1>
           <p className="mt-2 text-sm leading-7 text-slate-400">
-            اطلاعات حساب، نوع ورود، نقش‌ها و گروه‌های سازمانی شما در پورتال.
+            اطلاعات حساب و مشخصات فردی شما در پورتال.
           </p>
         </div>
         <AdminLogoutButton />
@@ -183,14 +186,19 @@ export default function AdminProfilePage() {
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       disabled={
-                        updateProfile.isPending || !user?.allowEmailChange
+                        updateProfile.isPending || (!user?.allowEmailChange && user?.authSource !== "ACTIVE_DIRECTORY")
                       }
                     />
-                    {!user?.allowEmailChange && (
+                    {!user?.allowEmailChange && user?.authSource !== "ACTIVE_DIRECTORY" && (
                       <span className="block text-xs text-slate-500">
                         تغییر ایمیل برای این حساب توسط ادمین غیرفعال شده است.
                       </span>
                     )}
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="text-sm font-bold text-slate-200">{"\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u0628\u0627\u06cc\u0644"}</span>
+                    <Input value={mobile} onChange={(event) => setMobile(event.target.value)} dir="ltr" inputMode="tel" disabled={updateProfile.isPending || !user?.allowProfileEdit} />
                   </label>
 
                   <label className="space-y-2">
@@ -341,6 +349,7 @@ export default function AdminProfilePage() {
               </div>
             </section>
 
+            {user?.permissions.includes("directory.manage") && (
             <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
               <div className="mb-4 flex items-center gap-3">
                 <Network className="text-cyan-200" size={22} />
@@ -377,6 +386,7 @@ export default function AdminProfilePage() {
                 )}
               </div>
             </section>
+            )}
           </div>
         </>
       )}

@@ -1,0 +1,3 @@
+ALTER TABLE "Setting"
+ADD COLUMN "windowsSsoEnabled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "requirePortalLogin" BOOLEAN NOT NULL DEFAULT false;

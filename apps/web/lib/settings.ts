@@ -19,13 +19,22 @@ export interface PortalSettings {
   activeDirectoryBindPassword?: string | null;
   activeDirectoryUserSearchBase?: string;
   activeDirectoryGroupSearchBase?: string;
+  activeDirectoryTlsServerName?: string;
+  activeDirectoryCaCertificate?: string;
+  activeDirectorySyncIntervalMinutes?: number;
+  activeDirectoryLastSyncedAt?: string | null;
+  activeDirectoryLastSyncError?: string | null;
   activeDirectoryLastStatus?: string | null;
   activeDirectoryLastError?: string | null;
   activeDirectoryLastCheckedAt?: string | null;
+  windowsSsoEnabled?: boolean;
+  requirePortalLogin?: boolean;
   trainingMaxUploadSizeMb?: number;
   trainingAllowedFileExtensions?: string;
   requireUserPersonnelCode?: boolean;
   requireUserBirthDate?: boolean;
+  requireUserEmail?: boolean;
+  requireUserMobile?: boolean;
   topbarUserDisplayMode?: "FULL_NAME" | "PERSONNEL_CODE" | "USERNAME";
 }
 
@@ -46,10 +55,19 @@ export interface UpdatePortalSettingsDto {
   activeDirectoryBindPassword?: string;
   activeDirectoryUserSearchBase?: string;
   activeDirectoryGroupSearchBase?: string;
+  activeDirectoryTlsServerName?: string;
+  activeDirectoryCaCertificate?: string;
+  activeDirectorySyncIntervalMinutes?: number;
+  windowsSsoEnabled?: boolean;
+  requirePortalLogin?: boolean;
+  activeDirectoryLastSyncedAt?: string | null;
+  activeDirectoryLastSyncError?: string | null;
   trainingMaxUploadSizeMb?: number;
   trainingAllowedFileExtensions?: string;
   requireUserPersonnelCode?: boolean;
   requireUserBirthDate?: boolean;
+  requireUserEmail?: boolean;
+  requireUserMobile?: boolean;
   topbarUserDisplayMode?: "FULL_NAME" | "PERSONNEL_CODE" | "USERNAME";
 }
 

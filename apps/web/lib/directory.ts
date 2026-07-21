@@ -12,6 +12,9 @@ export interface DirectoryUser {
   title?: string;
   source: DirectorySource;
   isActive: boolean;
+  externalId?: string;
+  distinguishedName?: string;
+  lastSyncedAt?: string;
   groupMemberships?: Array<{
     group: DirectoryGroup;
   }>;
@@ -24,6 +27,9 @@ export interface DirectoryGroup {
   description?: string;
   source: DirectorySource;
   isActive: boolean;
+  externalId?: string;
+  distinguishedName?: string;
+  lastSyncedAt?: string;
   members: Array<{
     user: DirectoryUser;
   }>;
@@ -53,6 +59,17 @@ export interface CreateDirectoryGroupDto {
 
 export const directoryUsersQueryKey = ["directory", "users"];
 export const directoryGroupsQueryKey = ["directory", "groups"];
+
+export interface DirectorySyncResult {
+  users: { found: number; created: number; updated: number; deactivated: number };
+  groups: { found: number; created: number; updated: number; deactivated: number };
+  memberships: number;
+  syncedAt: string;
+}
+
+export function syncActiveDirectory() {
+  return api.post<DirectorySyncResult>("/directory/sync", {});
+}
 
 export function getDirectoryUsers() {
   return api.get<DirectoryUser[]>("/directory/users");

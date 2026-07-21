@@ -61,6 +61,13 @@ export class DirectCommunicationController {
     );
   }
 
+  @Get('my/context')
+  getMyContext(
+    @Req() request: Request & { user?: { id: string; username?: string; email?: string } },
+  ) {
+    return this.directCommunicationService.getMyContext(request.user);
+  }
+
   @Get('my/inbox')
   findMyInbox(
     @Req() request: Request & { user?: { id: string; username?: string; email?: string } },

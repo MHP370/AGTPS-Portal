@@ -35,10 +35,11 @@ export function getPollSurveyVisitorKey() {
   return next;
 }
 
-export function usePollSurveys(type?: PollSurveyType) {
+export function usePollSurveys(type?: PollSurveyType, enabled = true) {
   return useQuery({
     queryKey: [...pollSurveysQueryKey, type ?? "all"],
     queryFn: () => getPollSurveys(type, getPollSurveyVisitorKey()),
+    enabled,
   });
 }
 

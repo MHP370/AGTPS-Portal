@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Post,
   Put,
   Req,
@@ -9,6 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuditAction } from '@prisma/client';
+import { timingSafeEqual } from 'crypto';
 import type { Request } from 'express';
 
 import { AuditLogsService } from '../audit-logs/audit-logs.service';
@@ -25,13 +27,46 @@ export class AuthController {
     private readonly auditLogsService: AuditLogsService,
   ) {}
 
+  @Get('login-options')
+  loginOptions() {
+    return this.authService.getLoginOptions();
+  }
+
+  @Get('windows/identity')
+  windowsIdentity(
+    @Headers('x-agtps-sso-secret') suppliedSecret: string | undefined,
+    @Headers('x-authenticated-user') identity: string | undefined,
+  ) {
+    this.assertTrustedSsoRequest(suppliedSecret, identity);
+    return this.authService.getWindowsIdentity(identity!);
+  }
+
+  @Post('windows/login')
+  async windowsLogin(
+    @Headers('x-agtps-sso-secret') suppliedSecret: string | undefined,
+    @Headers('x-authenticated-user') identity: string | undefined,
+    @Req() request: Request,
+  ) {
+    this.assertTrustedSsoRequest(suppliedSecret, identity);
+    const result = await this.authService.loginWithWindowsIdentity(identity!);
+    await this.auditLogsService.record({
+      actor: result.user,
+      request: this.getRequestMeta(request),
+      action: AuditAction.LOGIN_SUCCESS,
+      entityType: 'auth',
+      entityId: result.user.id,
+      summary: `Windows SSO login success for ${result.user.username}`,
+    });
+    return result;
+  }
+
   @Post('login')
   async login(
     @Body() dto: LoginDto,
     @Req() request: Request,
   ) {
     try {
-      const result = await this.authService.login(dto.username, dto.password);
+      const result = await this.authService.login(dto.username, dto.password, dto.authSource);
 
       await this.auditLogsService.record({
         actor: result.user,
@@ -91,5 +126,21 @@ export class AuthController {
       ipAddress: request.ip,
       userAgent: request.headers['user-agent'],
     };
+  }
+
+  private assertTrustedSsoRequest(
+    suppliedSecret: string | undefined,
+    identity: string | undefined,
+  ) {
+    const expectedSecret = process.env.SSO_SHARED_SECRET;
+    const trusted = Boolean(
+      expectedSecret &&
+      suppliedSecret &&
+      expectedSecret.length === suppliedSecret.length &&
+      timingSafeEqual(Buffer.from(expectedSecret), Buffer.from(suppliedSecret)),
+    );
+    if (!trusted || !identity) {
+      throw new UnauthorizedException('Trusted Windows identity was not provided.');
+    }
   }
 }

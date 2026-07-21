@@ -106,6 +106,10 @@ async function main() {
   // Permissions
   const permissionDefinitions = [
     {
+      name: 'dashboard.view',
+      title: 'مشاهده داشبورد مدیریت',
+    },
+    {
       name: 'applications.manage',
       title: 'Manage Applications',
     },

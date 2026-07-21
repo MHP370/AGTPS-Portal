@@ -22,14 +22,23 @@ const defaultSettings = {
   activeDirectoryBindPassword: null,
   activeDirectoryUserSearchBase: null,
   activeDirectoryGroupSearchBase: null,
+  activeDirectoryTlsServerName: null,
+  activeDirectoryCaCertificate: null,
+  activeDirectorySyncIntervalMinutes: 60,
+  activeDirectoryLastSyncedAt: null,
+  activeDirectoryLastSyncError: null,
   activeDirectoryLastStatus: null,
   activeDirectoryLastError: null,
   activeDirectoryLastCheckedAt: null,
+  windowsSsoEnabled: false,
+  requirePortalLogin: false,
   trainingMaxUploadSizeMb: 2048,
   trainingAllowedFileExtensions:
     'mp4,mkv,webm,mov,avi,pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png,webp,gif,txt,csv,zip,rar,7z',
   requireUserPersonnelCode: false,
   requireUserBirthDate: false,
+  requireUserEmail: false,
+  requireUserMobile: false,
   topbarUserDisplayMode: 'FULL_NAME' as const,
 };
 
@@ -114,6 +123,10 @@ export class SettingsService {
       url: settings.activeDirectoryUrl,
       timeout: 5000,
       connectTimeout: 5000,
+      tlsOptions: {
+        ca: settings.activeDirectoryCaCertificate || undefined,
+        servername: settings.activeDirectoryTlsServerName || undefined,
+      },
     });
 
     try {

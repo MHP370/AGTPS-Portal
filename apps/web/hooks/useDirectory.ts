@@ -15,6 +15,7 @@ import {
   directoryUsersQueryKey,
   getDirectoryGroups,
   getDirectoryUsers,
+  syncActiveDirectory,
   updateDirectoryGroupMembers,
   updateDirectoryGroupRoles,
   type CreateDirectoryGroupDto,
@@ -32,6 +33,17 @@ export function useDirectoryGroups() {
   return useQuery({
     queryKey: directoryGroupsQueryKey,
     queryFn: getDirectoryGroups,
+  });
+}
+
+export function useSyncActiveDirectory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: syncActiveDirectory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: directoryUsersQueryKey });
+      queryClient.invalidateQueries({ queryKey: directoryGroupsQueryKey });
+    },
   });
 }
 
