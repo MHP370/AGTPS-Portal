@@ -1518,7 +1518,7 @@ export default function Home() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_5%,rgba(124,58,237,0.35),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,0.3),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.1),rgba(2,6,23,0.95))]" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(56,189,248,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.06)_1px,transparent_1px)] bg-[size:72px_72px] opacity-60" />
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1920px] flex-col px-4 py-4">
-        <header className="mb-5 flex min-h-24 flex-nowrap items-center justify-between gap-4 overflow-x-auto rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">
+        <header className="relative z-[200] mb-5 flex min-h-24 flex-nowrap items-center justify-between gap-4 overflow-visible rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">
           {settingsLoading ? (
             <div className="flex shrink-0 items-center gap-4">
               <div className="size-16 animate-pulse rounded-2xl bg-white/10" />

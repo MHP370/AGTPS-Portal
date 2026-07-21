@@ -9,7 +9,11 @@ import {
 import {
   createSite,
   deleteSite,
+  getPortalSites,
+  getPortalWeather,
   getSites,
+  portalSiteQueryKey,
+  portalWeatherQueryKey,
   siteQueryKey,
   updateSite,
   type CreateSiteDto,
@@ -20,6 +24,23 @@ export function useSites(enabled = true) {
     queryKey: siteQueryKey,
     queryFn: getSites,
     enabled,
+  });
+}
+
+export function usePortalSites(enabled = true) {
+  return useQuery({
+    queryKey: portalSiteQueryKey,
+    queryFn: getPortalSites,
+    enabled,
+  });
+}
+
+export function usePortalWeather() {
+  return useQuery({
+    queryKey: portalWeatherQueryKey,
+    queryFn: getPortalWeather,
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
   });
 }
 
@@ -34,6 +55,8 @@ export function useCreateSite() {
       queryClient.invalidateQueries({
         queryKey: siteQueryKey,
       });
+      queryClient.invalidateQueries({ queryKey: portalSiteQueryKey });
+      queryClient.invalidateQueries({ queryKey: portalWeatherQueryKey });
     },
   });
 }
@@ -54,6 +77,8 @@ export function useUpdateSite() {
       queryClient.invalidateQueries({
         queryKey: siteQueryKey,
       });
+      queryClient.invalidateQueries({ queryKey: portalSiteQueryKey });
+      queryClient.invalidateQueries({ queryKey: portalWeatherQueryKey });
     },
   });
 }
@@ -69,6 +94,8 @@ export function useDeleteSite() {
       queryClient.invalidateQueries({
         queryKey: siteQueryKey,
       });
+      queryClient.invalidateQueries({ queryKey: portalSiteQueryKey });
+      queryClient.invalidateQueries({ queryKey: portalWeatherQueryKey });
     },
   });
 }

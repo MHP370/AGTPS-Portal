@@ -6,7 +6,7 @@ import { ExternalLink, MonitorCog } from "lucide-react";
 import iranProvinces from "@/lib/geo/iran-provinces.json";
 import { Dialog } from "@/components/ui/Dialog";
 import { usePortalApplications } from "@/hooks/useApplications";
-import { useSites } from "@/hooks/useSites";
+import { usePortalSites } from "@/hooks/useSites";
 import type { Application } from "@/lib/applications";
 import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import type { Site } from "@/lib/sites";
@@ -436,7 +436,7 @@ export default function IranPortalMap({
   onSiteSelect,
   showApplications = true,
 }: IranPortalMapProps) {
-  const { data: sites = [], isLoading, isError } = useSites();
+  const { data: sites = [], isLoading, isError } = usePortalSites();
   const { data: applications = [], isLoading: isApplicationsLoading } =
     usePortalApplications();
   const [hoveredProvinceName, setHoveredProvinceName] = useState<string | null>(
