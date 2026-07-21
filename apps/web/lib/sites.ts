@@ -40,9 +40,34 @@ export interface CreateSiteDto {
 }
 
 export const siteQueryKey = ["sites"];
+export const portalSiteQueryKey = ["portal-sites"];
+export const portalWeatherQueryKey = ["portal-weather"];
+
+export interface PortalSiteWeather {
+  siteId: string;
+  siteName: string;
+  available: boolean;
+  reason?: "missing_coordinates" | "provider_unavailable";
+  observedAt?: string;
+  temperature?: number;
+  apparentTemperature?: number;
+  humidity?: number;
+  precipitation?: number;
+  windSpeed?: number;
+  weatherCode?: number;
+  isDay?: boolean;
+}
 
 export function getSites() {
   return api.get<Site[]>("/sites");
+}
+
+export function getPortalSites() {
+  return api.get<Site[]>("/portal/sites");
+}
+
+export function getPortalWeather() {
+  return api.get<PortalSiteWeather[]>("/portal/sites/weather");
 }
 
 export function createSite(dto: CreateSiteDto) {

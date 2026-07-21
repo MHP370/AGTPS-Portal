@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { MonitorCog } from "lucide-react";
 
 import { usePortalApplications } from "@/hooks/useApplications";
-import { useSites } from "@/hooks/useSites";
+import { usePortalSites } from "@/hooks/useSites";
 import { isUploadedIcon, portalIconMap } from "@/lib/icon-options";
 import type { Application } from "@/lib/applications";
 import { portalApps } from "@/lib/portal";
@@ -132,7 +132,7 @@ export default function PortalApplicationsGrid({
   showSiteFilter = false,
 }: PortalApplicationsGridProps) {
   const { data: applications = [], isLoading, isError } = usePortalApplications();
-  const { data: sites = [] } = useSites(showSiteFilter);
+  const { data: sites = [] } = usePortalSites(showSiteFilter);
   const activeSites = sites.filter((site) => site.isActive);
   const selectedSite = activeSites.find((site) => site.id === selectedSiteId);
   const visibleApplications = applications.filter((application) => {
@@ -163,17 +163,6 @@ export default function PortalApplicationsGrid({
         </div>
         {showSiteFilter && (
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => onSiteSelect?.(null)}
-            className={`rounded-full border px-3 py-1 text-xs font-bold transition ${
-              !selectedSiteId
-                ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
-                : "border-white/10 bg-white/[0.04] text-slate-300 hover:bg-white/[0.08]"
-            }`}
-          >
-            همه سایت‌ها
-          </button>
           {activeSites.map((site) => (
             <button
               key={site.id}
