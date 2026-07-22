@@ -126,7 +126,11 @@ export default function SlidersPage() {
           </FormField>
         </div>
 
-        <FormField label="تصویر بنر" required>
+        <FormField
+          label="تصویر بنر"
+          required
+          hint="اندازه پیشنهادی ۱۶۰۰×۵۰۰ پیکسل برای بنر عریض؛ محتوای مهم در مرکز تصویر، فرمت WebP یا JPEG و حجم ترجیحاً کمتر از ۲ مگابایت."
+        >
           <FileUploadField
             value={image}
             onChange={setImage}

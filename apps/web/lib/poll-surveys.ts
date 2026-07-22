@@ -1,6 +1,10 @@
 import { api } from "./api";
 
 export type PollSurveyType = "POLL" | "SURVEY";
+export type PollSurveyParticipationMode =
+  | "IDENTIFIED"
+  | "ANONYMOUS_TRACKED"
+  | "ANONYMOUS_FULL";
 export type PollSurveyStatus =
   "DRAFT" | "SCHEDULED" | "RUNNING" | "CLOSED" | "ARCHIVED";
 export type PollSurveyQuestionType =
@@ -57,6 +61,7 @@ export interface PollSurvey {
   tags: string[];
   allowMultipleSelection: boolean;
   anonymous: boolean;
+  participationMode: PollSurveyParticipationMode;
   required: boolean;
   popupEnforced: boolean;
   allowVoteEditing: boolean;
@@ -85,6 +90,7 @@ export interface CreatePollSurveyDto {
   tags?: string[];
   allowMultipleSelection?: boolean;
   anonymous?: boolean;
+  participationMode?: PollSurveyParticipationMode;
   required?: boolean;
   popupEnforced?: boolean;
   allowVoteEditing?: boolean;
@@ -120,8 +126,6 @@ export interface CreatePollSurveyDto {
 
 export interface SubmitPollSurveyResponseDto {
   participantKey: string;
-  userId?: string;
-  directoryUserId?: string;
   saveDraft?: boolean;
   timeSpentSeconds?: number;
   answers: Array<{
@@ -146,6 +150,14 @@ export interface PollSurveyResult {
   totalResponses: number;
   targetCount: number | null;
   participationRate: number | null;
+  participationMode: PollSurveyParticipationMode;
+  participants: Array<{
+    userId?: string | null;
+    directoryUserId?: string | null;
+    displayName: string;
+    username: string;
+    participatedAt: string;
+  }>;
   timeline: Array<{
     date: string;
     count: number;

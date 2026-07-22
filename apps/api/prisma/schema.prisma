@@ -183,6 +183,12 @@ enum PollSurveyResponseStatus {
   SUBMITTED
 }
 
+enum PollSurveyParticipationMode {
+  IDENTIFIED
+  ANONYMOUS_TRACKED
+  ANONYMOUS_FULL
+}
+
 model User {
   id       String @id @default(cuid())
   username String @unique
@@ -214,6 +220,7 @@ model User {
   inPersonTrainingParticipants     InPersonTrainingParticipant[]
   createdPollSurveys               PollSurvey[]                      @relation("PollSurveyCreator")
   pollSurveyResponses              PollSurveyResponse[]
+  pollSurveyParticipations         PollSurveyParticipation[]
   smbAudits                        SmbFileAudit[]
   auditLogs                        AuditLog[]
   directCommunicationManagers      DirectCommunicationManager[]
@@ -292,6 +299,7 @@ model DirectoryUser {
   trainingProgress                 TrainingProgress[]
   inPersonTrainingParticipants     InPersonTrainingParticipant[]
   pollSurveyResponses              PollSurveyResponse[]
+  pollSurveyParticipations         PollSurveyParticipation[]
   smbShareAccesses                 SmbShareUserAccess[]
   directCommunicationManagers      DirectCommunicationManager[]
   directCommunicationConversations DirectCommunicationConversation[]
@@ -1074,12 +1082,14 @@ model PollSurvey {
   allowParticipantCount Boolean @default(true)
   allowLiveResults      Boolean @default(false)
   participantVisibility Boolean @default(false)
+  participationMode PollSurveyParticipationMode @default(IDENTIFIED)
 
   creatorId String?
   creator   User?   @relation("PollSurveyCreator", fields: [creatorId], references: [id], onDelete: SetNull)
 
   questions PollSurveyQuestion[]
   responses PollSurveyResponse[]
+  participations PollSurveyParticipation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1088,6 +1098,26 @@ model PollSurvey {
   @@index([status])
   @@index([deadline])
   @@index([publishDate])
+}
+
+model PollSurveyParticipation {
+  id String @id @default(cuid())
+
+  pollSurveyId    String
+  userId          String
+  directoryUserId String?
+  participatedAt  DateTime @default(now())
+
+  pollSurvey    PollSurvey     @relation(fields: [pollSurveyId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  directoryUser DirectoryUser? @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollSurveyId, userId])
+  @@index([pollSurveyId])
+  @@index([directoryUserId])
 }
 
 model PollSurveyQuestion {
@@ -1206,6 +1236,8 @@ model Setting {
   companyName String
 
   logo String?
+
+  favicon String?
 
   primaryColor String?
 

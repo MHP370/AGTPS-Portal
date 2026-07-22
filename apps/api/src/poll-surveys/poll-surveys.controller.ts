@@ -13,6 +13,7 @@ import {
 import { PollSurveyType } from '@prisma/client';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { CreatePollSurveyDto } from './dto/create-poll-survey.dto';
 import { SubmitPollSurveyResponseDto } from './dto/submit-poll-survey-response.dto';
@@ -24,11 +25,17 @@ export class PollSurveysController {
   constructor(private readonly pollSurveysService: PollSurveysService) {}
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   findPublic(
     @Query('type') type?: PollSurveyType,
     @Query('participantKey') participantKey?: string,
+    @Req() req?: any,
   ) {
-    return this.pollSurveysService.findPublic(type, participantKey);
+    return this.pollSurveysService.findPublic(
+      type,
+      participantKey,
+      req?.user ?? null,
+    );
   }
 
   @Get('admin/all')
@@ -91,10 +98,12 @@ export class PollSurveysController {
   }
 
   @Post(':id/responses')
+  @UseGuards(OptionalJwtAuthGuard)
   submitResponse(
     @Param('id') id: string,
     @Body() dto: SubmitPollSurveyResponseDto,
+    @Req() req: any,
   ) {
-    return this.pollSurveysService.submitResponse(id, dto);
+    return this.pollSurveysService.submitResponse(id, dto, req.user ?? null);
   }
 }

@@ -48,14 +48,6 @@ export class SubmitPollSurveyResponseDto {
   participantKey: string;
 
   @IsOptional()
-  @IsString()
-  userId?: string;
-
-  @IsOptional()
-  @IsString()
-  directoryUserId?: string;
-
-  @IsOptional()
   @IsBoolean()
   saveDraft?: boolean;
 

@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Download,
   Filter,
+  Info,
   Plus,
   PieChart,
   Search,
@@ -40,6 +41,7 @@ import type {
   CreatePollSurveyDto,
   PollSurvey,
   PollSurveyQuestionType,
+  PollSurveyParticipationMode,
   PollSurveyResult,
   PollSurveyStatus,
   PollSurveyType,
@@ -142,6 +144,32 @@ function formatDateOnly(value?: string | null) {
 
 function typeLabel(type: PollSurveyType) {
   return type === "POLL" ? "رای‌گیری" : "نظرسنجی";
+}
+
+function participationModeLabel(mode: PollSurveyParticipationMode) {
+  if (mode === "IDENTIFIED") return "شناسایی‌شده";
+  if (mode === "ANONYMOUS_TRACKED") return "ناشناس با ثبت مشارکت";
+  return "کاملاً ناشناس";
+}
+
+function OptionInfo({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex shrink-0">
+      <button
+        type="button"
+        aria-label="نمایش توضیح این گزینه"
+        className="grid size-7 place-items-center rounded-full border border-cyan-300/25 bg-cyan-400/10 text-cyan-100 transition hover:border-cyan-200/60 hover:bg-cyan-400/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+      >
+        <Info size={15} />
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full right-0 z-[100] mb-2 hidden w-64 rounded-xl border border-cyan-200/20 bg-slate-950 px-3 py-2 text-right text-xs font-normal leading-6 text-slate-200 shadow-2xl shadow-black/50 group-hover:block group-focus-within:block"
+      >
+        {text}
+      </span>
+    </span>
+  );
 }
 
 function questionTypeLabel(type: PollSurveyQuestionType) {
@@ -328,11 +356,9 @@ function PollSurveyTable({
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex flex-wrap gap-2">
-                    {item.anonymous && (
-                      <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
-                        ناشناس
-                      </span>
-                    )}
+                    <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+                      {participationModeLabel(item.participationMode)}
+                    </span>
                     {item.required && (
                       <span className="rounded-full bg-rose-400/10 px-3 py-1 text-xs text-rose-100">
                         اجباری
@@ -464,7 +490,8 @@ export default function PollsPage() {
   const [activeSurveyQuestionIndex, setActiveSurveyQuestionIndex] = useState(0);
   const [targetDepartments, setTargetDepartments] = useState("");
   const [targetAdGroups, setTargetAdGroups] = useState("");
-  const [anonymous, setAnonymous] = useState(false);
+  const [participationMode, setParticipationMode] =
+    useState<PollSurveyParticipationMode>("IDENTIFIED");
   const [required, setRequired] = useState(false);
   const [popupEnforced, setPopupEnforced] = useState(false);
   const [allowMultipleSelection, setAllowMultipleSelection] = useState(false);
@@ -472,7 +499,6 @@ export default function PollsPage() {
   const [allowResultViewing, setAllowResultViewing] = useState(false);
   const [allowParticipantCount, setAllowParticipantCount] = useState(true);
   const [allowLiveResults, setAllowLiveResults] = useState(false);
-  const [participantVisibility, setParticipantVisibility] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState<string | undefined>(
     undefined,
   );
@@ -538,7 +564,7 @@ export default function PollsPage() {
     setActiveSurveyQuestionIndex(0);
     setTargetDepartments("");
     setTargetAdGroups("");
-    setAnonymous(false);
+    setParticipationMode("IDENTIFIED");
     setRequired(false);
     setPopupEnforced(false);
     setAllowMultipleSelection(false);
@@ -546,7 +572,6 @@ export default function PollsPage() {
     setAllowResultViewing(false);
     setAllowParticipantCount(true);
     setAllowLiveResults(false);
-    setParticipantVisibility(false);
   };
 
   const loadItemIntoForm = (item: PollSurvey) => {
@@ -585,7 +610,7 @@ export default function PollsPage() {
     setActiveSurveyQuestionIndex(0);
     setTargetDepartments(item.targetDepartments.join(", "));
     setTargetAdGroups(item.targetAdGroupIds.join(", "));
-    setAnonymous(item.anonymous);
+    setParticipationMode(item.participationMode || (item.anonymous ? "ANONYMOUS_FULL" : "IDENTIFIED"));
     setRequired(item.required);
     setPopupEnforced(item.popupEnforced);
     setAllowMultipleSelection(item.allowMultipleSelection);
@@ -593,7 +618,6 @@ export default function PollsPage() {
     setAllowResultViewing(item.allowResultViewing);
     setAllowParticipantCount(item.allowParticipantCount);
     setAllowLiveResults(item.allowLiveResults);
-    setParticipantVisibility(item.participantVisibility);
     setActiveTab("create");
   };
 
@@ -645,7 +669,8 @@ export default function PollsPage() {
       status,
       deadline: deadline || null,
       publishDate: publishDate || null,
-      anonymous,
+      anonymous: participationMode !== "IDENTIFIED",
+      participationMode,
       required,
       popupEnforced,
       allowMultipleSelection: type === "POLL" ? allowMultipleSelection : false,
@@ -653,7 +678,7 @@ export default function PollsPage() {
       allowResultViewing,
       allowParticipantCount,
       allowLiveResults,
-      participantVisibility,
+      participantVisibility: participationMode === "ANONYMOUS_TRACKED",
       targetDepartments: splitCsv(targetDepartments),
       targetAdGroupIds: splitCsv(targetAdGroups),
       questions:
@@ -684,6 +709,7 @@ export default function PollsPage() {
     if (editingHasResponses && editingItem) {
       dto.type = editingItem.type;
       dto.anonymous = editingItem.anonymous;
+      dto.participationMode = editingItem.participationMode;
       dto.allowMultipleSelection = editingItem.allowMultipleSelection;
       dto.allowVoteEditing = editingItem.allowVoteEditing;
       dto.participantVisibility = editingItem.participantVisibility;
@@ -911,7 +937,7 @@ export default function PollsPage() {
             <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3">
               <p className="text-xs text-slate-400">حالت</p>
               <p className="mt-1 font-black text-white">
-                {viewingItem.anonymous ? "ناشناس" : "با نام"}
+                {participationModeLabel(viewingItem.participationMode)}
               </p>
             </div>
           </div>
@@ -1295,70 +1321,93 @@ export default function PollsPage() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <FormField label="شیوه ثبت هویت رأی‌دهنده">
+              {editingHasResponses ? (
+                <div className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300">
+                  {participationModeLabel(participationMode)}
+                </div>
+              ) : (
+                <Select
+                  value={participationMode}
+                  onValueChange={(value) =>
+                    setParticipationMode(value as PollSurveyParticipationMode)
+                  }
+                  options={[
+                    { value: "IDENTIFIED", label: "شناسایی‌شده؛ نام کنار پاسخ" },
+                    { value: "ANONYMOUS_TRACKED", label: "ناشناس؛ فقط مشخص است چه کسی شرکت کرده" },
+                    { value: "ANONYMOUS_FULL", label: "کاملاً ناشناس؛ بدون ثبت هویت" },
+                  ]}
+                />
+              )}
+              <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                <OptionInfo text="تعیین می‌کند نام رأی‌دهنده کنار پاسخ ثبت شود، فقط اصل مشارکت او ثبت شود، یا هیچ هویتی نگهداری نشود." />
+                <span>راهنمای شیوه ثبت هویت</span>
+              </div>
+            </FormField>
             {[
-              {
-                checked: anonymous,
-                onChange: setAnonymous,
-                label: "ناشناس",
-                disabled: editingHasResponses,
-              },
               {
                 checked: required,
                 onChange: setRequired,
                 label: "اجباری",
+                description: "کاربر برای ثبت نهایی باید به سؤال الزامی پاسخ دهد.",
               },
               {
                 checked: popupEnforced,
                 onChange: setPopupEnforced,
                 label: "نمایش popup اجباری",
+                description: "رأی‌گیری هنگام ورود به‌صورت پنجره برجسته به کاربران هدف نمایش داده می‌شود.",
               },
               {
                 checked: allowMultipleSelection,
                 onChange: setAllowMultipleSelection,
                 label: "انتخاب چند گزینه",
+                description: "کاربر می‌تواند به‌جای یک گزینه، چند گزینه را هم‌زمان انتخاب کند.",
                 disabled: type !== "POLL" || editingHasResponses,
               },
               {
                 checked: allowVoteEditing,
                 onChange: setAllowVoteEditing,
                 label: "امکان ویرایش پاسخ",
+                description: "کاربر پس از ثبت رأی می‌تواند دوباره وارد شود و پاسخ قبلی خود را تغییر دهد.",
                 disabled: editingHasResponses,
               },
               {
                 checked: allowResultViewing,
                 onChange: setAllowResultViewing,
                 label: "نمایش نتایج",
+                description: "پس از رأی دادن، نتیجه تجمیعی برای کاربران قابل مشاهده خواهد بود.",
               },
               {
                 checked: allowParticipantCount,
                 onChange: setAllowParticipantCount,
                 label: "نمایش تعداد مشارکت",
+                description: "فقط تعداد کل افراد شرکت‌کننده به کاربران نمایش داده می‌شود؛ نام افراد نمایش داده نمی‌شود.",
               },
               {
                 checked: allowLiveResults,
                 onChange: setAllowLiveResults,
                 label: "نتایج زنده",
-              },
-              {
-                checked: participantVisibility,
-                onChange: setParticipantVisibility,
-                label: "نمایش شرکت‌کنندگان",
-                disabled: anonymous || editingHasResponses,
+                description: "آمار نتایج پیش از پایان رأی‌گیری و هم‌زمان با ثبت رأی‌ها به‌روزرسانی می‌شود.",
               },
             ].map((item) => (
-              <label
+              <div
                 key={item.label}
                 className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-200"
               >
-                <span>{item.label}</span>
-                <input
-                  type="checkbox"
-                  checked={item.checked}
-                  disabled={item.disabled}
-                  onChange={(event) => item.onChange(event.target.checked)}
-                  className="h-4 w-4 accent-cyan-400"
-                />
-              </label>
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3">
+                  <span>{item.label}</span>
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    disabled={item.disabled}
+                    onChange={(event) => item.onChange(event.target.checked)}
+                    className="h-4 w-4 shrink-0 accent-cyan-400"
+                  />
+                </label>
+                <span className="mr-3">
+                  <OptionInfo text={item.description} />
+                </span>
+              </div>
             ))}
           </div>
 
@@ -1537,10 +1586,46 @@ export default function PollsPage() {
                 نمی‌شود تا گزارش مدیریتی گمراه‌کننده نباشد.
               </div>
 
-              {selectedReportItem?.anonymous && (
+              {selectedReportItem?.participationMode !== "IDENTIFIED" && (
                 <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4 text-sm leading-7 text-cyan-50">
-                  این مورد ناشناس است؛ گزارش فقط شمارش و آمار تجمیعی را نمایش
-                  می‌دهد و هویت پاسخ‌دهندگان قابل استخراج نیست.
+                  پاسخ‌ها ناشناس هستند و هیچ نامی به گزینه یا متن پاسخ متصل
+                  نمی‌شود. در حالت «ثبت مشارکت»، فهرست زیر فقط نشان می‌دهد چه
+                  کسی شرکت کرده است.
+                </div>
+              )}
+
+              {selectedReport.participationMode !== "ANONYMOUS_FULL" && (
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-black text-white">شرکت‌کنندگان</h3>
+                    <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+                      {selectedReport.participants.length} نفر
+                    </span>
+                  </div>
+                  {selectedReport.participants.length ? (
+                    <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {selectedReport.participants.map((participant) => (
+                        <div
+                          key={`${participant.userId}-${participant.participatedAt}`}
+                          className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                        >
+                          <div className="font-bold text-white">
+                            {participant.displayName}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400" dir="ltr">
+                            {participant.username}
+                          </div>
+                          <div className="mt-2 text-xs text-slate-500">
+                            {formatDate(participant.participatedAt)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-400">
+                      برای رأی‌های جدید هنوز شرکت‌کننده‌ای با هویت معتبر ثبت نشده است.
+                    </div>
+                  )}
                 </div>
               )}
 

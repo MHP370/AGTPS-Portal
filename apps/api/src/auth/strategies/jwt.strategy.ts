@@ -114,6 +114,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   id: user?.id,
   username: user?.username,
   email: user?.email,
+  directoryUserId: user?.directoryUserId,
 
   roles:
     Array.from(new Set([...userRoles, ...groupRoles])),

@@ -214,3 +214,18 @@ User contact fields use AD attributes mail and mobile. Profile writes require LD
 - سینک پوشه‌ای، `TrainingItem.sourcePath` را به ریشه پوشه و `TrainingFile.sourcePath` را به مسیر واقعی هر فایل متصل می‌کند. رکوردهای قدیمی خارج از ساختار فعال آرشیو می‌شوند و حذف فیزیکی نمی‌شوند.
 - آپلود SMB ابتدا روی دیسک موقت کانتینر نوشته می‌شود، سپس با حساب Service Account به `uploadDirectory/trainingSlug` انتقال می‌یابد و فایل موقت در بلوک finally حذف می‌شود.
 - migration `20260721090000_add_shared_smb_and_training_folder_sync` فیلدهای حالت مشترک، زمان‌بندی، مسیر آپلود و ساختار پوشه‌ای را اضافه می‌کند.
+
+## فاوآیکن قابل تنظیم
+
+- مسیر مدیریت: `/admin/settings`، تب «عمومی و ظاهر»؛ مقدار در `Setting.favicon` ذخیره می‌شود.
+- متادیتای ریشه Next.js مقدار favicon را از endpoint عمومی `GET /api/settings` می‌خواند و با cache شصت‌ثانیه‌ای در تمام صفحات اعمال می‌کند.
+- در دسترس نبودن API یا خالی بودن تنظیم باعث fallback امن به `/favicon.ico` داخلی می‌شود.
+- migration مربوط: `20260721150000_add_settings_favicon`.
+
+## مدل حریم خصوصی رأی‌گیری و نظرسنجی
+
+- `PollSurvey.participationMode` سه مقدار `IDENTIFIED`، `ANONYMOUS_TRACKED` و `ANONYMOUS_FULL` دارد.
+- در حالت tracked، مدل مستقل `PollSurveyParticipation` فقط مشارکت کاربر را ثبت می‌کند و `PollSurveyResponse` فاقد `userId` و `directoryUserId` می‌ماند؛ بنابراین فهرست شرکت‌کنندگان به محتوای رأی متصل نیست.
+- هویت از JWT معتبر سرور استخراج می‌شود و شناسه‌های کاربر ارسالی کلاینت پذیرفته نمی‌شوند. حالت‌های identified و tracked نیازمند ورود هستند.
+- endpoint عمومی نتایج هرگز فهرست شرکت‌کنندگان را برنمی‌گرداند؛ این داده فقط از گزارش مدیریتی محافظت‌شده با `reports.view` قابل دریافت است.
+- migration مربوط: `20260721161000_add_poll_participation_modes`.

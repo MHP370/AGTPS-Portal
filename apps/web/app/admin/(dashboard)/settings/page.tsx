@@ -176,6 +176,7 @@ export default function SettingsPage() {
 
   const [companyName, setCompanyName] = useState("AGTPS Portal");
   const [logo, setLogo] = useState("");
+  const [favicon, setFavicon] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#22d3ee");
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(
     defaultBackgroundImage,
@@ -223,6 +224,7 @@ export default function SettingsPage() {
     const timer = window.setTimeout(() => {
       setCompanyName(settings.companyName || "AGTPS Portal");
       setLogo(settings.logo ?? "");
+      setFavicon(settings.favicon ?? "");
       setPrimaryColor(settings.primaryColor || "#22d3ee");
       setBackgroundImageUrl(
         settings.portalBackgroundImageUrl || defaultBackgroundImage,
@@ -315,6 +317,7 @@ export default function SettingsPage() {
       await updateSettings.mutateAsync({
         companyName: companyName.trim(),
         logo: logo.trim() || undefined,
+        favicon: favicon.trim() || undefined,
         primaryColor: primaryColor.trim() || undefined,
         portalBackgroundImageUrl: backgroundImageUrl.trim() || undefined,
         portalBackgroundOverlayColor: overlayColor.trim() || undefined,
@@ -521,6 +524,20 @@ export default function SettingsPage() {
                 disabled={updateSettings.isPending}
                 placeholder="/images/logo/apgt-logo.png"
               />
+            </IconFormField>
+
+            <IconFormField label="فاوآیکن مرورگر" icon={Image}>
+              <FileUploadField
+                value={favicon}
+                onChange={setFavicon}
+                folder="settings"
+                accept="image/png,image/svg+xml,image/webp"
+                disabled={updateSettings.isPending}
+                placeholder="PNG مربع ۵۱۲×۵۱۲ (پیشنهادی)"
+              />
+              <p className="mt-2 text-xs leading-6 text-slate-400">
+                تصویر مربع PNG با اندازه ۵۱۲×۵۱۲ پیشنهاد می‌شود. پس از ذخیره، برای مشاهده تغییر یک‌بار صفحه را با Ctrl+F5 تازه‌سازی کنید.
+              </p>
             </IconFormField>
           </div>
 

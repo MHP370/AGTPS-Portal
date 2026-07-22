@@ -117,5 +117,6 @@ services:
       - "${NGINX_PORT:-80}:80"
     volumes:
       - ./nginx:/etc/nginx/conf.d:ro
+      - portal-uploads:/var/www/portal-uploads:ro
     networks:
       - agtps-network

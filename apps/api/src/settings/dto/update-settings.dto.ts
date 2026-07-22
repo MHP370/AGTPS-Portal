@@ -19,6 +19,10 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsString()
+  favicon?: string;
+
+  @IsOptional()
+  @IsString()
   primaryColor?: string;
 
   @IsOptional()

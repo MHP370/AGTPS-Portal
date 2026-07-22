@@ -7,7 +7,11 @@ import {
   IsString,
   ValidateNested,
 } from 'class-validator';
-import { PollSurveyStatus, PollSurveyType } from '@prisma/client';
+import {
+  PollSurveyParticipationMode,
+  PollSurveyStatus,
+  PollSurveyType,
+} from '@prisma/client';
 import {
   PollSurveyOptionDto,
   PollSurveyQuestionDto,
@@ -40,6 +44,10 @@ export class CreatePollSurveyDto {
   @IsOptional()
   @IsBoolean()
   anonymous?: boolean;
+
+  @IsOptional()
+  @IsEnum(PollSurveyParticipationMode)
+  participationMode?: PollSurveyParticipationMode;
 
   @IsOptional()
   @IsBoolean()

@@ -5,6 +5,7 @@ export interface PortalSettings {
   id: number;
   companyName: string;
   logo?: string;
+  favicon?: string;
   primaryColor?: string;
   portalBackgroundImageUrl?: string;
   portalBackgroundOverlayColor?: string;
@@ -41,6 +42,7 @@ export interface PortalSettings {
 export interface UpdatePortalSettingsDto {
   companyName: string;
   logo?: string;
+  favicon?: string;
   primaryColor?: string;
   portalBackgroundImageUrl?: string;
   portalBackgroundOverlayColor?: string;

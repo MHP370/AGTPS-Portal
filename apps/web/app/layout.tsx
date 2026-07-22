@@ -16,13 +16,45 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "AGTPS Portal",
-    template: "%s | AGTPS Portal",
-  },
-  description: "AGTPS Enterprise Portal",
+const apiBaseUrl =
+  process.env.INTERNAL_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:3002/api";
+
+type BrandingSettings = {
+  favicon?: string | null;
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  let favicon = "/favicon.ico";
+
+  try {
+    const response = await fetch(`${apiBaseUrl}/settings`, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(2_000),
+    });
+
+    if (response.ok) {
+      const settings = (await response.json()) as BrandingSettings;
+      favicon = settings.favicon?.trim() || favicon;
+    }
+  } catch {
+    // Keep the built-in favicon when settings are temporarily unavailable.
+  }
+
+  return {
+    title: {
+      default: "AGTPS Portal",
+      template: "%s | AGTPS Portal",
+    },
+    description: "AGTPS Enterprise Portal",
+    icons: {
+      icon: favicon,
+      shortcut: favicon,
+      apple: favicon,
+    },
+  };
+}
 
 export default function RootLayout({
   children,

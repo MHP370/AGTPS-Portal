@@ -9,6 +9,7 @@ const defaultSettings = {
   id: 1,
   companyName: 'AGTPS Portal',
   logo: null,
+  favicon: null,
   primaryColor: '#22d3ee',
   portalBackgroundImageUrl: '/images/logo/apgt-logo.png',
   portalBackgroundOverlayColor: '#020617',

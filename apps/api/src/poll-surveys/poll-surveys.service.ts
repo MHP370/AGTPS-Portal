@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   PollSurveyQuestionType,
+  PollSurveyParticipationMode,
   PollSurveyResponseStatus,
   PollSurveyStatus,
   PollSurveyType,
@@ -32,6 +33,17 @@ const pollSurveyInclude = {
   responses: {
     include: {
       answers: true,
+      user: true,
+      directoryUser: true,
+    },
+  },
+  participations: {
+    include: {
+      user: true,
+      directoryUser: true,
+    },
+    orderBy: {
+      participatedAt: 'desc',
     },
   },
 } satisfies Prisma.PollSurveyInclude;
@@ -155,6 +167,13 @@ function assertSensitiveFieldsAreLocked(
   }
 
   if (
+    dto.participationMode !== undefined &&
+    dto.participationMode !== item.participationMode
+  ) {
+    lockedFields.push('participationMode');
+  }
+
+  if (
     dto.allowMultipleSelection !== undefined &&
     dto.allowMultipleSelection !== item.allowMultipleSelection
   ) {
@@ -187,15 +206,23 @@ function assertSensitiveFieldsAreLocked(
 }
 
 function sanitizePollSurveyForAdmin(item: PollSurveyWithResponses) {
-  if (!item.anonymous) return item;
+  if (item.participationMode === PollSurveyParticipationMode.IDENTIFIED) {
+    return item;
+  }
 
   return {
     ...item,
+    participations:
+      item.participationMode === PollSurveyParticipationMode.ANONYMOUS_TRACKED
+        ? item.participations
+        : [],
     responses: item.responses.map((response) => ({
       ...response,
       userId: null,
       directoryUserId: null,
       participantHash: '',
+      user: null,
+      directoryUser: null,
     })),
   };
 }
@@ -204,7 +231,11 @@ function sanitizePollSurveyForAdmin(item: PollSurveyWithResponses) {
 export class PollSurveysService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findPublic(type?: PollSurveyType, participantKey?: string) {
+  async findPublic(
+    type?: PollSurveyType,
+    participantKey?: string,
+    currentUser?: { id?: string } | null,
+  ) {
     const now = new Date();
 
     const items = await this.prisma.pollSurvey.findMany({
@@ -243,20 +274,34 @@ export class PollSurveysService {
       ],
     });
 
-    if (!participantKey) {
-      return items.map((item) => ({
-        ...item,
-        hasSubmitted: false,
-      }));
-    }
+    const trackedPollIds = currentUser?.id
+      ? new Set(
+          (
+            await this.prisma.pollSurveyParticipation.findMany({
+              where: {
+                userId: currentUser.id,
+                pollSurveyId: { in: items.map((item) => item.id) },
+              },
+              select: { pollSurveyId: true },
+            })
+          ).map((participation) => participation.pollSurveyId),
+        )
+      : new Set<string>();
 
     const submittedHashes = new Set(
-      await this.findSubmittedHashesForParticipant(items, participantKey),
+      participantKey
+        ? await this.findSubmittedHashesForParticipant(items, participantKey)
+        : [],
     );
 
     return items.map((item) => ({
       ...item,
-      hasSubmitted: submittedHashes.has(participantHash(item.id, participantKey)),
+      hasSubmitted:
+        trackedPollIds.has(item.id) ||
+        Boolean(
+          participantKey &&
+            submittedHashes.has(participantHash(item.id, participantKey)),
+        ),
     }));
   }
 
@@ -292,7 +337,10 @@ export class PollSurveysService {
       throw new BadRequestException('Results are not visible for this item.');
     }
 
-    return this.buildResults(item, { includeTextAnswers: false });
+    return this.buildResults(item, {
+      includeTextAnswers: false,
+      includeParticipants: false,
+    });
   }
 
   async findOneForAdmin(id: string) {
@@ -317,7 +365,15 @@ export class PollSurveysService {
         category: dto.category,
         tags: dto.tags ?? [],
         allowMultipleSelection: dto.allowMultipleSelection ?? false,
-        anonymous: dto.anonymous ?? false,
+        anonymous:
+          dto.participationMode !== undefined
+            ? dto.participationMode !== PollSurveyParticipationMode.IDENTIFIED
+            : dto.anonymous ?? false,
+        participationMode:
+          dto.participationMode ??
+          (dto.anonymous
+            ? PollSurveyParticipationMode.ANONYMOUS_FULL
+            : PollSurveyParticipationMode.IDENTIFIED),
         required: dto.required ?? false,
         popupEnforced: dto.popupEnforced ?? false,
         allowVoteEditing: dto.allowVoteEditing ?? false,
@@ -330,7 +386,11 @@ export class PollSurveysService {
         allowResultViewing: dto.allowResultViewing ?? false,
         allowParticipantCount: dto.allowParticipantCount ?? true,
         allowLiveResults: dto.allowLiveResults ?? false,
-        participantVisibility: dto.participantVisibility ?? false,
+        participantVisibility:
+          dto.participationMode !== undefined
+            ? dto.participationMode ===
+              PollSurveyParticipationMode.ANONYMOUS_TRACKED
+            : dto.participantVisibility ?? false,
         creatorId,
         questions: {
           create: buildQuestionCreate(dto),
@@ -369,6 +429,14 @@ export class PollSurveysService {
             allowMultipleSelection: dto.allowMultipleSelection,
           }),
           ...(dto.anonymous !== undefined && { anonymous: dto.anonymous }),
+          ...(dto.participationMode !== undefined && {
+            participationMode: dto.participationMode,
+            anonymous:
+              dto.participationMode !== PollSurveyParticipationMode.IDENTIFIED,
+            participantVisibility:
+              dto.participationMode ===
+              PollSurveyParticipationMode.ANONYMOUS_TRACKED,
+          }),
           ...(dto.required !== undefined && { required: dto.required }),
           ...(dto.popupEnforced !== undefined && {
             popupEnforced: dto.popupEnforced,
@@ -433,6 +501,7 @@ export class PollSurveysService {
         tags: current.tags,
         allowMultipleSelection: current.allowMultipleSelection,
         anonymous: current.anonymous,
+        participationMode: current.participationMode,
         required: false,
         popupEnforced: false,
         allowVoteEditing: current.allowVoteEditing,
@@ -472,7 +541,14 @@ export class PollSurveysService {
     });
   }
 
-  async submitResponse(id: string, dto: SubmitPollSurveyResponseDto) {
+  async submitResponse(
+    id: string,
+    dto: SubmitPollSurveyResponseDto,
+    currentUser: {
+      id?: string;
+      directoryUserId?: string | null;
+    } | null,
+  ) {
     const item = await this.findOneForAdmin(id);
     const now = new Date();
 
@@ -487,7 +563,21 @@ export class PollSurveysService {
       throw new BadRequestException('The deadline has passed.');
     }
 
-    const hash = participantHash(id, dto.participantKey);
+    const requiresIdentity =
+      item.participationMode !== PollSurveyParticipationMode.ANONYMOUS_FULL;
+
+    if (requiresIdentity && !currentUser?.id) {
+      throw new BadRequestException(
+        'برای شرکت در این رأی‌گیری باید وارد پورتال شوید.',
+      );
+    }
+
+    const responseParticipantKey =
+      item.participationMode === PollSurveyParticipationMode.IDENTIFIED &&
+      currentUser?.id
+        ? `user:${currentUser.id}`
+        : dto.participantKey;
+    const hash = participantHash(id, responseParticipantKey);
     const existing = await this.prisma.pollSurveyResponse.findUnique({
       where: {
         pollSurveyId_participantHash: {
@@ -499,6 +589,26 @@ export class PollSurveysService {
 
     if (
       existing?.status === PollSurveyResponseStatus.SUBMITTED &&
+      !item.allowVoteEditing
+    ) {
+      throw new BadRequestException('You have already submitted a response.');
+    }
+
+    const existingParticipation = currentUser?.id
+      ? await this.prisma.pollSurveyParticipation.findUnique({
+          where: {
+            pollSurveyId_userId: {
+              pollSurveyId: id,
+              userId: currentUser.id,
+            },
+          },
+        })
+      : null;
+
+    if (
+      item.participationMode ===
+        PollSurveyParticipationMode.ANONYMOUS_TRACKED &&
+      existingParticipation &&
       !item.allowVoteEditing
     ) {
       throw new BadRequestException('You have already submitted a response.');
@@ -537,9 +647,16 @@ export class PollSurveysService {
           },
         },
         update: {
-          userId: item.anonymous ? null : dto.userId,
-          directoryUserId: item.anonymous ? null : dto.directoryUserId,
-          isAnonymous: item.anonymous,
+          userId:
+            item.participationMode === PollSurveyParticipationMode.IDENTIFIED
+              ? currentUser?.id
+              : null,
+          directoryUserId:
+            item.participationMode === PollSurveyParticipationMode.IDENTIFIED
+              ? currentUser?.directoryUserId
+              : null,
+          isAnonymous:
+            item.participationMode !== PollSurveyParticipationMode.IDENTIFIED,
           status: dto.saveDraft
             ? PollSurveyResponseStatus.DRAFT
             : PollSurveyResponseStatus.SUBMITTED,
@@ -548,10 +665,17 @@ export class PollSurveysService {
         },
         create: {
           pollSurveyId: id,
-          userId: item.anonymous ? null : dto.userId,
-          directoryUserId: item.anonymous ? null : dto.directoryUserId,
+          userId:
+            item.participationMode === PollSurveyParticipationMode.IDENTIFIED
+              ? currentUser?.id
+              : null,
+          directoryUserId:
+            item.participationMode === PollSurveyParticipationMode.IDENTIFIED
+              ? currentUser?.directoryUserId
+              : null,
           participantHash: hash,
-          isAnonymous: item.anonymous,
+          isAnonymous:
+            item.participationMode !== PollSurveyParticipationMode.IDENTIFIED,
           status: dto.saveDraft
             ? PollSurveyResponseStatus.DRAFT
             : PollSurveyResponseStatus.SUBMITTED,
@@ -580,6 +704,27 @@ export class PollSurveysService {
         })),
       });
 
+      if (!dto.saveDraft && requiresIdentity && currentUser?.id) {
+        await tx.pollSurveyParticipation.upsert({
+          where: {
+            pollSurveyId_userId: {
+              pollSurveyId: id,
+              userId: currentUser.id,
+            },
+          },
+          update: {
+            directoryUserId: currentUser.directoryUserId,
+            participatedAt: now,
+          },
+          create: {
+            pollSurveyId: id,
+            userId: currentUser.id,
+            directoryUserId: currentUser.directoryUserId,
+            participatedAt: now,
+          },
+        });
+      }
+
       return tx.pollSurveyResponse.findUnique({
         where: { id: response.id },
         include: {
@@ -592,12 +737,18 @@ export class PollSurveysService {
   async getResults(id: string) {
     const item = await this.findOneForAdmin(id);
 
-    return this.buildResults(item, { includeTextAnswers: true });
+    return this.buildResults(item, {
+      includeTextAnswers: true,
+      includeParticipants: true,
+    });
   }
 
   private buildResults(
     item: PollSurveyWithResponses,
-    options: { includeTextAnswers: boolean },
+    options: {
+      includeTextAnswers: boolean;
+      includeParticipants: boolean;
+    },
   ) {
     const submittedResponses = item.responses.filter(
       (response) => response.status === PollSurveyResponseStatus.SUBMITTED,
@@ -628,6 +779,46 @@ export class PollSurveysService {
       participationRate: targetCount
         ? (submittedResponses.length / targetCount) * 100
         : null,
+      participationMode: item.participationMode,
+      participants:
+        !options.includeParticipants ||
+        item.participationMode === PollSurveyParticipationMode.ANONYMOUS_FULL
+          ? []
+          : item.participationMode ===
+              PollSurveyParticipationMode.ANONYMOUS_TRACKED
+            ? item.participations.map((participation) => ({
+                userId: participation.userId,
+                directoryUserId: participation.directoryUserId,
+                displayName:
+                  participation.directoryUser?.displayName ||
+                  [
+                    participation.user.firstName,
+                    participation.user.lastName,
+                  ]
+                    .filter(Boolean)
+                    .join(' ') ||
+                  participation.user.username,
+                username:
+                  participation.directoryUser?.username ||
+                  participation.user.username,
+                participatedAt: participation.participatedAt,
+              }))
+            : submittedResponses.map((response) => ({
+                userId: response.userId,
+                directoryUserId: response.directoryUserId,
+                displayName:
+                  response.directoryUser?.displayName ||
+                  [response.user?.firstName, response.user?.lastName]
+                    .filter(Boolean)
+                    .join(' ') ||
+                  response.user?.username ||
+                  'کاربر نامشخص',
+                username:
+                  response.directoryUser?.username ||
+                  response.user?.username ||
+                  '-',
+                participatedAt: response.submittedAt ?? response.updatedAt,
+              })),
       timeline: Object.entries(timelineCounts)
         .sort(([firstDate], [secondDate]) => firstDate.localeCompare(secondDate))
         .map(([date, count]) => ({
