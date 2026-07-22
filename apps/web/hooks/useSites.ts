@@ -10,10 +10,12 @@ import {
   createSite,
   deleteSite,
   getPortalSites,
+  getDetectedPortalSite,
   getPortalWeather,
   getSites,
   portalSiteQueryKey,
   portalWeatherQueryKey,
+  detectedPortalSiteQueryKey,
   siteQueryKey,
   updateSite,
   type CreateSiteDto,
@@ -41,6 +43,14 @@ export function usePortalWeather() {
     queryFn: getPortalWeather,
     staleTime: 10 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
+  });
+}
+
+export function useDetectedPortalSite() {
+  return useQuery({
+    queryKey: detectedPortalSiteQueryKey,
+    queryFn: getDetectedPortalSite,
+    staleTime: 30 * 60 * 1000,
   });
 }
 

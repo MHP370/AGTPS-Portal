@@ -44,6 +44,7 @@ enum NotificationType {
   MEETING_UPDATE
   REMINDER
   TASK
+  TRAINING
 }
 
 enum AuditAction {
@@ -134,10 +135,13 @@ enum TrainingProgressStatus {
 
 enum InPersonTrainingStatus {
   PLANNED
+  APPROVED
   OPEN
   CLOSED
+  IN_PROGRESS
   CANCELLED
   COMPLETED
+  ARCHIVED
 }
 
 enum InPersonAttendanceStatus {
@@ -151,6 +155,40 @@ enum InPersonTrainingResult {
   PASSED
   FAILED
   NO_EXAM
+}
+
+enum TrainingExamQuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_TEXT
+}
+
+enum TrainingExamAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+  EXPIRED
+}
+
+enum TrainingCertificateSource {
+  GENERATED
+  MANUAL_UPLOAD
+}
+
+enum TrainingCertificateMode {
+  NONE
+  ONLINE_AUTO
+  ONLINE_APPROVAL
+  OFFLINE_UPLOAD
+}
+
+enum TrainingCertificateNumberStrategy {
+  SEQUENTIAL
+  YEARLY_SEQUENTIAL
+  COURSE_SEQUENTIAL
+  RANDOM
+  CUSTOM_PATTERN
 }
 
 enum PollSurveyType {
@@ -218,6 +256,8 @@ model User {
   downloads                        PortalDownload[]
   trainingProgress                 TrainingProgress[]
   inPersonTrainingParticipants     InPersonTrainingParticipant[]
+  unlockedTrainings                InPersonTraining[]               @relation("TrainingUnlockedBy")
+  trainingCourseAudits             TrainingCourseAudit[]
   createdPollSurveys               PollSurvey[]                      @relation("PollSurveyCreator")
   pollSurveyResponses              PollSurveyResponse[]
   pollSurveyParticipations         PollSurveyParticipation[]
@@ -674,6 +714,9 @@ model PortalNotification {
   meetingId   String?
   reminderId  String?
   taskId      String?
+  trainingId  String?
+  eventKey    String?
+  targetUrl   String?
   scheduledAt DateTime?
   sentAt      DateTime?
   readAt      DateTime?
@@ -682,8 +725,11 @@ model PortalNotification {
   meeting                Meeting?        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   reminder               PortalReminder? @relation(fields: [reminderId], references: [id], onDelete: Cascade)
   task                   PortalTask?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  training               InPersonTraining? @relation(fields: [trainingId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
+
+  @@index([trainingId, eventKey])
 }
 
 model PushSubscription {
@@ -1000,6 +1046,8 @@ model TrainingProgress {
 model InPersonTraining {
   id String @id @default(cuid())
 
+  courseCode String @unique
+
   title       String
   description String? @db.Text
 
@@ -1015,8 +1063,28 @@ model InPersonTraining {
   hasExam             Boolean                @default(false)
   hasCertificate      Boolean                @default(false)
   status              InPersonTrainingStatus @default(PLANNED)
+  notificationReminderMinutes Int[]           @default([1440, 60])
+
+  certificateMode               TrainingCertificateMode           @default(NONE)
+  certificateTemplateId         String?
+  certificateTemplate           TrainingCertificateTemplate?      @relation(fields: [certificateTemplateId], references: [id], onDelete: SetNull)
+  certificateNumberStrategy     TrainingCertificateNumberStrategy @default(SEQUENTIAL)
+  certificateNumberStart        Int                               @default(1)
+  certificateNumberPattern      String                            @default("AGTPS-{YEAR}-{COURSE}-{SEQ:5}")
+  certificateValidationRegex    String?
+  certificateRequiresCompletion Boolean                           @default(true)
+  certificateRequiresPass       Boolean                           @default(true)
+
+  lockedAt         DateTime?
+  unlockedAt       DateTime?
+  unlockReason     String? @db.Text
+  unlockedByUserId String?
+  unlockedByUser   User?   @relation("TrainingUnlockedBy", fields: [unlockedByUserId], references: [id], onDelete: SetNull)
 
   participants InPersonTrainingParticipant[]
+  exam         TrainingExam?
+  auditEvents  TrainingCourseAudit[]
+  notifications PortalNotification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1035,6 +1103,7 @@ model InPersonTrainingParticipant {
 
   displayName       String
   email             String?
+  personnelCode     String?
   attendanceStatus  InPersonAttendanceStatus @default(REGISTERED)
   score             Float?
   result            InPersonTrainingResult   @default(NO_EXAM)
@@ -1044,6 +1113,8 @@ model InPersonTrainingParticipant {
   training      InPersonTraining @relation(fields: [trainingId], references: [id], onDelete: Cascade)
   user          User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   directoryUser DirectoryUser?   @relation(fields: [directoryUserId], references: [id], onDelete: SetNull)
+  examAttempts  TrainingExamAttempt[]
+  certificates TrainingCertificate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1053,6 +1124,118 @@ model InPersonTrainingParticipant {
   @@index([directoryUserId])
   @@index([attendanceStatus])
   @@index([result])
+}
+
+model TrainingExam {
+  id String @id @default(cuid())
+
+  trainingId String @unique
+  title String
+  description String? @db.Text
+  passingScore Float @default(60)
+  durationMinutes Int?
+  maxAttempts Int @default(1)
+  shuffleQuestions Boolean @default(false)
+  showResultImmediately Boolean @default(true)
+  isPublished Boolean @default(false)
+  publishedAt DateTime?
+  version Int @default(1)
+
+  training InPersonTraining @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  questions TrainingExamQuestion[]
+  attempts TrainingExamAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TrainingExamQuestion {
+  id String @id @default(cuid())
+
+  examId String
+  type TrainingExamQuestionType @default(SINGLE_CHOICE)
+  title String @db.Text
+  description String? @db.Text
+  options Json?
+  correctAnswer Json?
+  points Float @default(1)
+  sortOrder Int @default(0)
+  isRequired Boolean @default(true)
+
+  exam TrainingExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([examId, sortOrder])
+}
+
+model TrainingExamAttempt {
+  id String @id @default(cuid())
+
+  examId String
+  participantId String
+  attemptNumber Int
+  status TrainingExamAttemptStatus @default(IN_PROGRESS)
+  answers Json?
+  score Float?
+  maxScore Float?
+  passed Boolean?
+  startedAt DateTime @default(now())
+  submittedAt DateTime?
+  gradedAt DateTime?
+
+  exam TrainingExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  participant InPersonTrainingParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examId, participantId, attemptNumber])
+  @@index([participantId, createdAt])
+}
+
+model TrainingCertificateTemplate {
+  id String @id @default(cuid())
+
+  title String
+  description String? @db.Text
+  backgroundUrl String?
+  layout Json
+  isDefault Boolean @default(false)
+  isActive Boolean @default(true)
+
+  certificates TrainingCertificate[]
+  trainings InPersonTraining[]
+  signatories TrainingCertificateTemplateSignatory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TrainingCertificate {
+  id String @id @default(cuid())
+
+  participantId String
+  templateId String?
+  certificateNumber String @unique
+  title String?
+  source TrainingCertificateSource @default(GENERATED)
+  fileUrl String?
+  mimeType String?
+  issuedAt DateTime @default(now())
+  expiresAt DateTime?
+  notes String? @db.Text
+  snapshot Json?
+
+  participant InPersonTrainingParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  template TrainingCertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([participantId, issuedAt])
+  @@index([templateId])
 }
 
 model PollSurvey {
@@ -1244,6 +1427,7 @@ model Setting {
   portalBackgroundImageUrl       String?
   portalBackgroundOverlayColor   String?
   portalBackgroundOverlayOpacity Float?
+  portalHorizontalPaddingPercent Float @default(0)
   portalWidgets                  Json?
 
   footerText String?
@@ -1312,6 +1496,51 @@ model SystemStatus {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model TrainingCertificateSignatory {
+  id String @id @default(cuid())
+  fullName String
+  jobTitle String
+  signatureUrl String?
+  stampUrl String?
+  isActive Boolean @default(true)
+  validFrom DateTime?
+  validUntil DateTime?
+  sortOrder Int @default(0)
+
+  templates TrainingCertificateTemplateSignatory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TrainingCertificateTemplateSignatory {
+  templateId String
+  signatoryId String
+  sortOrder Int @default(0)
+  position Json?
+
+  template TrainingCertificateTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  signatory TrainingCertificateSignatory @relation(fields: [signatoryId], references: [id], onDelete: Restrict)
+
+  @@id([templateId, signatoryId])
+}
+
+model TrainingCourseAudit {
+  id String @id @default(cuid())
+  trainingId String
+  actorUserId String?
+  action String
+  reason String? @db.Text
+  changes Json?
+
+  training InPersonTraining @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([trainingId, createdAt])
 }
 
 enum SystemHealthCheckType {

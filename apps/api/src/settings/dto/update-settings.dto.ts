@@ -40,6 +40,12 @@ export class UpdateSettingsDto {
   portalBackgroundOverlayOpacity?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(15)
+  portalHorizontalPaddingPercent?: number;
+
+  @IsOptional()
   @IsArray()
   portalWidgets?: unknown[];
 

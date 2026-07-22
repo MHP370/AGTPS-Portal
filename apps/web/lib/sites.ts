@@ -42,6 +42,7 @@ export interface CreateSiteDto {
 export const siteQueryKey = ["sites"];
 export const portalSiteQueryKey = ["portal-sites"];
 export const portalWeatherQueryKey = ["portal-weather"];
+export const detectedPortalSiteQueryKey = ["portal-site-detection"];
 
 export interface PortalSiteWeather {
   siteId: string;
@@ -68,6 +69,10 @@ export function getPortalSites() {
 
 export function getPortalWeather() {
   return api.get<PortalSiteWeather[]>("/portal/sites/weather");
+}
+
+export function getDetectedPortalSite() {
+  return api.get<{ site: Site | null }>("/portal/sites/detect");
 }
 
 export function createSite(dto: CreateSiteDto) {

@@ -42,6 +42,9 @@ type PortalNotificationPayload = {
   meetingId?: string | null;
   reminderId?: string | null;
   taskId?: string | null;
+  trainingId?: string | null;
+  eventKey?: string | null;
+  targetUrl?: string | null;
   scheduledAt?: Date | null;
   sentAt?: Date | null;
   readAt?: Date | null;
@@ -738,10 +741,13 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   private getNotificationTargetUrl(notification: {
+    targetUrl: string | null;
     meetingId: string | null;
     reminderId: string | null;
     taskId: string | null;
   }) {
+    if (notification.targetUrl) return notification.targetUrl;
+
     if (notification.meetingId) {
       return `/?notification=${notification.meetingId}&type=meeting`;
     }

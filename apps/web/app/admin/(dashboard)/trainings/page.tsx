@@ -6,6 +6,8 @@ import {
   CalendarRange,
   GraduationCap,
   ListChecks,
+  ClipboardCheck,
+  Award,
   Plus,
   Settings2,
   Users,
@@ -19,12 +21,17 @@ import { IconPicker } from "@/components/ui/IconPicker";
 import { Input } from "@/components/ui/Input";
 import { PersianDateTimeInput } from "@/components/ui/PersianDateInput";
 import { Select } from "@/components/ui/Select";
+import { TrainingFileTree } from "@/components/features/trainings/TrainingFileTree";
+import { CourseParticipantPicker } from "@/components/features/trainings/CourseParticipantPicker";
+import { TrainingExamBuilder } from "@/components/features/trainings/TrainingExamBuilder";
+import { TrainingCertificateManager } from "@/components/features/trainings/TrainingCertificateManager";
+import { TrainingCourseManager } from "@/components/features/trainings/TrainingCourseManager";
+import { TrainingReportsPanel, TrainingUsersPanel } from "@/components/features/trainings/TrainingUsersReport";
 import {
   useAdminTrainingCategories,
   useAdminInPersonTrainings,
   useAdminTrainingSources,
   useAdminTrainings,
-  useCreateInPersonParticipant,
   useCreateInPersonTraining,
   useCreateTrainingCategory,
   useCreateTrainingItem,
@@ -58,7 +65,7 @@ import type {
 } from "@/lib/trainings";
 
 type TrainingTab =
-  "create" | "review" | "published" | "settings" | "users" | "courses" | "reports";
+  "create" | "review" | "published" | "settings" | "users" | "courses" | "exams" | "certificates" | "reports";
 
 const contentTypeOptions = [
   { value: "VIDEO", label: "ویدیو" },
@@ -116,6 +123,8 @@ const trainingTabs: Array<{
   { id: "settings", label: "تنظیمات", icon: Settings2 },
   { id: "users", label: "کاربران", icon: Users },
   { id: "courses", label: "دوره‌ها", icon: CalendarRange },
+  { id: "exams", label: "آزمون‌ساز", icon: ClipboardCheck },
+  { id: "certificates", label: "گواهی‌ها", icon: Award },
   { id: "reports", label: "گزارش‌ها", icon: BarChart3 },
 ];
 
@@ -160,7 +169,6 @@ export default function TrainingsPage() {
   const createInPersonTraining = useCreateInPersonTraining();
   const updateInPersonTraining = useUpdateInPersonTraining();
   const deleteInPersonTraining = useDeleteInPersonTraining();
-  const createInPersonParticipant = useCreateInPersonParticipant();
   const updateInPersonParticipant = useUpdateInPersonParticipant();
   const deleteInPersonParticipant = useDeleteInPersonParticipant();
   const createCategory = useCreateTrainingCategory();
@@ -173,6 +181,7 @@ export default function TrainingsPage() {
   const syncSource = useSyncTrainingSource();
   const uploadSourceFile = useUploadTrainingSourceFile();
   const [activeTab, setActiveTab] = useState<TrainingTab>("review");
+  const [settingsSection, setSettingsSection] = useState<"categories" | "sources">("categories");
 
   const [editingTraining, setEditingTraining] = useState<TrainingItem | null>(
     null,
@@ -293,6 +302,7 @@ export default function TrainingsPage() {
         ? item.files.map((file) => ({
             title: file.title,
             fileUrl: file.fileUrl,
+            sourcePath: file.sourcePath ?? undefined,
             fileType: file.fileType ?? undefined,
             fileSize: file.fileSize ?? undefined,
             sortOrder: file.sortOrder,
@@ -561,6 +571,7 @@ export default function TrainingsPage() {
     if (!courseTitle.trim() || !courseStartDate) return;
 
     const dto = {
+      courseCode: editingCourse?.courseCode || "COURSE-" + Date.now(),
       title: courseTitle.trim(),
       description: courseDescription.trim() || undefined,
       categoryId: courseCategoryId === "__none__" ? null : courseCategoryId,
@@ -630,17 +641,12 @@ export default function TrainingsPage() {
       notes: participantNotes.trim() || undefined,
     };
 
-    if (editingParticipant) {
-      await updateInPersonParticipant.mutateAsync({
-        id: editingParticipant.id,
-        dto,
-      });
-    } else {
-      await createInPersonParticipant.mutateAsync({
-        trainingId: participantTrainingId,
-        dto,
-      });
-    }
+    if (!editingParticipant) return;
+
+    await updateInPersonParticipant.mutateAsync({
+      id: editingParticipant.id,
+      dto,
+    });
 
     resetParticipantForm();
   }
@@ -778,6 +784,17 @@ export default function TrainingsPage() {
               </FormField>
             </div>
 
+            {editingTraining?.sourceType === "SMB" && (
+              <TrainingFileTree
+                trainingId={editingTraining.id}
+                standaloneSubfolders={tagsToArray(standaloneSubfolders)}
+                onStandaloneSubfoldersChange={(paths) =>
+                  setStandaloneSubfolders(paths.join(", "))
+                }
+              />
+            )}
+
+            {editingTraining?.sourceType !== "SMB" && (
             <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
               <h3 className="font-black text-white">فایل‌های آموزش</h3>
               <div className="grid gap-4 md:grid-cols-3">
@@ -821,7 +838,7 @@ export default function TrainingsPage() {
                     <div>
                       <div className="font-bold text-white">{file.title}</div>
                       <div className="mt-1 break-all text-xs text-slate-400">
-                        {file.fileType || "file"} · {file.fileUrl}
+                        {file.fileType || "file"} · {file.sourcePath || file.fileUrl}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -851,6 +868,7 @@ export default function TrainingsPage() {
                 )}
               </div>
             </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <FormField label="تصویر شاخص">
@@ -906,18 +924,10 @@ export default function TrainingsPage() {
                 </div>
               </div>
             )}
-            {editingTraining?.sourceType === "SMB" && (
-              <FormField label="زیرپوشه‌های مستقل">
-                <Input
-                  value={standaloneSubfolders}
-                  onChange={(event) => setStandaloneSubfolders(event.target.value)}
-                  placeholder="مثال: فصل دوم, ویدیوهای تکمیلی"
-                  dir="ltr"
-                />
-                <p className="mt-2 text-xs leading-6 text-slate-400">
-                  مسیر زیرپوشه‌ها را با ویرگول جدا کنید. پس از ذخیره و سینک بعدی، هر مسیر به آموزش مستقلی تبدیل می‌شود.
-                </p>
-              </FormField>
+            {editingTraining?.sourceType === "SMB" && standaloneSubfolders && (
+              <div className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-xs leading-6 text-amber-100">
+                پوشه‌های انتخاب‌شده برای تبدیل به آموزش مستقل: {standaloneSubfolders}. پس از ذخیره و سینک بعدی، این پوشه‌ها جدا می‌شوند.
+              </div>
             )}
 
             <div className="flex flex-wrap gap-5 text-sm text-slate-200">
@@ -962,9 +972,13 @@ export default function TrainingsPage() {
 
       {activeTab === "settings" && (
         <div className="space-y-6">
+          <div className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setSettingsSection("categories")} className={`rounded-xl p-4 text-right transition ${settingsSection === "categories" ? "bg-cyan-400/10 text-cyan-100 ring-1 ring-cyan-300/25" : "text-slate-400 hover:bg-slate-800"}`}><strong className="block text-white">دسته‌بندی‌های آموزش</strong><span className="mt-1 block text-xs">افزودن، ویرایش و ترتیب نمایش دسته‌ها</span></button>
+            <button type="button" onClick={() => setSettingsSection("sources")} className={`rounded-xl p-4 text-right transition ${settingsSection === "sources" ? "bg-cyan-400/10 text-cyan-100 ring-1 ring-cyan-300/25" : "text-slate-400 hover:bg-slate-800"}`}><strong className="block text-white">سرورها و همگام‌سازی</strong><span className="mt-1 block text-xs">اتصال، مسیر، فاصله سینک و وضعیت سرور</span></button>
+          </div>
           <form
             onSubmit={submitCategory}
-            className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+            className={`${settingsSection === "categories" ? "" : "hidden"} space-y-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-5`}
           >
             <h2 className="text-xl font-black">
               {editingCategory ? "ویرایش دسته آموزشی" : "افزودن دسته آموزشی"}
@@ -1045,7 +1059,7 @@ export default function TrainingsPage() {
 
           <form
             onSubmit={submitSource}
-            className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+            className={`${settingsSection === "sources" ? "" : "hidden"} space-y-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-5`}
           >
             <h2 className="text-xl font-black">
               {editingSource ? "ویرایش سرور آموزش" : "افزودن سرور آموزش"}
@@ -1258,6 +1272,7 @@ export default function TrainingsPage() {
 
       {activeTab === "settings" && (
         <>
+          <div className={settingsSection === "categories" ? "block" : "hidden"}>
           <DataTable
             data={categories}
             columns={[
@@ -1292,7 +1307,9 @@ export default function TrainingsPage() {
               },
             ]}
           />
+          </div>
 
+          <div className={settingsSection === "sources" ? "block" : "hidden"}>
           <DataTable
             data={sources}
             columns={[
@@ -1349,20 +1366,17 @@ export default function TrainingsPage() {
               },
             ]}
           />
+          </div>
         </>
       )}
 
       {activeTab === "users" && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-xl font-black text-white">کاربران آموزش</h2>
-          <p className="mt-3 text-sm leading-7 text-slate-400">
-            در فاز بعد، پیشرفت کاربران، آموزش‌های اجباری، گروه‌های اکتیو
-            دایرکتوری و سوابق آموزشی هر نفر در این بخش مدیریت می‌شود.
-          </p>
-        </div>
+        <TrainingUsersPanel />
       )}
 
-      {activeTab === "courses" && (
+      {activeTab === "courses" && <TrainingCourseManager categories={categories} />}
+
+      {false && activeTab === "courses" && (
         <div className="grid gap-6">
           <form
             onSubmit={submitCourse}
@@ -1499,50 +1513,47 @@ export default function TrainingsPage() {
             </Button>
           </form>
 
-          <form
+          <CourseParticipantPicker courses={inPersonTrainings} />
+
+          {editingParticipant && <form
             onSubmit={submitParticipant}
             className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
           >
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <h2 className="text-xl font-black text-white">
-                {editingParticipant ? "ویرایش شرکت‌کننده" : "افزودن شرکت‌کننده"}
+                ویرایش وضعیت شرکت‌کننده
               </h2>
-              {editingParticipant && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={resetParticipantForm}
-                >
-                  انصراف از ویرایش
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={resetParticipantForm}
+              >
+                بستن فرم
+              </Button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <FormField label="دوره" required>
-                <Select
-                  value={participantTrainingId}
-                  onValueChange={setParticipantTrainingId}
-                  placeholder="دوره را انتخاب کنید"
-                  options={inPersonTrainings.map((course) => ({
-                    value: course.id,
-                    label: course.title,
-                  }))}
+                <Input
+                  value={
+                    inPersonTrainings.find(
+                      (course) => course.id === participantTrainingId,
+                    )?.title ?? ""
+                  }
+                  readOnly
                 />
               </FormField>
               <FormField label="نام شرکت‌کننده" required>
                 <Input
                   value={participantDisplayName}
-                  onChange={(event) =>
-                    setParticipantDisplayName(event.target.value)
-                  }
+                  readOnly
                 />
               </FormField>
               <FormField label="ایمیل">
                 <Input
                   type="email"
                   value={participantEmail}
-                  onChange={(event) => setParticipantEmail(event.target.value)}
+                  readOnly
                 />
               </FormField>
               <FormField label="وضعیت حضور">
@@ -1595,13 +1606,12 @@ export default function TrainingsPage() {
             <Button
               type="submit"
               disabled={
-                createInPersonParticipant.isPending ||
                 updateInPersonParticipant.isPending
               }
             >
-              {editingParticipant ? "ذخیره شرکت‌کننده" : "افزودن شرکت‌کننده"}
+              ذخیره وضعیت شرکت‌کننده
             </Button>
-          </form>
+          </form>}
 
           <DataTable
             data={inPersonTrainings}
@@ -1755,14 +1765,16 @@ export default function TrainingsPage() {
         </div>
       )}
 
+      {activeTab === "exams" && (
+        <TrainingExamBuilder courses={inPersonTrainings} />
+      )}
+
+      {activeTab === "certificates" && (
+        <TrainingCertificateManager courses={inPersonTrainings} />
+      )}
+
       {activeTab === "reports" && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-xl font-black text-white">گزارش‌های آموزش</h2>
-          <p className="mt-3 text-sm leading-7 text-slate-400">
-            گزارش تکمیل آموزش، ساعات آموزشی، آموزش‌های اجباری انجام‌نشده و گزارش
-            دپارتمان‌ها در این بخش اضافه می‌شود.
-          </p>
-        </div>
+        <TrainingReportsPanel />
       )}
     </div>
   );

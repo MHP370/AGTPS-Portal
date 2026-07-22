@@ -229,3 +229,66 @@ User contact fields use AD attributes mail and mobile. Profile writes require LD
 - هویت از JWT معتبر سرور استخراج می‌شود و شناسه‌های کاربر ارسالی کلاینت پذیرفته نمی‌شوند. حالت‌های identified و tracked نیازمند ورود هستند.
 - endpoint عمومی نتایج هرگز فهرست شرکت‌کنندگان را برنمی‌گرداند؛ این داده فقط از گزارش مدیریتی محافظت‌شده با `reports.view` قابل دریافت است.
 - migration مربوط: `20260721161000_add_poll_participation_modes`.
+
+## درخت فایل و پیش‌نمایش آموزش SMB
+
+- endpoint مدیریتی `GET /api/trainings/admin/items/:id/tree` با مجوز `training.manage`، درخت را از `TrainingFile.sourcePath` می‌سازد و مسیر نسبی، UNC کامل، نوع node و metadata فایل را برمی‌گرداند. رمز یا مشخصات حساب سرویس در خروجی وجود ندارد.
+- مسیر ریشه از `TrainingItem.sourcePath` و `TrainingSource.basePath` ساخته می‌شود. `promotionPath` پوشه نسبت به ریشه آموزش است و در `standaloneSubfolders` ذخیره می‌شود؛ sync بعدی آن زیرپوشه را به رکورد مستقل `NEEDS_REVIEW` تبدیل می‌کند.
+- فرم ویرایش باید `TrainingFile.sourcePath` را هنگام بازسازی آرایه فایل‌ها حفظ کند. حذف این مقدار باعث می‌شود endpoint محافظت‌شده محتوا نتواند فایل SMB را پیدا کند.
+- endpoint `GET /api/trainings/items/:id/preview` همان کنترل انتشار و مجوز endpoint محتوا را اعمال می‌کند. فایل‌های DOC/DOCX، XLS/XLSX و PPT/PPTX با LibreOffice headless به PDF تبدیل و در volume `training-cache` ذخیره می‌شوند.
+- image سرویس API شامل `libreoffice-core`، Writer، Calc، Impress و فونت پایه است. تبدیل با `execFile`، آرگومان‌های مجزا و timeout دو دقیقه‌ای اجرا می‌شود؛ shell و ورودی دستور آزاد استفاده نمی‌شود.
+- پسوندهای صوتی MP3، WAV، OGG، M4A، AAC و FLAC در سینک ایندکس می‌شوند و با MIME صحیح از endpoint محتوا پخش می‌شوند.
+- تست استقرار ۱۴۰۵/۰۴/۳۱: درخت `Fanpardazan` شامل ۲۸ پوشه و ۲۲۱ فایل با ریشه `\\VERITAS-MAIL.agtps.net\Education Department\Fanpardazan` بازگردانده شد. تبدیل فایل PPTX واقعی کتابخانه نیز پاسخ `application/pdf` موفق تولید کرد.
+
+## تشخیص سایت پورتال براساس CIDR
+
+- endpoint عمومی `GET /api/portal/sites/detect` نخستین IP موجود در `X-Forwarded-For` را دریافت می‌کند. API مستقیماً روی اینترنت publish نشده و Header توسط reverse proxy داخلی تنظیم می‌شود.
+- فقط IPv4 معتبر پذیرفته می‌شود. هر `Site.ipRange` می‌تواند چند CIDR جداشده با خط جدید، ویرگول یا سمی‌کالن داشته باشد؛ میان رنج‌های هم‌پوشان، طولانی‌ترین prefix انتخاب می‌شود.
+- کلاینت انتخاب دستی را در `sessionStorage` با کلید `agtps-portal-selected-site` نگه می‌دارد. این مقدار در نشست جاری بر نتیجه تشخیص خودکار مقدم است و پس از پایان نشست دوباره CIDR مبنا قرار می‌گیرد.
+- تست استقرار: IP نمونه `172.16.16.100` در رنج `172.16.16.0/21` سایت عسلویه را برگرداند و IP خارج از رنج پاسخ `site: null` دریافت کرد.
+
+## ثبت‌نام دوره با هویت Active Directory
+
+- `GET /api/trainings/admin/eligible-participants` فقط `DirectoryUser`های فعال با source برابر `ACTIVE_DIRECTORY` را با فیلدهای حداقلی و صفحه‌بندی برمی‌گرداند و به مجوز `training.course.manage` نیاز دارد.
+- `POST /api/trainings/in-person/:id/participants/batch` شناسه‌های DirectoryUser را سمت سرور دوباره اعتبارسنجی می‌کند، حساب غیرفعال یا غیر AD را نمی‌پذیرد، لینک `portalUser` موجود را حفظ و رکوردهای تکراری دوره را نادیده می‌گیرد.
+- رابط مدیریت ثبت آزاد نام شرکت‌کننده را ارائه نمی‌کند. نام و ایمیل در فرم ویرایش فقط‌خواندنی است و مسئول آموزش فقط داده‌های عملیاتی دوره مانند حضور، نمره، نتیجه و گواهی را ویرایش می‌کند.
+- `GET /api/trainings/my/courses` فقط مشارکت‌های متصل به `userId` یا `directoryUserId` موجود در JWT را برمی‌گرداند؛ شناسه کاربر از query یا body دریافت نمی‌شود. این endpoint داده زنده کارت‌های پروفایل را تأمین می‌کند.
+- React Query پس از ثبت گروهی یا ویرایش شرکت‌کننده، cache فهرست دوره‌ها و `my-courses` را invalidate می‌کند. ساخت آزمون، فایل گواهی و ویرایشگر قالب در فاز بعد روی همین اتصال هویتی توسعه می‌یابد.
+
+## معماری آزمون و گواهی آموزش
+
+- migration `20260722095000_add_training_exams_and_certificates` مدل‌های `TrainingExam`، `TrainingExamQuestion`، `TrainingExamAttempt`، `TrainingCertificateTemplate` و `TrainingCertificate` را اضافه می‌کند و سه قالب اولیه می‌سازد.
+- پاسخ صحیح فقط در endpoint مدیریتی آزمون وجود دارد. endpoint کاربر قبل از ارسال سؤال‌ها `correctAnswer` را حذف می‌کند و شروع/ثبت تلاش را با participant متصل به `userId` یا `directoryUserId` در JWT کنترل می‌کند.
+- نمره‌گذاری سمت سرور انجام می‌شود. پاسخ چندگزینه‌ای بدون وابستگی به ترتیب مقایسه و نتیجه نهایی در attempt و سابقه شرکت‌کننده ثبت می‌شود.
+- endpoint مشاهده گواهی مالکیت participant را بررسی می‌کند. نمایشگر داخلی قالب، مشخصات کاربر، عنوان دوره، تاریخ و شماره گواهی را رندر و خروجی چاپ/PDF مرورگر فراهم می‌کند.
+- عملیات مدیریت آزمون، قالب و صدور گواهی به مجوز `training.course.manage` نیاز دارد؛ مشاهده آزمون و گواهی شخصی فقط به کاربر احرازشده و مالک داده محدود است.
+
+## چرخه عمر و کنترل‌های تکمیلی LMS
+
+- migration `20260722133000_complete_training_management` وضعیت‌های `IN_PROGRESS` و `ARCHIVED`، تنظیمات صدور و شماره‌گذاری گواهی، Snapshot گواهی، امضاکنندگان، اتصال قالب به دوره و `TrainingCourseAudit` را اضافه می‌کند.
+- وضعیت درحال‌برگزاری، پایان‌یافته و بایگانی قفل محسوب می‌شود. کنترل قفل در `TrainingsService` و قبل از update دوره، تغییر اعضا و update آزمون اجرا می‌شود؛ غیرفعال‌کردن دکمه در frontend تنها یک کمک رابط کاربری است و مرز امنیتی نیست.
+- Permission مستقل `training.course.override` برای مدیر ارشد ایجاد می‌شود. endpoint بازکردن قفل دلیل حداقل پنج‌کاراکتری، شناسه مدیر و زمان را ثبت می‌کند. همه عملیات مهم دوره در `TrainingCourseAudit` ذخیره می‌شوند.
+- `User.personnelCode` منبع کد پرسنلی است. eligible participant از رابطه `DirectoryUser.portalUser` آن را می‌خواند و هنگام ثبت‌نام Snapshot آن در `InPersonTrainingParticipant.personnelCode` ذخیره می‌شود.
+- API جزئیات دوره آزمون، تلاش‌ها، گواهی‌ها و Audit را فقط با `training.course.manage` برمی‌گرداند. فهرست کاربران و گزارش‌های دوره endpointهای مستقل دارند و React Query cache جداگانه استفاده می‌کنند.
+- آزمون دارای حداقل یک `TrainingExamAttempt` قابل update نیست. حذف سؤال و بازسازی آزمون فقط پیش از اولین تلاش مجاز است؛ نسخه‌بندی کامل بانک سؤال برای فاز آینده ثبت شده است.
+- صدور آنلاین خودکار بعد از نمره‌گذاری سمت سرور اجرا می‌شود. نوع `ONLINE_APPROVAL` فقط از عملیات صدور گروهی مسئول آموزش و نوع `OFFLINE_UPLOAD` فقط از صدور دستی استفاده می‌کند.
+- شماره ترتیبی از شمارش رکوردهای موجود محاسبه و با unique constraint نهایی محافظت می‌شود. برای بار صدور بسیار هم‌زمان، sequence دیتابیسی مستقل به‌عنوان بهبود فاز بعد توصیه می‌شود.
+- مدل `TrainingCertificateSignatory` مشخصات جاری امضاکننده را نگه می‌دارد؛ گواهی صادرشده تمام اطلاعات participant، دوره، layout و امضاها را در `TrainingCertificate.snapshot` نگه می‌دارد تا سند صادرشده immutable بماند.
+- حذف قالب استفاده‌شده و امضاکننده متصل به قالب به غیرفعال‌سازی منطقی تبدیل می‌شود. گواهی صادرشده از API حذف نمی‌شود و اصلاح باید با سند جایگزین و ثبت سابقه انجام شود.
+
+
+### Certificate layout, uniqueness and verification
+
+- `InPersonTraining.courseCode` and `TrainingCertificate.certificateNumber` are protected by database unique indexes.
+- Automatic certificate numbering probes subsequent counters when a generated candidate already exists.
+- Certificate template layout stores responsive percentage positions under `layout.positions`; issued-certificate snapshots preserve the historical layout.
+- Public verification endpoint: `GET /api/trainings/certificates/verify/:certificateNumber` returns only verification-safe fields.
+- `Setting.portalHorizontalPaddingPercent` accepts 0–15 and controls the responsive width of the public portal shell.
+- Migration: `20260722190000_certificate_designer_and_portal_padding`.
+## یکپارچگی Training با Notification و Calendar
+
+- وضعیت `APPROVED` مرز انتشار دوره برای شرکت‌کنندگان است. endpoint دوره‌های من فقط وضعیت‌های منتشرشده و اجرایی را برمی‌گرداند.
+- مدل `InPersonTraining.notificationReminderMinutes` زمان‌های یادآوری را بر حسب دقیقه نگه می‌دارد.
+- اعلان‌های آموزشی با نوع `TRAINING`، شناسه دوره، کلید رویداد و مسیر مقصد ذخیره می‌شوند. یادآوری‌های آینده با تغییر برنامه بازسازی و هنگام لغو حذف می‌شوند.
+- تقویم صفحه اصلی از `GET /trainings/my/courses` استفاده می‌کند و دوره را در تاریخ شروع فقط برای شرکت‌کننده همان دوره نمایش می‌دهد.
+- رویدادهای تأیید، تغییر، لغو، نتیجه آزمون و صدور گواهی در دیتابیس اعلان ثبت می‌شوند و زیرساخت push موجود آن‌ها را پردازش می‌کند.

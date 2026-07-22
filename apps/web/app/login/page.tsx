@@ -28,6 +28,7 @@ function PortalLoginChooser() {
   const [detecting, setDetecting] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
   const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const backgroundImageUrl =
     settings?.portalBackgroundImageUrl || "/images/logo/apgt-logo.png";
   const overlayColor = settings?.portalBackgroundOverlayColor || "#020617";
@@ -49,9 +50,22 @@ function PortalLoginChooser() {
       .then((detectedIdentity) => {
         if (detectedIdentity) setIdentity(detectedIdentity);
       })
-      .catch(() => setError("حساب دامنه ویندوز شناسایی نشد. می‌توانید ورود دستی را انتخاب کنید."))
+      .catch((detectError) =>
+        setError(
+          detectError instanceof Error
+            ? detectError.message
+            : "حساب دامنه ویندوز شناسایی نشد. می‌توانید ورود دستی را انتخاب کنید.",
+        ),
+      )
       .finally(() => setDetecting(false));
-  }, [nextPath, router]);
+  }, [attempt, nextPath, router]);
+
+  function retryDetection() {
+    setIdentity(null);
+    setError("");
+    setDetecting(true);
+    setAttempt((current) => current + 1);
+  }
 
   async function confirmWindowsLogin() {
     setLoggingIn(true);
@@ -102,7 +116,12 @@ function PortalLoginChooser() {
                     <span dir="ltr">({identity.username}@{identity.domain})</span>
                   </p>
                 ) : (
-                  <p className="mt-2 text-sm leading-6 text-slate-400">حساب دامنه قابل شناسایی نیست.</p>
+                  <div className="mt-2 space-y-2 text-sm leading-6 text-slate-400">
+                    <p>حساب دامنه قابل شناسایی نیست.</p>
+                    <p className="text-xs text-slate-500">
+                      در Chrome و Edge پالیسی AuthServerAllowlist و در Firefox پالیسی SPNEGO باید شامل portal.agtps.net باشد.
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -115,6 +134,16 @@ function PortalLoginChooser() {
               <LogIn size={18} />
               {loggingIn ? "در حال ورود..." : "تأیید و ورود خودکار"}
             </Button>
+            {!detecting && !identity && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-2 w-full"
+                onClick={retryDetection}
+              >
+                تلاش مجدد برای شناسایی حساب دامنه
+              </Button>
+            )}
           </div>
 
           <Button

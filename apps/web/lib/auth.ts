@@ -156,11 +156,24 @@ export async function login(dto: LoginDto): Promise<LoginResponse> {
 }
 
 async function ssoRequest<T>(path: string, method: 'GET' | 'POST'): Promise<T> {
-  const response = await fetch(`/sso/${path}`, {
-    method,
-    credentials: 'include',
-    cache: 'no-store',
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12_000);
+  let response: Response;
+  try {
+    response = await fetch(`/sso/${path}`, {
+      method,
+      credentials: 'include',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('مهلت شناسایی حساب دامنه تمام شد. پالیسی ورود یکپارچه مرورگر را بررسی کنید.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
   if (!response.ok) {
     let message = 'ورود خودکار ویندوز در دسترس نیست.';
     try {

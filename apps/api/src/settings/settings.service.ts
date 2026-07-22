@@ -14,6 +14,7 @@ const defaultSettings = {
   portalBackgroundImageUrl: '/images/logo/apgt-logo.png',
   portalBackgroundOverlayColor: '#020617',
   portalBackgroundOverlayOpacity: 0.78,
+  portalHorizontalPaddingPercent: 0,
   footerText: null,
   activeDirectoryEnabled: false,
   activeDirectoryUrl: null,

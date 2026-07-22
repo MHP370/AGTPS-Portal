@@ -51,6 +51,10 @@ function getViewerType(file?: Pick<TrainingFile, "fileUrl" | "fileType">) {
     return "video";
   }
 
+  if (["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(extension)) {
+    return "audio";
+  }
+
   if (["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(extension)) {
     return "image";
   }
@@ -61,6 +65,13 @@ function getViewerType(file?: Pick<TrainingFile, "fileUrl" | "fileType">) {
 
   if (["txt", "csv"].includes(extension)) {
     return "text";
+  }
+
+  if (
+    ["docx", "doc", "xlsx", "xls", "ppt", "pptx"].includes(extension) &&
+    file?.fileUrl.includes("/content?")
+  ) {
+    return "office";
   }
 
   if (["docx", "doc"].includes(extension)) {
@@ -174,7 +185,7 @@ function TrainingFileViewer({
   }, [file, viewerType]);
 
   useEffect(() => {
-    if (!file || viewerType === "video") return;
+    if (!file || viewerType === "video" || viewerType === "audio") return;
     if (lastViewedFileRef.current === file.fileUrl) return;
 
     lastViewedFileRef.current = file.fileUrl;
@@ -200,7 +211,7 @@ function TrainingFileViewer({
         <div>
           <h2 className="text-xl font-black text-white">{file.title}</h2>
           <p className="mt-1 break-all text-xs text-slate-500">
-            {file.fileType || getFileExtension(file) || "file"} · {file.fileUrl}
+            {file.fileType || getFileExtension(file) || "file"} · {file.sourcePath || file.title}
           </p>
         </div>
         <a
@@ -267,6 +278,12 @@ function TrainingFileViewer({
               }}
               className="aspect-video w-full rounded-xl bg-black"
             />
+          </div>
+        )}
+
+        {viewerType === "audio" && (
+          <div className="rounded-2xl border border-white/10 bg-black p-6">
+            <audio src={file.fileUrl} controls preload="metadata" className="w-full" />
           </div>
         )}
 
@@ -339,6 +356,14 @@ function TrainingFileViewer({
         {viewerType === "pdf" && (
           <iframe
             src={file.fileUrl}
+            title={file.title}
+            className="h-[72vh] w-full rounded-2xl border border-white/10 bg-white"
+          />
+        )}
+
+        {viewerType === "office" && (
+          <iframe
+            src={file.fileUrl.replace("/content?", "/preview?")}
             title={file.title}
             className="h-[72vh] w-full rounded-2xl border border-white/10 bg-white"
           />
@@ -543,7 +568,7 @@ export default function TrainingDetailPage() {
                   <div className="text-right">
                     <h3 className="font-bold">{file.title}</h3>
                     <p className="mt-1 break-all text-xs text-slate-500">
-                      {file.fileType || "file"} · {file.fileUrl}
+                      {file.fileType || "file"} · {file.sourcePath || file.title}
                     </p>
                   </div>
                   {getViewerType(file) === "image" ? (

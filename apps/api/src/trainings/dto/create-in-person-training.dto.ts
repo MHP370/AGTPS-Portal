@@ -1,13 +1,22 @@
 import {
   IsBoolean,
+  IsArray,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
-import { InPersonTrainingStatus } from '@prisma/client';
+import {
+  InPersonTrainingStatus,
+  TrainingCertificateMode,
+  TrainingCertificateNumberStrategy,
+} from '@prisma/client';
 
 export class CreateInPersonTrainingDto {
+  @IsString()
+  courseCode: string;
+
   @IsString()
   title: string;
 
@@ -53,4 +62,14 @@ export class CreateInPersonTrainingDto {
   @IsOptional()
   @IsEnum(InPersonTrainingStatus)
   status?: InPersonTrainingStatus;
+
+  @IsOptional() @IsArray() @IsString({ each: true }) directoryUserIds?: string[];
+  @IsOptional() @IsEnum(TrainingCertificateMode) certificateMode?: TrainingCertificateMode;
+  @IsOptional() @IsString() certificateTemplateId?: string | null;
+  @IsOptional() @IsEnum(TrainingCertificateNumberStrategy) certificateNumberStrategy?: TrainingCertificateNumberStrategy;
+  @IsOptional() @IsInt() certificateNumberStart?: number;
+  @IsOptional() @IsString() certificateNumberPattern?: string;
+  @IsOptional() @IsString() certificateValidationRegex?: string | null;
+  @IsOptional() @IsBoolean() certificateRequiresCompletion?: boolean;
+  @IsOptional() @IsBoolean() certificateRequiresPass?: boolean;
 }

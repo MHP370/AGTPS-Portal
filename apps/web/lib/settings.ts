@@ -10,6 +10,7 @@ export interface PortalSettings {
   portalBackgroundImageUrl?: string;
   portalBackgroundOverlayColor?: string;
   portalBackgroundOverlayOpacity?: number;
+  portalHorizontalPaddingPercent?: number;
   portalWidgets?: PortalWidgetSetting[] | null;
   footerText?: string;
   activeDirectoryEnabled?: boolean;
@@ -47,6 +48,7 @@ export interface UpdatePortalSettingsDto {
   portalBackgroundImageUrl?: string;
   portalBackgroundOverlayColor?: string;
   portalBackgroundOverlayOpacity?: number;
+  portalHorizontalPaddingPercent?: number;
   portalWidgets?: PortalWidgetSetting[];
   footerText?: string;
   activeDirectoryEnabled?: boolean;

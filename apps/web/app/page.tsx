@@ -63,9 +63,10 @@ import {
   useSubmitPollSurveyResponse,
 } from "@/hooks/usePollSurveys";
 import { useSettings } from "@/hooks/useSettings";
+import { useDetectedPortalSite } from "@/hooks/useSites";
 import { useSliders } from "@/hooks/useSliders";
 import { useSystemStatuses } from "@/hooks/useSystemStatuses";
-import { useTrainings } from "@/hooks/useTrainings";
+import { useMyCourses, useTrainings } from "@/hooks/useTrainings";
 import {
   useCreateNote,
   useCreateReminder,
@@ -457,6 +458,7 @@ export default function Home() {
     Partial<Record<"right" | "center" | "left", HTMLElement>>
   >({});
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const { data: detectedPortalSite } = useDetectedPortalSite();
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(() =>
     startOfLocalDay(new Date()),
   );
@@ -530,6 +532,7 @@ export default function Home() {
     isLoading: trainingsLoading,
     isError: trainingsError,
   } = useTrainings();
+  const { data: myCourses = [] } = useMyCourses();
   const {
     data: fileShares = [],
     isLoading: fileSharesLoading,
@@ -563,6 +566,7 @@ export default function Home() {
       : undefined;
   const overlayColor = settings?.portalBackgroundOverlayColor || "#020617";
   const overlayOpacity = settings?.portalBackgroundOverlayOpacity ?? 0.72;
+  const portalHorizontalPadding = Math.min(15, Math.max(0, settings?.portalHorizontalPaddingPercent ?? 0));
   const portalWidgetSettings = useMemo(
     () => normalizePortalWidgets(settings?.portalWidgets),
     [settings?.portalWidgets],
@@ -732,6 +736,9 @@ export default function Home() {
       isSameLocalDay(selectedCalendarDate, note.updatedAt) ||
       isSameLocalDay(selectedCalendarDate, note.createdAt),
   );
+  const selectedTrainingCourses = myCourses
+    .filter((item) => isSameLocalDay(selectedCalendarDate, item.training.startDate))
+    .sort((first, second) => new Date(first.training.startDate).getTime() - new Date(second.training.startDate).getTime());
   const selectedOccasions = selectedJalaliDate
     ? getIranCalendarEvents(selectedJalaliDate.jm, selectedJalaliDate.jd)
     : [];
@@ -740,6 +747,7 @@ export default function Home() {
     selectedReminders.length > 0 ||
     selectedTasks.length > 0 ||
     selectedNotes.length > 0 ||
+    selectedTrainingCourses.length > 0 ||
     selectedOccasions.length > 0;
   const selectedMonthDays = selectedJalaliDate
     ? Array.from(
@@ -1001,6 +1009,25 @@ export default function Home() {
       window.removeEventListener("auth-user-updated", syncAuthUser);
       window.removeEventListener("focus", syncAuthUser);
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const manualSiteId = window.sessionStorage.getItem(
+      "agtps-portal-selected-site",
+    );
+    const nextSiteId = manualSiteId || detectedPortalSite?.site?.id;
+    if (nextSiteId) setSelectedSiteId(nextSiteId);
+  }, [detectedPortalSite?.site?.id]);
+
+  const selectPortalSite = useCallback((siteId: string | null) => {
+    setSelectedSiteId(siteId);
+    if (typeof window === "undefined") return;
+    if (siteId) {
+      window.sessionStorage.setItem("agtps-portal-selected-site", siteId);
+    } else {
+      window.sessionStorage.removeItem("agtps-portal-selected-site");
+    }
   }, []);
 
   useEffect(() => {
@@ -1517,7 +1544,7 @@ export default function Home() {
       />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_5%,rgba(124,58,237,0.35),transparent_28%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,0.3),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.1),rgba(2,6,23,0.95))]" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(56,189,248,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,0.06)_1px,transparent_1px)] bg-[size:72px_72px] opacity-60" />
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1920px] flex-col px-4 py-4">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1920px] flex-col px-4 py-4 xl:w-[var(--portal-content-width)]" style={{ "--portal-content-width": `calc(100% - ${portalHorizontalPadding * 2}%)` } as React.CSSProperties}>
         <header className="relative z-[200] mb-5 flex min-h-24 flex-nowrap items-center justify-between gap-4 overflow-visible rounded-3xl border border-white/10 bg-slate-950/45 px-5 py-4 shadow-2xl backdrop-blur-2xl">
           {settingsLoading ? (
             <div className="flex shrink-0 items-center gap-4">
@@ -1992,7 +2019,7 @@ export default function Home() {
                   node: (
                     <IranPortalMap
                       selectedSiteId={selectedSiteId}
-                      onSiteSelect={setSelectedSiteId}
+                      onSiteSelect={selectPortalSite}
                       showApplications={moduleIsEnabled("applications")}
                     />
                   ),
@@ -2004,7 +2031,7 @@ export default function Home() {
                     <GlassPanel id="systems" className="!p-4">
                       <PortalApplicationsGrid
                         selectedSiteId={selectedSiteId}
-                        onSiteSelect={setSelectedSiteId}
+                        onSiteSelect={selectPortalSite}
                         showSiteFilter
                       />
                     </GlassPanel>
@@ -2443,6 +2470,9 @@ export default function Home() {
                               ) ||
                               reminders.some((reminder) =>
                                 isSameLocalDay(date, reminder.remindAt),
+                              ) ||
+                              myCourses.some((item) =>
+                                isSameLocalDay(date, item.training.startDate),
                               )) && (
                               <span className="mx-auto mt-1 block size-1.5 rounded-full bg-cyan-300" />
                             )}
@@ -2495,6 +2525,21 @@ export default function Home() {
                           <span className="font-mono text-lg">
                             {getPersianTime(meeting.startAt)}
                           </span>
+                        </motion.div>
+                      ))}
+
+                      {selectedTrainingCourses.map((item) => (
+                        <motion.div
+                          key={item.id}
+                          whileHover={reduceMotion ? undefined : { x: -2 }}
+                          transition={calendarMotionTransition}
+                          className="flex items-center justify-between rounded-2xl border border-violet-300/20 bg-violet-400/10 p-4"
+                        >
+                          <div>
+                            <h3 className="font-bold text-violet-100">{item.training.title}</h3>
+                            <p className="mt-1 text-xs text-violet-100/75">دوره آموزشی{item.training.location ? ` — ${item.training.location}` : ""}</p>
+                          </div>
+                          <span className="font-mono text-lg text-violet-100">{getPersianTime(item.training.startDate)}</span>
                         </motion.div>
                       ))}
 

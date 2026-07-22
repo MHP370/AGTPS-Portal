@@ -183,6 +183,7 @@ export default function SettingsPage() {
   );
   const [overlayColor, setOverlayColor] = useState("#020617");
   const [overlayOpacity, setOverlayOpacity] = useState("0.78");
+  const [portalHorizontalPaddingPercent, setPortalHorizontalPaddingPercent] = useState("0");
   const [portalWidgets, setPortalWidgets] = useState<PortalWidgetSetting[]>(
     () => normalizePortalWidgets(null),
   );
@@ -231,6 +232,7 @@ export default function SettingsPage() {
       );
       setOverlayColor(settings.portalBackgroundOverlayColor || "#020617");
       setOverlayOpacity(String(settings.portalBackgroundOverlayOpacity ?? 0.78));
+      setPortalHorizontalPaddingPercent(String(settings.portalHorizontalPaddingPercent ?? 0));
       setPortalWidgets(normalizePortalWidgets(settings.portalWidgets));
       setFooterText(settings.footerText ?? "");
       setAdEnabled(Boolean(settings.activeDirectoryEnabled));
@@ -269,6 +271,7 @@ export default function SettingsPage() {
     event.preventDefault();
 
     const parsedOverlayOpacity = Number(overlayOpacity);
+    const parsedPortalPadding = Number(portalHorizontalPaddingPercent);
     const parsedAdSyncIntervalMinutes = Number(adSyncIntervalMinutes);
     const parsedTrainingMaxUploadSizeMb = Number(trainingMaxUploadSizeMb);
 
@@ -322,6 +325,7 @@ export default function SettingsPage() {
         portalBackgroundImageUrl: backgroundImageUrl.trim() || undefined,
         portalBackgroundOverlayColor: overlayColor.trim() || undefined,
         portalBackgroundOverlayOpacity: parsedOverlayOpacity,
+        portalHorizontalPaddingPercent: parsedPortalPadding,
         portalWidgets: normalizePortalWidgetsForSave(portalWidgets),
         footerText: footerText.trim() || undefined,
         activeDirectoryEnabled: adEnabled,
@@ -622,6 +626,11 @@ export default function SettingsPage() {
               />
             </IconFormField>
           </div>
+
+          <IconFormField label="فاصله افقی محتوای پورتال (درصد هر طرف)" icon={Settings}>
+            <Input type="number" min={0} max={15} step={0.5} value={portalHorizontalPaddingPercent} onChange={(event) => setPortalHorizontalPaddingPercent(event.target.value)} disabled={updateSettings.isPending} />
+            <p className="mt-2 text-xs text-slate-400">صفر یعنی تمام عرض؛ مقدار پیشنهادی ۳ تا ۶ درصد است.</p>
+          </IconFormField>
 
           <div className="flex justify-end">
             <Button type="submit" disabled={updateSettings.isPending}>

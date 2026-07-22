@@ -1,6 +1,7 @@
 "use client";
 
-import { LockKeyhole, Network, ShieldCheck, UserRound } from "lucide-react";
+import Link from "next/link";
+import { Award, CalendarDays, GraduationCap, LockKeyhole, Network, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AdminLogoutButton } from "@/components/auth/AdminLogoutButton";
@@ -14,6 +15,8 @@ import {
   useUpdateProfile,
 } from "@/hooks/useAuthUser";
 import type { AuthUser } from "@/lib/auth";
+import { useMyCourses } from "@/hooks/useTrainings";
+import type { MyCourseParticipation } from "@/lib/trainings";
 
 function displayName(user?: AuthUser | null) {
   if (!user) return "کاربر";
@@ -25,10 +28,29 @@ function displayName(user?: AuthUser | null) {
   );
 }
 
+function formatCourseDate(value?: string | null) {
+  if (!value) return "ثبت نشده";
+  return new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(
+    new Date(value),
+  );
+}
+
+function courseStage(item: MyCourseParticipation) {
+  if (item.training.status === "CANCELLED") return "لغو شده";
+  if (item.attendanceStatus === "ABSENT") return "غایب";
+  if (item.result === "PASSED") return "پایان موفق";
+  if (item.result === "FAILED") return "نیازمند پیگیری";
+  if (item.attendanceStatus === "ATTENDED") return "شرکت کرده";
+  if (item.training.status === "COMPLETED") return "نتیجه در انتظار ثبت";
+  if (["APPROVED", "OPEN"].includes(item.training.status)) return "ثبت‌نام شده";
+  return "برنامه‌ریزی شده";
+}
+
 export default function AdminProfilePage() {
   const { data: user, isLoading } = useAuthUser();
   const updateProfile = useUpdateProfile();
   const changePassword = useChangeOwnPassword();
+  const { data: myCourses = [], isLoading: myCoursesLoading } = useMyCourses();
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -264,6 +286,61 @@ export default function AdminProfilePage() {
                   </Button>
                 </div>
               </form>
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 xl:col-span-2">
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <GraduationCap className="text-cyan-200" size={24} />
+                  <div>
+                    <h2 className="text-xl font-black text-white">آموزش‌ها و دوره‌های من</h2>
+                    <p className="mt-1 text-xs text-slate-400">وضعیت حضور، نتیجه آزمون و اطلاعات گواهی شما به‌صورت زنده نمایش داده می‌شود.</p>
+                  </div>
+                </div>
+                <Badge variant="info">{myCourses.length.toLocaleString("fa-IR")} دوره</Badge>
+              </div>
+
+              {myCoursesLoading ? (
+                <p className="rounded-xl border border-slate-800 bg-slate-950/50 p-5 text-sm text-slate-400">در حال دریافت سوابق آموزشی...</p>
+              ) : myCourses.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-slate-700 p-5 text-center text-sm text-slate-400">هنوز دوره‌ای برای شما ثبت نشده است.</p>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {myCourses.map((item) => (
+                    <article key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/55 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-black text-white">{item.training.title}</h3>
+                          <p className="mt-1 text-xs text-slate-500">{item.training.category?.name ?? "بدون دسته"}</p>
+                        </div>
+                        <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-100">{courseStage(item)}</span>
+                      </div>
+                      <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                        <p className="flex items-center gap-2 text-slate-300"><CalendarDays size={16} className="text-cyan-200" />{formatCourseDate(item.training.startDate)}</p>
+                        <p className="text-slate-300">حضور: {{ REGISTERED: "ثبت‌نام شده", ATTENDED: "حاضر", ABSENT: "غایب", EXCUSED: "موجه" }[item.attendanceStatus]}</p>
+                        <p className="text-slate-300">نتیجه: {{ NO_EXAM: "بدون آزمون / ثبت نشده", PASSED: "قبول", FAILED: "مردود" }[item.result]}</p>
+                        <p className="text-slate-300">نمره: {item.score == null ? "ثبت نشده" : item.score.toLocaleString("fa-IR")}</p>
+                      </div>
+                      {item.training.hasCertificate && (
+                        <div className="mt-4 space-y-2 rounded-xl border border-amber-300/15 bg-amber-400/[0.06] p-3 text-sm text-amber-100">
+                          <div className="flex items-center gap-2">
+                          <Award size={18} />
+                          {item.certificateNumber ? `شماره گواهی: ${item.certificateNumber}` : "گواهی هنوز صادر نشده است."}
+                          </div>
+                          {item.certificates?.map((certificate) => (
+                            <Link key={certificate.id} href={`/training-certificates/${certificate.id}`} className="block text-xs font-bold text-cyan-200 underline">مشاهده، چاپ یا دانلود گواهی {certificate.certificateNumber}</Link>
+                          ))}
+                        </div>
+                      )}
+                      {item.training.exam?.isPublished && (
+                        <Link href={`/training-exams/${item.training.id}`} className="mt-4 inline-flex rounded-xl bg-cyan-500 px-4 py-2 text-sm font-black text-slate-950 transition hover:bg-cyan-300">
+                          شرکت در آزمون دوره
+                        </Link>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 xl:col-span-2">

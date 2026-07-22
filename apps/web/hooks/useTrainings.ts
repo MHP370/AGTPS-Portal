@@ -14,13 +14,37 @@ import {
   deleteTrainingItem,
   deleteTrainingSource,
   getAdminInPersonTrainings,
+  getInPersonTrainingDetail,
+  getCourseReports,
+  getTrainingUsers,
+  unlockInPersonTraining,
   getAdminTrainingCategories,
   getAdminTrainingSources,
   getAdminTrainings,
+  getAdminTrainingTree,
   getPublishedTrainings,
   getTrainingProgress,
   getTrainingCategories,
+  getEligibleTrainingParticipants,
+  enrollDirectoryUsers,
+  getMyCourses,
+  getAdminTrainingExam,
+  getAdminTrainingExams,
+  saveTrainingExam,
+  getMyTrainingExam,
+  startTrainingExam,
+  submitTrainingExam,
+  getCertificateTemplates,
+  getCertificateSignatories,
+  createCertificateSignatory,
+  updateCertificateSignatory,
+  generateCourseCertificates,
+  createCertificateTemplate,
+  updateCertificateTemplate,
+  issueTrainingCertificate,
   inPersonTrainingsQueryKey,
+  eligibleTrainingParticipantsQueryKey,
+  myCoursesQueryKey,
   trainingCategoriesQueryKey,
   trainingSourcesQueryKey,
   trainingsQueryKey,
@@ -39,6 +63,9 @@ import {
   type CreateTrainingItemDto,
   type CreateTrainingSourceDto,
   type UpsertTrainingProgressDto,
+  type TrainingExam,
+  type TrainingCertificateTemplate,
+  type TrainingCertificateSignatory,
 } from "@/lib/trainings";
 
 const TRAINING_VISITOR_KEY = "training_visitor_key";
@@ -98,6 +125,14 @@ export function useAdminTrainings() {
   });
 }
 
+export function useAdminTrainingTree(id?: string) {
+  return useQuery({
+    queryKey: [...trainingsQueryKey, "admin", id, "tree"],
+    queryFn: () => getAdminTrainingTree(id || ""),
+    enabled: Boolean(id),
+  });
+}
+
 export function useTrainingCategories() {
   return useQuery({
     queryKey: trainingCategoriesQueryKey,
@@ -142,6 +177,138 @@ export function useAdminInPersonTrainings() {
   return useQuery({
     queryKey: inPersonTrainingsQueryKey,
     queryFn: getAdminInPersonTrainings,
+  });
+}
+
+export function useInPersonTrainingDetail(id?: string) {
+  return useQuery({ queryKey: [...inPersonTrainingsQueryKey, id, "detail"], queryFn: () => getInPersonTrainingDetail(id || ""), enabled: Boolean(id) });
+}
+
+export function useCourseReports() { return useQuery({ queryKey: [...inPersonTrainingsQueryKey, "reports"], queryFn: getCourseReports }); }
+export function useTrainingUsers(search: string, page: number) { return useQuery({ queryKey: [...inPersonTrainingsQueryKey, "users", search, page], queryFn: () => getTrainingUsers(search, page), placeholderData: (previous) => previous }); }
+
+export function useUnlockInPersonTraining() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => unlockInPersonTraining(id, reason), onSuccess: (_, variables) => { queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey }); queryClient.invalidateQueries({ queryKey: [...inPersonTrainingsQueryKey, variables.id, "detail"] }); } });
+}
+
+export function useEligibleTrainingParticipants(
+  search: string,
+  page: number,
+) {
+  return useQuery({
+    queryKey: [...eligibleTrainingParticipantsQueryKey, search, page],
+    queryFn: () => getEligibleTrainingParticipants(search, page),
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useEnrollDirectoryUsers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      trainingId,
+      directoryUserIds,
+    }: {
+      trainingId: string;
+      directoryUserIds: string[];
+    }) => enrollDirectoryUsers(trainingId, directoryUserIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+      queryClient.invalidateQueries({ queryKey: myCoursesQueryKey });
+    },
+  });
+}
+
+export function useMyCourses() {
+  return useQuery({
+    queryKey: myCoursesQueryKey,
+    queryFn: getMyCourses,
+  });
+}
+
+export function useAdminTrainingExam(trainingId?: string) {
+  return useQuery({
+    queryKey: [...inPersonTrainingsQueryKey, trainingId, "exam"],
+    queryFn: () => getAdminTrainingExam(trainingId || ""),
+    enabled: Boolean(trainingId),
+  });
+}
+export function useAdminTrainingExams() { return useQuery({ queryKey: [...inPersonTrainingsQueryKey, "exams"], queryFn: getAdminTrainingExams }); }
+
+export function useSaveTrainingExam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trainingId, dto }: { trainingId: string; dto: Omit<TrainingExam, "id" | "trainingId"> }) => saveTrainingExam(trainingId, dto),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [...inPersonTrainingsQueryKey, variables.trainingId, "exam"] });
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+      queryClient.invalidateQueries({ queryKey: myCoursesQueryKey });
+    },
+  });
+}
+
+export function useMyTrainingExam(trainingId?: string) {
+  return useQuery({
+    queryKey: [...myCoursesQueryKey, trainingId, "exam"],
+    queryFn: () => getMyTrainingExam(trainingId || ""),
+    enabled: Boolean(trainingId),
+  });
+}
+
+export function useStartTrainingExam() {
+  return useMutation({ mutationFn: startTrainingExam });
+}
+
+export function useSubmitTrainingExam() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ attemptId, answers }: { attemptId: string; answers: Array<{ questionId: string; value: unknown }> }) => submitTrainingExam(attemptId, answers),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: myCoursesQueryKey }),
+  });
+}
+
+export function useCertificateTemplates() {
+  return useQuery({ queryKey: [...inPersonTrainingsQueryKey, "certificate-templates"], queryFn: getCertificateTemplates });
+}
+export function useCertificateSignatories() { return useQuery({ queryKey: [...inPersonTrainingsQueryKey, "certificate-signatories"], queryFn: getCertificateSignatories }); }
+export function useCreateCertificateSignatory() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (dto: Omit<TrainingCertificateSignatory, "id">) => createCertificateSignatory(dto), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...inPersonTrainingsQueryKey, "certificate-signatories"] }) });
+}
+export function useUpdateCertificateSignatory() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, dto }: { id: string; dto: Omit<TrainingCertificateSignatory, "id"> }) => updateCertificateSignatory(id, dto), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...inPersonTrainingsQueryKey, "certificate-signatories"] }) });
+}
+export function useGenerateCourseCertificates() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: ({ id, participantIds }: { id: string; participantIds?: string[] }) => generateCourseCertificates(id, participantIds), onSuccess: () => { queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey }); queryClient.invalidateQueries({ queryKey: myCoursesQueryKey }); } });
+}
+
+export function useCreateCertificateTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: Omit<TrainingCertificateTemplate, "id">) => createCertificateTemplate(dto),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...inPersonTrainingsQueryKey, "certificate-templates"] }),
+  });
+}
+
+export function useUpdateCertificateTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: string; dto: Omit<TrainingCertificateTemplate, "id"> }) => updateCertificateTemplate(id, dto),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [...inPersonTrainingsQueryKey, "certificate-templates"] }),
+  });
+}
+
+export function useIssueTrainingCertificate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: issueTrainingCertificate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inPersonTrainingsQueryKey });
+      queryClient.invalidateQueries({ queryKey: myCoursesQueryKey });
+    },
   });
 }
 

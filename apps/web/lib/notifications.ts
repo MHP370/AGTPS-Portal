@@ -14,6 +14,9 @@ export interface PortalNotification {
   meetingId?: string | null;
   reminderId?: string | null;
   taskId?: string | null;
+  trainingId?: string | null;
+  eventKey?: string | null;
+  targetUrl?: string | null;
   meeting?: Meeting | null;
   reminder?: PortalReminder | null;
   task?: PortalTask | null;
@@ -44,6 +47,8 @@ export function getNotificationTargetDate(notification: PortalNotification) {
 }
 
 export function getNotificationTargetUrl(notification: PortalNotification) {
+  if (notification.targetUrl) return notification.targetUrl;
+
   if (notification.type === "DIRECT_MESSAGE") {
     return "/admin/direct-messages";
   }

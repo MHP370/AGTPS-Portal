@@ -39,6 +39,55 @@ export class SitesService {
     });
   }
 
+  async detectByIp(rawIp?: string) {
+    const clientIp = this.normalizeIpv4(rawIp);
+    if (!clientIp) return { site: null };
+
+    const sites = await this.findActive();
+    const matches = sites.flatMap((site) =>
+      (site.ipRange || '')
+        .split(/[\n,;]+/)
+        .map((cidr) => cidr.trim())
+        .filter(Boolean)
+        .map((cidr) => ({ site, prefix: this.matchCidr(clientIp, cidr) }))
+        .filter((match) => match.prefix !== null),
+    );
+    matches.sort((first, second) => second.prefix! - first.prefix!);
+    return { site: matches[0]?.site || null };
+  }
+
+  private normalizeIpv4(rawIp?: string) {
+    const value = rawIp?.trim().replace(/^::ffff:/, '');
+    if (!value) return null;
+    const parts = value.split('.');
+    if (
+      parts.length !== 4 ||
+      parts.some(
+        (part) =>
+          !/^\d{1,3}$/.test(part) || Number(part) < 0 || Number(part) > 255,
+      )
+    ) {
+      return null;
+    }
+    return parts.map(Number);
+  }
+
+  private matchCidr(ip: number[], cidr: string) {
+    const [networkValue, prefixValue = '32'] = cidr.split('/');
+    const network = this.normalizeIpv4(networkValue);
+    const prefix = Number(prefixValue);
+    if (!network || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) {
+      return null;
+    }
+    const ipNumber = ip.reduce((value, part) => (value * 256 + part) >>> 0, 0);
+    const networkNumber = network.reduce(
+      (value, part) => (value * 256 + part) >>> 0,
+      0,
+    );
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    return (ipNumber & mask) === (networkNumber & mask) ? prefix : null;
+  }
+
   async getPortalWeather() {
     if (this.weatherCache && this.weatherCache.expiresAt > Date.now()) {
       return this.weatherCache.value;

@@ -5,6 +5,7 @@ WORKDIR /app
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     openssl ca-certificates postgresql-client tar krb5-user smbclient \
+    libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
